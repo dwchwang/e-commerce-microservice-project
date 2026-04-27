@@ -1,0 +1,26 @@
+.codex/
+.DS_Store
+
+# IDE/editor
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Java/Maven build output
+*.class
+build/
+out/
+target/
+**/target/
+
+# Maven wrapper caches
+.mvn/wrapper/apache-maven-*/
+.mvn/wrapper/dists/
+
+# Environment files
+.env
+.env.*
