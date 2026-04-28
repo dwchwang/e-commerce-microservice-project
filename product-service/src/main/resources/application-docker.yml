@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/product_db
+  data:
+    redis:
+      host: redis
+  kafka:
+    bootstrap-servers: kafka:29092
+
+eureka:
+  instance:
+    hostname: product-service
+  client:
+    service-url:
+      defaultZone: http://eureka:eureka@discovery-server:8761/eureka/

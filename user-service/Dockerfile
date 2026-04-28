@@ -8,6 +8,8 @@ COPY config-server/pom.xml config-server/pom.xml
 COPY identity-service/pom.xml identity-service/pom.xml
 COPY user-service/pom.xml user-service/pom.xml
 COPY api-gateway/pom.xml api-gateway/pom.xml
+COPY product-service/pom.xml product-service/pom.xml
+COPY inventory-service/pom.xml inventory-service/pom.xml
 COPY common/src common/src
 COPY user-service/src user-service/src
 
