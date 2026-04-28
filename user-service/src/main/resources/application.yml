@@ -2,8 +2,12 @@ server:
   port: 8082
 
 spring:
+  application:
+    name: user-service
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
   datasource:
-    url: ${USER_DB_URL:jdbc:postgresql://localhost:5432/user_db}
+    url: jdbc:postgresql://localhost:5432/user_db
     username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:postgres}
   jpa:
@@ -16,7 +20,7 @@ spring:
   flyway:
     enabled: true
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: localhost:9092
     consumer:
       group-id: user-service
       auto-offset-reset: earliest
@@ -28,11 +32,9 @@ spring:
       ack-mode: record
 
 eureka:
-  instance:
-    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
   client:
     service-url:
-      defaultZone: ${EUREKA_DEFAULT_ZONE:http://eureka:eureka@localhost:8761/eureka/}
+      defaultZone: http://eureka:eureka@localhost:8761/eureka/
 
 management:
   endpoints:

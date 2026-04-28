@@ -5,6 +5,9 @@ COPY pom.xml .
 COPY common/pom.xml common/pom.xml
 COPY discovery-server/pom.xml discovery-server/pom.xml
 COPY config-server/pom.xml config-server/pom.xml
+COPY identity-service/pom.xml identity-service/pom.xml
+COPY user-service/pom.xml user-service/pom.xml
+COPY api-gateway/pom.xml api-gateway/pom.xml
 COPY common/src common/src
 COPY discovery-server/src discovery-server/src
 COPY config-server/src config-server/src

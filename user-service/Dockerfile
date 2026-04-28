@@ -9,13 +9,12 @@ COPY identity-service/pom.xml identity-service/pom.xml
 COPY user-service/pom.xml user-service/pom.xml
 COPY api-gateway/pom.xml api-gateway/pom.xml
 COPY common/src common/src
-COPY discovery-server/src discovery-server/src
-COPY config-server/src config-server/src
+COPY user-service/src user-service/src
 
-RUN mvn -q -pl discovery-server -am package -DskipTests
+RUN mvn -q -pl user-service -am package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /workspace/discovery-server/target/*.jar app.jar
-EXPOSE 8761
+COPY --from=build /workspace/user-service/target/*.jar app.jar
+EXPOSE 8082
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -1,0 +1,78 @@
+{
+  "realm": "ecommerce",
+  "enabled": true,
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "ROLE_USER",
+        "description": "Customer role"
+      },
+      {
+        "name": "ROLE_ADMIN",
+        "description": "Store manager role"
+      }
+    ]
+  },
+  "defaultRoles": [
+    "ROLE_USER"
+  ],
+  "clients": [
+    {
+      "clientId": "ecommerce-client",
+      "name": "E-commerce Client",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "local-dev-ecommerce-secret",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:8080/login/oauth2/code/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "frontchannelLogout": true
+    },
+    {
+      "clientId": "identity-service-admin",
+      "name": "Identity Service Admin",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "local-dev-identity-admin-secret",
+      "redirectUris": [],
+      "webOrigins": [],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "bearerOnly": false
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-identity-service-admin",
+      "enabled": true,
+      "serviceAccountClientId": "identity-service-admin",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-realm",
+          "view-users",
+          "query-users"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+spring:
+  kafka:
+    bootstrap-servers: kafka:29092
+
+eureka:
+  instance:
+    hostname: identity-service
+  client:
+    service-url:
+      defaultZone: http://eureka:eureka@discovery-server:8761/eureka/
+
+keycloak:
+  server-url: http://keycloak:8080
