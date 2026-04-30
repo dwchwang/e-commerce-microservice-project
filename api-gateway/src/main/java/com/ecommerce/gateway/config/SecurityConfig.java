@@ -29,7 +29,7 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.GET, "/api/content/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/inventory/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/flash-sales/**").permitAll()
-                        .pathMatchers(HttpMethod.POST, "/api/cart/**").permitAll()
+                        .pathMatchers("/api/cart", "/api/cart/**").permitAll()
                         .pathMatchers("/eureka/**").permitAll()
                         .pathMatchers("/actuator/**").permitAll()
                         .anyExchange().authenticated())

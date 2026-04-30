@@ -18,12 +18,14 @@ public class AuthHeaderFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        // Always strip client-supplied identity headers first to prevent spoofing
+        ServerWebExchange stripped = stripIdentityHeaders(exchange);
         return ReactiveSecurityContextHolder.getContext()
                 .map(context -> context.getAuthentication())
                 .filter(authentication -> authentication != null && authentication.getPrincipal() instanceof Jwt)
                 .map(authentication -> (Jwt) authentication.getPrincipal())
-                .map(jwt -> withIdentityHeaders(exchange, jwt))
-                .defaultIfEmpty(exchange)
+                .map(jwt -> withIdentityHeaders(stripped, jwt))
+                .defaultIfEmpty(stripped)
                 .flatMap(chain::filter);
     }
 
@@ -32,11 +34,19 @@ public class AuthHeaderFilter implements GlobalFilter, Ordered {
         return 1;
     }
 
-    private ServerWebExchange withIdentityHeaders(ServerWebExchange exchange, Jwt jwt) {
+    private ServerWebExchange stripIdentityHeaders(ServerWebExchange exchange) {
         ServerHttpRequest request = exchange.getRequest().mutate()
                 .headers(headers -> {
                     headers.remove("X-User-Id");
                     headers.remove("X-User-Roles");
+                })
+                .build();
+        return exchange.mutate().request(request).build();
+    }
+
+    private ServerWebExchange withIdentityHeaders(ServerWebExchange exchange, Jwt jwt) {
+        ServerHttpRequest request = exchange.getRequest().mutate()
+                .headers(headers -> {
                     headers.add("X-User-Id", jwt.getSubject());
                     headers.add("X-User-Roles", extractRoles(jwt));
                 })

@@ -1,0 +1,6 @@
+eureka:
+  instance:
+    hostname: voucher-service
+  client:
+    service-url:
+      defaultZone: http://eureka:eureka@discovery-server:8761/eureka/

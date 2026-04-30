@@ -1,0 +1,12 @@
+spring:
+  data:
+    redis:
+      host: redis
+      port: 6379
+
+eureka:
+  instance:
+    hostname: cart-service
+  client:
+    service-url:
+      defaultZone: http://eureka:eureka@discovery-server:8761/eureka/

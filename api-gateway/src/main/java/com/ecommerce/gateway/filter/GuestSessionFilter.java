@@ -31,8 +31,7 @@ public class GuestSessionFilter implements GlobalFilter, Ordered {
 
     private boolean isUuid(String value) {
         try {
-            UUID.fromString(value);
-            return true;
+            return UUID.fromString(value).version() == 4;
         } catch (IllegalArgumentException ex) {
             return false;
         }

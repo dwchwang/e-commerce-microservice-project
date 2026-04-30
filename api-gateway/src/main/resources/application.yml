@@ -18,8 +18,7 @@ spring:
         webflux:
           discovery:
             locator:
-              enabled: true
-              lower-case-service-id: true
+              enabled: false
           routes:
             - id: identity-service
               uri: lb://identity-service
@@ -40,7 +39,7 @@ spring:
             - id: cart-service
               uri: lb://cart-service
               predicates:
-                - Path=/api/cart/**
+                - Path=/api/cart,/api/cart/**
             - id: order-service
               uri: lb://order-service
               predicates:

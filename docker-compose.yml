@@ -294,8 +294,6 @@ services:
     container_name: ecommerce-product-service
     expose:
       - "8083"
-    ports:
-      - "8083:8083"
     environment:
       SPRING_PROFILES_ACTIVE: docker
       CONFIG_SERVER_URL: http://config-server:8888
@@ -325,8 +323,6 @@ services:
     container_name: ecommerce-inventory-service
     expose:
       - "8084"
-    ports:
-      - "8084:8084"
     environment:
       SPRING_PROFILES_ACTIVE: docker
       CONFIG_SERVER_URL: http://config-server:8888
@@ -342,6 +338,52 @@ services:
       postgres:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+  cart-service:
+    build:
+      context: .
+      dockerfile: cart-service/Dockerfile
+    container_name: ecommerce-cart-service
+    expose:
+      - "8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+      REDIS_HOST: redis
+      EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
+      EUREKA_INSTANCE_HOSTNAME: cart-service
+    depends_on:
+      config-server:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      product-service:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
+  voucher-service:
+    build:
+      context: .
+      dockerfile: voucher-service/Dockerfile
+    container_name: ecommerce-voucher-service
+    expose:
+      - "8088"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+      VOUCHER_DB_URL: jdbc:postgresql://postgres:5432/voucher_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
+      EUREKA_INSTANCE_HOSTNAME: voucher-service
+    depends_on:
+      config-server:
+        condition: service_started
+      postgres:
         condition: service_healthy
     networks:
       - ecommerce-network
