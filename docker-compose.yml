@@ -388,6 +388,40 @@ services:
     networks:
       - ecommerce-network
 
+  order-service:
+    build:
+      context: .
+      dockerfile: order-service/Dockerfile
+    container_name: ecommerce-order-service
+    expose:
+      - "8086"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+      ORDER_DB_URL: jdbc:postgresql://postgres:5432/order_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
+      EUREKA_INSTANCE_HOSTNAME: order-service
+    depends_on:
+      config-server:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      product-service:
+        condition: service_started
+      inventory-service:
+        condition: service_started
+      cart-service:
+        condition: service_started
+      voucher-service:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
 # ============================================================
 # NETWORKS & VOLUMES
 # ============================================================

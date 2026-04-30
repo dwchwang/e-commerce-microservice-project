@@ -39,6 +39,7 @@ public class AuthHeaderFilter implements GlobalFilter, Ordered {
                 .headers(headers -> {
                     headers.remove("X-User-Id");
                     headers.remove("X-User-Roles");
+                    headers.remove("X-User-Email");
                 })
                 .build();
         return exchange.mutate().request(request).build();
@@ -49,9 +50,19 @@ public class AuthHeaderFilter implements GlobalFilter, Ordered {
                 .headers(headers -> {
                     headers.add("X-User-Id", jwt.getSubject());
                     headers.add("X-User-Roles", extractRoles(jwt));
+                    headers.add("X-User-Email", extractEmail(jwt));
                 })
                 .build();
         return exchange.mutate().request(request).build();
+    }
+
+    private String extractEmail(Jwt jwt) {
+        String email = jwt.getClaimAsString("email");
+        if (email != null && !email.isBlank()) {
+            return email;
+        }
+        String username = jwt.getClaimAsString("preferred_username");
+        return username != null && !username.isBlank() ? username : jwt.getSubject();
     }
 
     @SuppressWarnings("unchecked")

@@ -22,6 +22,7 @@ class AuthHeaderFilterTest {
         ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/cart")
                 .header("X-User-Id", "fake-user")
                 .header("X-User-Roles", "ROLE_ADMIN")
+                .header("X-User-Email", "fake@example.com")
                 .build());
         AtomicReference<HttpHeaders> forwardedHeaders = new AtomicReference<>();
 
@@ -32,6 +33,6 @@ class AuthHeaderFilterTest {
 
         filter.filter(exchange, chain).block(Duration.ofSeconds(1));
 
-        assertThat(forwardedHeaders.get()).doesNotContainKeys("X-User-Id", "X-User-Roles");
+        assertThat(forwardedHeaders.get()).doesNotContainKeys("X-User-Id", "X-User-Roles", "X-User-Email");
     }
 }
