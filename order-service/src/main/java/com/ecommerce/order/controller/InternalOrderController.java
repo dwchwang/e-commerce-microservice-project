@@ -25,4 +25,9 @@ public class InternalOrderController {
                 .map(OrderPaymentContextResponse::from)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", "id", orderId)));
     }
+
+    @GetMapping("/count-by-flash-sale/{flashSaleId}")
+    public ApiResponse<Long> countByFlashSaleId(@PathVariable UUID flashSaleId) {
+        return ApiResponse.ok(orderRepository.countByFlashSaleId(flashSaleId));
+    }
 }

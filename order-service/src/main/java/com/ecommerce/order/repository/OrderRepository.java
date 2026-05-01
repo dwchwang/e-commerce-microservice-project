@@ -25,6 +25,18 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
             """)
     boolean existsConfirmedOrderForProduct(@Param("userId") String userId, @Param("productId") UUID productId);
 
+    @Query("""
+            SELECT COUNT(o)
+            FROM Order o
+            WHERE o.flashSaleId = :flashSaleId
+              AND o.isFlashSale = true
+            """)
+    long countByFlashSaleId(@Param("flashSaleId") UUID flashSaleId);
+
+    boolean existsByFlashSaleIdAndUserIdAndIsFlashSaleTrue(UUID flashSaleId, String userId);
+
+    Optional<Order> findByFlashSaleIdAndUserIdAndIsFlashSaleTrue(UUID flashSaleId, String userId);
+
     Optional<Order> findByIdAndUserId(UUID id, String userId);
 
     List<Order> findByStatusAndPaymentMethodAndReservationExpiredAtBefore(

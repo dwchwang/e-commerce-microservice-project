@@ -1,6 +1,7 @@
 package com.ecommerce.order.service.impl;
 
 import com.ecommerce.common.dto.ApiResponse;
+import com.ecommerce.common.event.FlashSaleOrderRequestedEvent;
 import com.ecommerce.common.event.OrderCreatedEvent;
 import com.ecommerce.common.event.OrderItemEvent;
 import com.ecommerce.common.exception.BusinessException;
@@ -17,6 +18,7 @@ import com.ecommerce.order.dto.VoucherReservationResult;
 import com.ecommerce.order.entity.Order;
 import com.ecommerce.order.entity.OrderItem;
 import com.ecommerce.order.entity.OrderStatus;
+import com.ecommerce.order.entity.PaymentMethod;
 import com.ecommerce.order.repository.OrderRepository;
 import com.ecommerce.order.service.OrderService;
 import com.ecommerce.order.service.OutboxService;
@@ -130,6 +132,62 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional
+    public OrderResponse createFlashSaleOrder(FlashSaleOrderRequestedEvent event) {
+        validateFlashSaleEvent(event);
+        if (orderRepository.existsByFlashSaleIdAndUserIdAndIsFlashSaleTrue(
+                event.getFlashSaleId(), event.getUserId())) {
+            log.info("Flash sale order already exists for campaign {} and user {}; skipping duplicate request",
+                    event.getFlashSaleId(), event.getUserId());
+            return orderRepository.findByFlashSaleIdAndUserIdAndIsFlashSaleTrue(
+                            event.getFlashSaleId(), event.getUserId())
+                    .map(OrderResponse::from)
+                    .orElseThrow(() -> new BusinessException("Duplicate flash sale order detected"));
+        }
+
+        UUID orderId = UUID.randomUUID();
+        OrderItem item = OrderItem.builder()
+                .productId(event.getProductId())
+                .sku(event.getSku())
+                .productName(event.getProductName())
+                .price(event.getSalePrice())
+                .quantity(1)
+                .subtotal(event.getSalePrice())
+                .build();
+
+        Order order = Order.builder()
+                .id(orderId)
+                .userId(event.getUserId())
+                .userEmail(event.getUserEmail())
+                .status(OrderStatus.PENDING)
+                .paymentMethod(parsePaymentMethod(event.getPaymentMethod()))
+                .subtotal(event.getSalePrice())
+                .discountAmount(BigDecimal.ZERO)
+                .totalAmount(event.getSalePrice())
+                .shippingName(event.getShippingName())
+                .shippingPhone(event.getShippingPhone())
+                .shippingAddress(event.getShippingAddress())
+                .isFlashSale(true)
+                .flashSaleId(event.getFlashSaleId())
+                .build();
+        item.setOrder(order);
+        order.setItems(List.of(item));
+
+        Order saved = orderRepository.save(order);
+        orderRepository.flush();
+        outboxService.saveEvent("Order", saved.getId().toString(), "ORDER_CREATED",
+                OrderCreatedEvent.builder()
+                        .eventId(UUID.randomUUID())
+                        .orderId(saved.getId())
+                        .userId(event.getUserId())
+                        .items(toItemEvents(saved.getItems()))
+                        .totalAmount(saved.getTotalAmount())
+                        .build());
+
+        return OrderResponse.from(saved);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<OrderResponse> getUserOrders(String userId) {
         return orderRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
@@ -176,6 +234,40 @@ public class OrderServiceImpl implements OrderService {
         Set<UUID> uniqueIds = new HashSet<>(productIds);
         if (uniqueIds.size() != productIds.size()) {
             throw new BusinessException("Duplicate products in order");
+        }
+    }
+
+    private void validateFlashSaleEvent(FlashSaleOrderRequestedEvent event) {
+        if (event.getUserId() == null || event.getUserId().isBlank()) {
+            throw new BusinessException("Flash sale userId is required");
+        }
+        if (event.getProductId() == null) {
+            throw new BusinessException("Flash sale productId is required");
+        }
+        if (event.getFlashSaleId() == null) {
+            throw new BusinessException("Flash sale id is required");
+        }
+        if (event.getSku() == null || event.getSku().isBlank()) {
+            throw new BusinessException("Flash sale sku is required");
+        }
+        if (event.getProductName() == null || event.getProductName().isBlank()) {
+            throw new BusinessException("Flash sale productName is required");
+        }
+        if (event.getSalePrice() == null || event.getSalePrice().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException("Flash sale price must be positive");
+        }
+        if (event.getShippingName() == null || event.getShippingName().isBlank()
+                || event.getShippingPhone() == null || event.getShippingPhone().isBlank()
+                || event.getShippingAddress() == null || event.getShippingAddress().isBlank()) {
+            throw new BusinessException("Flash sale shipping information is required");
+        }
+    }
+
+    private PaymentMethod parsePaymentMethod(String value) {
+        try {
+            return PaymentMethod.valueOf(value);
+        } catch (RuntimeException ex) {
+            throw new BusinessException("Unsupported payment method: " + value);
         }
     }
 

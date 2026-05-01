@@ -504,6 +504,37 @@ services:
     networks:
       - ecommerce-network
 
+  flash-sale-service:
+    build:
+      context: .
+      dockerfile: flash-sale-service/Dockerfile
+    container_name: ecommerce-flash-sale-service
+    expose:
+      - "8093"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+      FLASH_SALE_DB_URL: jdbc:postgresql://postgres:5432/flash_sale_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
+      EUREKA_INSTANCE_HOSTNAME: flash-sale-service
+    depends_on:
+      config-server:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      order-service:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
 # ============================================================
 # NETWORKS & VOLUMES
 # ============================================================

@@ -15,6 +15,7 @@ COPY voucher-service/pom.xml voucher-service/pom.xml
 COPY order-service/pom.xml order-service/pom.xml
 COPY payment-service/pom.xml payment-service/pom.xml
 COPY notification-service/pom.xml notification-service/pom.xml
+COPY flash-sale-service/pom.xml flash-sale-service/pom.xml
 COPY api-gateway/src api-gateway/src
 
 RUN mvn -q -pl api-gateway -am package -DskipTests

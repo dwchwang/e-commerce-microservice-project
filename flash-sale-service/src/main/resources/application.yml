@@ -2,6 +2,10 @@ server:
   port: 8093
 
 spring:
+  application:
+    name: flash-sale-service
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
   datasource:
     url: ${FLASH_SALE_DB_URL:jdbc:postgresql://localhost:5432/flash_sale_db}
     username: ${POSTGRES_USER:postgres}

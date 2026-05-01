@@ -17,13 +17,12 @@ COPY payment-service/pom.xml payment-service/pom.xml
 COPY notification-service/pom.xml notification-service/pom.xml
 COPY flash-sale-service/pom.xml flash-sale-service/pom.xml
 COPY common/src common/src
-COPY discovery-server/src discovery-server/src
-COPY config-server/src config-server/src
+COPY flash-sale-service/src flash-sale-service/src
 
-RUN mvn -q -pl config-server -am package -DskipTests
+RUN mvn -q -pl flash-sale-service -am package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /workspace/config-server/target/*.jar app.jar
-EXPOSE 8888
+COPY --from=build /workspace/flash-sale-service/target/*.jar app.jar
+EXPOSE 8093
 ENTRYPOINT ["java", "-jar", "app.jar"]
