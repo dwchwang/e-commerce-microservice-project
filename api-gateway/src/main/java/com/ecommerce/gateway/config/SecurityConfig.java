@@ -30,6 +30,8 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.GET, "/api/inventory/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/flash-sales/**").permitAll()
                         .pathMatchers("/api/cart", "/api/cart/**").permitAll()
+                        .pathMatchers(HttpMethod.POST, "/api/payments/vnpay/ipn").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/payments/vnpay/return").permitAll()
                         .pathMatchers("/eureka/**").permitAll()
                         .pathMatchers("/actuator/**").permitAll()
                         .anyExchange().authenticated())
@@ -43,7 +45,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of("http://localhost:3000"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Session-Id"));
-        configuration.setExposedHeaders(List.of("X-User-Id", "X-User-Roles"));
+        configuration.setExposedHeaders(List.of("X-User-Id", "X-User-Roles", "X-User-Email"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

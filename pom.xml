@@ -23,6 +23,8 @@
         <module>cart-service</module>
         <module>voucher-service</module>
         <module>order-service</module>
+        <module>payment-service</module>
+        <module>notification-service</module>
     </modules>
 
     <properties>
@@ -78,6 +80,10 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-tracing-bridge-brave</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
         <dependency>
             <groupId>io.zipkin.reporter2</groupId>

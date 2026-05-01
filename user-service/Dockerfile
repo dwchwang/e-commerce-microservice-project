@@ -13,6 +13,8 @@ COPY inventory-service/pom.xml inventory-service/pom.xml
 COPY cart-service/pom.xml cart-service/pom.xml
 COPY voucher-service/pom.xml voucher-service/pom.xml
 COPY order-service/pom.xml order-service/pom.xml
+COPY payment-service/pom.xml payment-service/pom.xml
+COPY notification-service/pom.xml notification-service/pom.xml
 COPY common/src common/src
 COPY user-service/src user-service/src
 

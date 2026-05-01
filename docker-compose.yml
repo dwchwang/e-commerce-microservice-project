@@ -4,7 +4,7 @@ services:
   # DATABASES
   # ============================================================
   postgres:
-    image: postgres:18-alpine
+    image: postgres:17-alpine
     container_name: ecommerce-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -23,7 +23,7 @@ services:
       - ecommerce-network
 
   keycloak-db:
-    image: postgres:18-alpine
+    image: postgres:17-alpine
     container_name: ecommerce-keycloak-db
     environment:
       POSTGRES_DB: keycloak
@@ -54,6 +54,16 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - ecommerce-network
+
+  mailpit:
+    image: axllent/mailpit:v1.27.8
+    container_name: ecommerce-mailpit
+    ports:
+      - "8025:8025"
+    expose:
+      - "1025"
     networks:
       - ecommerce-network
 
@@ -418,6 +428,78 @@ services:
       cart-service:
         condition: service_started
       voucher-service:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
+    container_name: ecommerce-payment-service
+    expose:
+      - "8087"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+      PAYMENT_DB_URL: jdbc:postgresql://postgres:5432/payment_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
+      EUREKA_INSTANCE_HOSTNAME: payment-service
+      VNPAY_TMN_CODE: ${VNPAY_TMN_CODE}
+      VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET}
+      VNPAY_PAY_URL: ${VNPAY_PAY_URL}
+      VNPAY_RETURN_URL: ${VNPAY_RETURN_URL}
+      FRONTEND_ORDER_RESULT_URL: ${FRONTEND_ORDER_RESULT_URL}
+    depends_on:
+      config-server:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+      order-service:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: ecommerce-notification-service
+    expose:
+      - "8089"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+      NOTIFICATION_DB_URL: jdbc:postgresql://postgres:5432/notification_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
+      EUREKA_INSTANCE_HOSTNAME: notification-service
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_AUTH: ${SMTP_AUTH}
+      SMTP_STARTTLS: ${SMTP_STARTTLS}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@ecommerce.local}
+    depends_on:
+      config-server:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+      mailpit:
         condition: service_started
     networks:
       - ecommerce-network

@@ -55,6 +55,7 @@ public class PaymentSuccessConsumer {
                         .eventId(UUID.randomUUID())
                         .orderId(order.getId())
                         .userId(order.getUserId())
+                        .userEmail(order.getUserEmail())
                         .items(sagaSupport.toItemEvents(order))
                         .build());
 

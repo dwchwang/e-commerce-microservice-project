@@ -53,6 +53,8 @@ public class InventoryUpdatedConsumer {
                     PaymentRequestedEvent.builder()
                             .eventId(UUID.randomUUID())
                             .orderId(order.getId())
+                            .userId(order.getUserId())
+                            .userEmail(order.getUserEmail())
                             .amount(order.getTotalAmount())
                             .paymentMethod("COD")
                             .build());

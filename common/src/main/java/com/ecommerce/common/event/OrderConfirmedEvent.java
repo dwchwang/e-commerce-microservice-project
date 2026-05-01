@@ -18,5 +18,6 @@ public class OrderConfirmedEvent implements Serializable {
     private UUID eventId;
     private UUID orderId;
     private String userId;
+    private String userEmail;
     private List<OrderItemEvent> items;
 }

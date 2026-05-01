@@ -17,6 +17,8 @@ public class PaymentRequestedEvent implements Serializable {
 
     private UUID eventId;
     private UUID orderId;
+    private String userId;
+    private String userEmail;
     private BigDecimal amount;
     private String paymentMethod;
 }

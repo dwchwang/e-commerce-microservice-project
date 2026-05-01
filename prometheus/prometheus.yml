@@ -7,3 +7,12 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   # Business service scrape targets will be added in Phase 9
+  - job_name: 'payment-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['payment-service:8087']
+
+  - job_name: 'notification-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['notification-service:8089']

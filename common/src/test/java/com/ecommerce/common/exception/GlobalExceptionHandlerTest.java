@@ -3,8 +3,10 @@ package com.ecommerce.common.exception;
 import com.ecommerce.common.dto.ApiResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -25,5 +27,16 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().isSuccess()).isFalse();
         assertThat(response.getBody().getMessage()).isEqualTo("Missing required header: X-User-Id");
+    }
+
+    @Test
+    void unmappedMvcRouteReturnsNotFound() {
+        ResponseEntity<ApiResponse<Void>> response = handler.handleNoRoute(
+                new NoHandlerFoundException("GET", "/api/orders/internal/test/payment-context", new HttpHeaders()));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().isSuccess()).isFalse();
+        assertThat(response.getBody().getMessage()).isEqualTo("Not found");
     }
 }
