@@ -182,6 +182,10 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      prometheus:
+        condition: service_started
     networks:
       - ecommerce-network
 
@@ -232,6 +236,7 @@ services:
       KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/ecommerce/protocol/openid-connect/certs
       EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
       EUREKA_INSTANCE_HOSTNAME: api-gateway
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       discovery-server:
         condition: service_started
@@ -241,6 +246,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/actuator/health/liveness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - ecommerce-network
 
@@ -262,6 +273,7 @@ services:
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
       EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
       EUREKA_INSTANCE_HOSTNAME: identity-service
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       config-server:
         condition: service_started
@@ -269,6 +281,12 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8081/actuator/health/liveness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - ecommerce-network
 
@@ -288,6 +306,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
       EUREKA_INSTANCE_HOSTNAME: user-service
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       config-server:
         condition: service_started
@@ -295,6 +314,12 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8082/actuator/health/liveness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - ecommerce-network
 
@@ -315,6 +340,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
       EUREKA_INSTANCE_HOSTNAME: product-service
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       config-server:
         condition: service_started
@@ -324,6 +350,12 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8083/actuator/health/liveness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - ecommerce-network
 
@@ -343,6 +375,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
       EUREKA_INSTANCE_HOSTNAME: inventory-service
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       config-server:
         condition: service_started
@@ -350,6 +383,12 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8084/actuator/health/liveness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - ecommerce-network
 
@@ -366,6 +405,7 @@ services:
       REDIS_HOST: redis
       EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
       EUREKA_INSTANCE_HOSTNAME: cart-service
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       config-server:
         condition: service_started
@@ -373,6 +413,12 @@ services:
         condition: service_healthy
       product-service:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/localhost/8085'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - ecommerce-network
 
@@ -391,11 +437,18 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
       EUREKA_INSTANCE_HOSTNAME: voucher-service
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       config-server:
         condition: service_started
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/localhost/8088'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - ecommerce-network
 
@@ -415,6 +468,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
       EUREKA_INSTANCE_HOSTNAME: order-service
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       config-server:
         condition: service_started
@@ -430,6 +484,12 @@ services:
         condition: service_started
       voucher-service:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/localhost/8086'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - ecommerce-network
 
@@ -454,6 +514,7 @@ services:
       VNPAY_PAY_URL: ${VNPAY_PAY_URL}
       VNPAY_RETURN_URL: ${VNPAY_RETURN_URL}
       FRONTEND_ORDER_RESULT_URL: ${FRONTEND_ORDER_RESULT_URL}
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       config-server:
         condition: service_started
@@ -465,6 +526,12 @@ services:
         condition: service_started
       order-service:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/localhost/8087'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - ecommerce-network
 
@@ -491,6 +558,7 @@ services:
       SMTP_AUTH: ${SMTP_AUTH}
       SMTP_STARTTLS: ${SMTP_STARTTLS}
       SMTP_FROM: ${SMTP_FROM:-no-reply@ecommerce.local}
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       config-server:
         condition: service_started
@@ -502,6 +570,12 @@ services:
         condition: service_started
       mailpit:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/localhost/8089'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - ecommerce-network
 
@@ -520,6 +594,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
       EUREKA_INSTANCE_HOSTNAME: review-service
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       config-server:
         condition: service_started
@@ -527,6 +602,12 @@ services:
         condition: service_healthy
       order-service:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8090/actuator/health/liveness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - ecommerce-network
 
@@ -544,6 +625,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
       EUREKA_INSTANCE_HOSTNAME: search-service
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       config-server:
         condition: service_started
@@ -553,6 +635,12 @@ services:
         condition: service_healthy
       product-service:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8091/actuator/health/liveness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - ecommerce-network
 
@@ -571,11 +659,18 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
       EUREKA_INSTANCE_HOSTNAME: content-service
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       config-server:
         condition: service_started
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8092/actuator/health/liveness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - ecommerce-network
 
@@ -596,6 +691,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE}
       EUREKA_INSTANCE_HOSTNAME: flash-sale-service
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       config-server:
         condition: service_started
@@ -607,6 +703,12 @@ services:
         condition: service_healthy
       order-service:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8093/actuator/health/liveness || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - ecommerce-network
 

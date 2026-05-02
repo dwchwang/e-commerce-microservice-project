@@ -7,7 +7,7 @@ spring:
   config:
     import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
   datasource:
-    url: jdbc:postgresql://localhost:5432/user_db
+    url: ${USER_DB_URL:jdbc:postgresql://localhost:5432/user_db}
     username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:postgres}
   jpa:
@@ -20,7 +20,7 @@ spring:
   flyway:
     enabled: true
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: user-service
       auto-offset-reset: earliest
@@ -34,7 +34,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://eureka:eureka@localhost:8761/eureka/
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://eureka:eureka@localhost:8761/eureka/}
 
 management:
   endpoints:
@@ -45,3 +45,20 @@ management:
     health:
       probes:
         enabled: true
+      show-details: always
+      validate-group-membership: false
+      group:
+        readiness:
+          include: db,kafka
+        liveness:
+          include: ping
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"

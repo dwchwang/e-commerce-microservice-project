@@ -20,6 +20,12 @@ spring:
               uri: lb://identity-service
               predicates:
                 - Path=/api/auth/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 10
+                    redis-rate-limiter.burstCapacity: 20
+                    key-resolver: "#{@ipKeyResolver}"
             - id: user-service
               uri: lb://user-service
               predicates:
@@ -40,6 +46,12 @@ spring:
               uri: lb://order-service
               predicates:
                 - Path=/api/orders/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 10
+                    redis-rate-limiter.burstCapacity: 20
+                    key-resolver: "#{@userKeyResolver}"
             - id: payment-service
               uri: lb://payment-service
               predicates:
@@ -64,6 +76,17 @@ spring:
               uri: lb://content-service
               predicates:
                 - Path=/api/content/**
+            - id: flash-sale-purchase
+              uri: lb://flash-sale-service
+              predicates:
+                - Path=/api/flash-sales/*/purchase
+                - Method=POST
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 3
+                    redis-rate-limiter.burstCapacity: 5
+                    key-resolver: "#{@userKeyResolver}"
             - id: flash-sale-service
               uri: lb://flash-sale-service
               predicates:
@@ -93,3 +116,13 @@ management:
     health:
       probes:
         enabled: true
+      show-details: always
+      validate-group-membership: false
+      group:
+        readiness:
+          include: redis
+        liveness:
+          include: ping
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://zipkin:9411/api/v2/spans}

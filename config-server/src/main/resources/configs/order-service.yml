@@ -36,6 +36,26 @@ eureka:
     service-url:
       defaultZone: ${EUREKA_DEFAULT_ZONE:http://eureka:eureka@localhost:8761/eureka/}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      validate-group-membership: false
+      group:
+        readiness:
+          include: db,kafka
+        liveness:
+          include: ping
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://zipkin:9411/api/v2/spans}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

@@ -102,6 +102,7 @@ class OrderServiceImplTest {
         assertThat(response.getUpdatedAt()).isEqualTo(updatedAt);
         verify(orderRepository).flush();
         verify(orderRepository).findById(savedOrder.get().getId());
+        verify(outboxService).saveEvent(eq("Order"), eq(savedOrder.get().getId().toString()), eq("ORDER_CREATED"), any());
     }
 
     @Test

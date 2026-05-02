@@ -6,13 +6,72 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # Business service scrape targets will be added in Phase 9
+  - job_name: 'api-gateway'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['api-gateway:8080']
+
+  - job_name: 'identity-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['identity-service:8081']
+
+  - job_name: 'user-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['user-service:8082']
+
+  - job_name: 'product-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['product-service:8083']
+
+  - job_name: 'inventory-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['inventory-service:8084']
+
+  - job_name: 'cart-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['cart-service:8085']
+
+  - job_name: 'order-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['order-service:8086']
+
   - job_name: 'payment-service'
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['payment-service:8087']
 
+  - job_name: 'voucher-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['voucher-service:8088']
+
   - job_name: 'notification-service'
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['notification-service:8089']
+
+  - job_name: 'review-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['review-service:8090']
+
+  - job_name: 'search-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['search-service:8091']
+
+  - job_name: 'content-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['content-service:8092']
+
+  - job_name: 'flash-sale-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['flash-sale-service:8093']

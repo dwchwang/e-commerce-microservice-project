@@ -7,7 +7,7 @@ spring:
   config:
     import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -15,11 +15,11 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://eureka:eureka@localhost:8761/eureka/
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://eureka:eureka@localhost:8761/eureka/}
 
 keycloak:
   server-url: ${KEYCLOAK_URL:http://localhost:8180}
-  realm: ecommerce
+  realm: ${KEYCLOAK_REALM:ecommerce}
   client-id: ${KEYCLOAK_CLIENT_ID:ecommerce-client}
   client-secret: ${KEYCLOAK_CLIENT_SECRET:local-dev-ecommerce-secret}
   admin:
@@ -36,3 +36,20 @@ management:
     health:
       probes:
         enabled: true
+      show-details: always
+      validate-group-membership: false
+      group:
+        readiness:
+          include: ping
+        liveness:
+          include: ping
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
