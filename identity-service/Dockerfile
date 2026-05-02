@@ -15,6 +15,9 @@ COPY voucher-service/pom.xml voucher-service/pom.xml
 COPY order-service/pom.xml order-service/pom.xml
 COPY payment-service/pom.xml payment-service/pom.xml
 COPY notification-service/pom.xml notification-service/pom.xml
+COPY review-service/pom.xml review-service/pom.xml
+COPY search-service/pom.xml search-service/pom.xml
+COPY content-service/pom.xml content-service/pom.xml
 COPY flash-sale-service/pom.xml flash-sale-service/pom.xml
 COPY common/src common/src
 COPY identity-service/src identity-service/src

@@ -27,6 +27,7 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/search/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/content/**").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/reviews/product/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/inventory/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/flash-sales/**").permitAll()
                         .pathMatchers("/api/cart", "/api/cart/**").permitAll()

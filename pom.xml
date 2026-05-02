@@ -25,6 +25,9 @@
         <module>order-service</module>
         <module>payment-service</module>
         <module>notification-service</module>
+        <module>review-service</module>
+        <module>search-service</module>
+        <module>content-service</module>
         <module>flash-sale-service</module>
     </modules>
 
