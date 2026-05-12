@@ -2,6 +2,8 @@
 
 Muc tieu cua Chuong 3 la trinh bay **bo giai phap cong nghe duoc lua chon va ly do lua chon**. Neu Chuong 2 tra loi "khai niem la gi", thi Chuong 3 tra loi "vi sao de tai nay chon cong nghe nay va chon nhu the nao".
 
+Chuong nay la noi trinh bay cac cong nghe cu the duoc su dung trong de tai, gom Java 21, Maven multi-module, Spring Boot, Spring Cloud Gateway, Eureka, Config Server, OpenFeign, Kafka, PostgreSQL, Redis, Elasticsearch, Keycloak, VNPAY sandbox, Prometheus, Grafana, Zipkin, Mailpit va Docker Compose. Moi cong nghe nen duoc viet theo cau truc: **vai tro trong he thong -> ly do chon -> cach ap dung trong repo -> han che/rui ro**.
+
 Dung luong goi y: **18-25 trang**.
 
 ## 3.1. Dinh huong giai phap tong the

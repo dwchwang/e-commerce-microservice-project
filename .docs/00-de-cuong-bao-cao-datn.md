@@ -47,8 +47,8 @@ Tong dung luong hop ly: **130-170 trang** neu tinh ca phu luc; phan chinh van ne
 | Chuong | Vai tro | Nguon chinh |
 |---|---|---|
 | 1. Tong quan de tai | Giai thich bai toan, muc tieu, pham vi, dong gop | `README.md`, `.guide/00`, `.report/00`, `.report/01`, `.report/22` |
-| 2. Co so ly thuyet | Chung minh nen tang hoc thuat | `.report/01` den `.report/21` |
-| 3. Giai phap cong nghe | Giai thich vi sao chon Java/Spring/Kafka/Redis/PostgreSQL/Keycloak/Docker | `pom.xml`, `docker-compose.yml`, `.report/02-21`, `.guide/00`, `.guide/05` |
+| 2. Co so ly thuyet | Chung minh nen tang hoc thuat, pattern va nguyen ly thiet ke cot loi | `.report/01` den `.report/21` |
+| 3. Giai phap cong nghe | Giai thich vi sao chon Java/Spring/Kafka/Redis/PostgreSQL/Elasticsearch/Keycloak/Docker va cach ap dung | `pom.xml`, `docker-compose.yml`, `.report/02-21`, `.guide/00`, `.guide/05` |
 | 4. Phan tich & thiet ke | Phan tich yeu cau, kien truc, DB, API, event, state machine | `.docs/01-phan-tich-kien-truc-microservices.md`, `.guide/09`, `.guide/11-15`, source code |
 | 5. Cai dat & trien khai | Mo ta cach hien thuc he thong bang code va Docker | source code cac service, `docker-compose.yml`, `config-server`, `prometheus`, `grafana`, `.guide/02-08` |
 | 6. Kiem thu & danh gia | Chung minh he thong chay duoc va danh gia ket qua | `src/test`, `.report/20`, `.guide/04`, `.guide/09`, `.guide/10`, log/screenshot/ket qua do |
@@ -106,20 +106,21 @@ File lam viec: [02-chuong-2-co-so-ly-thuyet.md](./02-chuong-2-co-so-ly-thuyet.md
 
 Noi dung nen gom:
 
-1. Microservices va Domain-Driven Design.
-2. Spring Boot va Spring Cloud.
-3. Service Discovery va Centralized Configuration.
-4. API Gateway pattern.
-5. Bao mat OAuth2/OIDC/JWT/Keycloak.
-6. REST/OpenFeign va Kafka.
-7. Distributed Transaction, CAP/PACELC, Saga.
-8. Reliability patterns: Outbox, Idempotency, Circuit Breaker, Retry, Rate Limiter.
-9. Persistence patterns: Database per Service, Flyway, Redis, Elasticsearch.
-10. Observability: metrics, logs, traces.
-11. State machine va high concurrency.
-12. Docker/container deployment.
+1. Bai toan thuong mai dien tu va yeu cau he thong phan tan.
+2. Microservices.
+3. Domain-Driven Design va bounded context.
+4. Nguyen ly giao tiep dong bo/bat dong bo, REST va event-driven architecture.
+5. API Gateway pattern.
+6. Service Discovery va centralized configuration o muc khai niem.
+7. Bao mat ung dung va API: OAuth2, OIDC, JWT, RBAC, trusted subsystem.
+8. Quan ly du lieu trong microservices: Database per Service, polyglot persistence, cache, read model, CQRS-lite.
+9. Distributed Transaction, CAP/PACELC, eventual consistency va Saga.
+10. Reliability patterns: Outbox, Idempotency, Circuit Breaker, Retry, Rate Limiter.
+11. State machine, scheduler va high concurrency.
+12. Observability: metrics, logs, traces.
+13. Container hoa va trien khai dich vu.
 
-Chuong 2 nen viet theo huong **ly thuyet truoc, lien he du an sau**, nhung chua can mo ta code qua chi tiet.
+Chuong 2 nen viet theo huong **ly thuyet/pattern truoc, lien he thiet ke sau**. Khong dua cac cong nghe cu the nhu Spring Boot, Spring Cloud, Kafka, Redis, PostgreSQL, Elasticsearch, Keycloak, Docker Compose thanh muc noi dung chinh; cac cong nghe nay de sang Chuong 3.
 
 ### Chuong 3: Giai phap cong nghe
 

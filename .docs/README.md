@@ -18,8 +18,8 @@ Khac voi:
 |---|---|---|
 | [00-de-cuong-bao-cao-datn.md](./00-de-cuong-bao-cao-datn.md) | Ban do tong the 6 chuong, so trang, nguon tham chieu, checklist | Doc dau tien |
 | [01-chuong-1-tong-quan-de-tai.md](./01-chuong-1-tong-quan-de-tai.md) | Khung viet Chuong 1 | Viet boi canh, muc tieu, pham vi, phuong phap |
-| [02-chuong-2-co-so-ly-thuyet.md](./02-chuong-2-co-so-ly-thuyet.md) | Khung viet Chuong 2 | Tong hop ly thuyet tu `.report/` |
-| [03-chuong-3-giai-phap-cong-nghe.md](./03-chuong-3-giai-phap-cong-nghe.md) | Khung viet Chuong 3 | Giai thich ly do chon stack va phuong an cong nghe |
+| [02-chuong-2-co-so-ly-thuyet.md](./02-chuong-2-co-so-ly-thuyet.md) | Khung viet Chuong 2 | Tong hop ly thuyet cot loi, pattern va nguyen ly thiet ke duoc dung trong de tai |
+| [03-chuong-3-giai-phap-cong-nghe.md](./03-chuong-3-giai-phap-cong-nghe.md) | Khung viet Chuong 3 | Giai thich cac cong nghe cu the duoc chon, ly do chon va cach ap dung |
 | [04-chuong-4-phan-tich-thiet-ke-he-thong.md](./04-chuong-4-phan-tich-thiet-ke-he-thong.md) | Khung viet Chuong 4 | Phan tich yeu cau, kien truc, DB, API, Kafka, state machine |
 | [05-chuong-5-cai-dat-trien-khai.md](./05-chuong-5-cai-dat-trien-khai.md) | Khung viet Chuong 5 | Mo ta cai dat code, Docker, Config, Gateway, service, observability |
 | [06-chuong-6-kiem-thu-danh-gia.md](./06-chuong-6-kiem-thu-danh-gia.md) | Khung viet Chuong 6 | Lap test case, chay test, danh gia hieu nang, bao mat, resilience |
@@ -29,7 +29,7 @@ Khac voi:
 ## Quy trinh viet bao cao
 
 1. Doc [00-de-cuong-bao-cao-datn.md](./00-de-cuong-bao-cao-datn.md) de nam tong the 6 chuong.
-2. Viet theo thu tu: Chuong 1 -> Chuong 3 -> Chuong 4 -> Chuong 5 -> Chuong 6 -> Chuong 2. Chuong 2 co nhieu ly thuyet, nen viet sau khi da ro he thong can giai thich nhung gi.
+2. Viet theo thu tu: Chuong 1 -> Chuong 3 -> Chuong 4 -> Chuong 5 -> Chuong 6 -> Chuong 2. Chuong 2 chi giu cac ly thuyet cot loi can de giai thich thiet ke; cac cong nghe cu the nhu Spring Boot, Kafka, Redis, PostgreSQL, Elasticsearch, Keycloak va Docker Compose de sang Chuong 3.
 3. Moi muc lon can co it nhat mot trong ba bang chung: file `.report`, file `.guide`, hoac source code.
 4. Moi so lieu hieu nang, latency, RPS, pass/fail chi dien sau khi do that. Neu chua do, ghi ro la "kich ban de xuat".
 5. Moi so do nen ve lai bang PlantUML/Mermaid/draw.io, khong chup man hinh ASCII trong tai lieu.
