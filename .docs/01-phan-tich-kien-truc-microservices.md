@@ -1,6 +1,6 @@
 # PHÂN TÍCH KIẾN TRÚC MICROSERVICES ĐÃ TRIỂN KHAI
-> **Mục đích:** Tài liệu hỗ trợ Chương 3 (Phân tích & Thiết kế Hệ thống) — phân tích chi tiết kiến trúc microservices đã code, kèm chỉ dẫn nguồn cụ thể cho từng luận điểm.
-> **Cách dùng:** Khi viết Chương 3, copy luận điểm + sơ đồ + nguồn từ tài liệu này; kiểm chứng lại với code thật trước khi quote.
+> **Mục đích:** Tài liệu tham khảo sâu cho **Chương 4: Phân tích & Thiết kế Hệ thống** — phân tích chi tiết kiến trúc microservices đã code, kèm chỉ dẫn nguồn cụ thể cho từng luận điểm.
+> **Cách dùng:** Khi viết Chương 4, lấy luận điểm + sơ đồ + nguồn từ tài liệu này; kiểm chứng lại với code thật trước khi quote.
 
 ---
 
@@ -393,7 +393,7 @@ Client ─[Authorization: Bearer JWT]─► API Gateway
 
 ---
 
-## 10. KHUYẾN NGHỊ KHI TRÌNH BÀY CHƯƠNG 3 BÁO CÁO
+## 10. KHUYẾN NGHỊ KHI TRÌNH BÀY CHƯƠNG 4 BÁO CÁO
 
 1. **Mở đầu:** Bắt đầu bằng sơ đồ tổng thể (mục 1.1) — gây ấn tượng trực quan.
 2. **Trình bày từ Domain → Architecture:** Giải thích bounded context trước (mục 1.2), sau đó mới đến giao tiếp (mục 2).

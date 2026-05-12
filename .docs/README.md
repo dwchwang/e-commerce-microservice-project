@@ -1,33 +1,55 @@
-# Thư mục `.docs` — Tài liệu Báo cáo Đồ án Tốt nghiệp
+# Thu muc `.docs` - Khung viet bao cao DATN
 
-> Thư mục này chứa **đề cương báo cáo** và **tài liệu phân tích kiến trúc** dùng làm khung viết Báo cáo DATN.
-> Khác với `.report/` (nghiên cứu lý thuyết) và `.guide/` (hướng dẫn vận hành), `.docs/` tập trung vào *cách trình bày báo cáo*.
+Thu muc nay la bo tai lieu lam viec de viet bao cao do an tot nghiep cho de tai:
 
-## Danh mục file
+**Xay dung he thong Thuong mai dien tu theo kien truc Microservices voi Spring Boot, Spring Cloud, Kafka, Redis, PostgreSQL, Elasticsearch, Keycloak va Docker Compose.**
 
-| File | Nội dung | Dùng cho |
-|------|----------|----------|
-| [00-de-cuong-bao-cao-datn.md](./00-de-cuong-bao-cao-datn.md) | Đề cương đầy đủ 5 chương + phụ lục, có map nguồn `.report/`/`.guide/`/source code cho từng mục | Khung tổng để viết báo cáo |
-| [01-phan-tich-kien-truc-microservices.md](./01-phan-tich-kien-truc-microservices.md) | Phân tích chi tiết kiến trúc 13 microservice đã code: bounded context, giao tiếp, các pattern, state machines, sơ đồ cần vẽ | Tư liệu chính cho **Chương 3** (Phân tích & Thiết kế) |
+Khac voi:
 
-## Quy trình sử dụng
+- `.report/`: ghi chu nghien cuu ly thuyet theo tung chu de.
+- `.guide/`: huong dan cai dat, van hanh, demo va kiem tra he thong.
+- source code: bang chung trien khai thuc te.
 
-1. **Bước 1** — Đọc `00-de-cuong-bao-cao-datn.md` để có khung 5 chương.
-2. **Bước 2** — Khi viết Chương 2 (Cơ sở lý thuyết): mở các file tương ứng trong `.report/` được map ở mỗi mục.
-3. **Bước 3** — Khi viết Chương 3 (Thiết kế): dùng `01-phan-tich-kien-truc-microservices.md` làm tư liệu chính, kèm `.guide/` cho cấu hình.
-4. **Bước 4** — Khi viết Chương 4 (Cài đặt): mở các file source code được trỏ trong đề cương, copy snippet quan trọng (đừng paste cả file).
-5. **Bước 5** — Khi viết Chương 5 (Kiểm thử): chạy `./mvnw test`, `docker compose up`, k6/JMeter (nếu có), thu screenshot, ghi số liệu thực tế.
+`.docs/` tap trung vao **cach bien toan bo tai lieu va source code thanh bao cao 6 chuong**.
 
-## Quy ước nguồn tham chiếu
+## Cau truc de xuat
 
-- **`.report/<NN>-...md`** — Lý thuyết (định nghĩa, citation hàn lâm, câu hỏi phản biện).
-- **`.guide/<NN>-...md`** — Vận hành (cách chạy, cấu hình, screenshot demo).
-- **Đường dẫn source code** dạng `[order-service/.../OrderServiceImpl.java](../order-service/.../OrderServiceImpl.java)` — bằng chứng đã triển khai thực tế.
+| File | Vai tro | Nen dung khi |
+|---|---|---|
+| [00-de-cuong-bao-cao-datn.md](./00-de-cuong-bao-cao-datn.md) | Ban do tong the 6 chuong, so trang, nguon tham chieu, checklist | Doc dau tien |
+| [01-chuong-1-tong-quan-de-tai.md](./01-chuong-1-tong-quan-de-tai.md) | Khung viet Chuong 1 | Viet boi canh, muc tieu, pham vi, phuong phap |
+| [02-chuong-2-co-so-ly-thuyet.md](./02-chuong-2-co-so-ly-thuyet.md) | Khung viet Chuong 2 | Tong hop ly thuyet tu `.report/` |
+| [03-chuong-3-giai-phap-cong-nghe.md](./03-chuong-3-giai-phap-cong-nghe.md) | Khung viet Chuong 3 | Giai thich ly do chon stack va phuong an cong nghe |
+| [04-chuong-4-phan-tich-thiet-ke-he-thong.md](./04-chuong-4-phan-tich-thiet-ke-he-thong.md) | Khung viet Chuong 4 | Phan tich yeu cau, kien truc, DB, API, Kafka, state machine |
+| [05-chuong-5-cai-dat-trien-khai.md](./05-chuong-5-cai-dat-trien-khai.md) | Khung viet Chuong 5 | Mo ta cai dat code, Docker, Config, Gateway, service, observability |
+| [06-chuong-6-kiem-thu-danh-gia.md](./06-chuong-6-kiem-thu-danh-gia.md) | Khung viet Chuong 6 | Lap test case, chay test, danh gia hieu nang, bao mat, resilience |
+| [07-danh-muc-so-do-bang-bieu.md](./07-danh-muc-so-do-bang-bieu.md) | Danh muc so do, bang bieu, screenshot can ve/chup | Lap checklist hinh anh truoc khi viet ban chinh |
+| [01-phan-tich-kien-truc-microservices.md](./01-phan-tich-kien-truc-microservices.md) | Tai lieu phan tich kien truc chi tiet da co | Dung lam phu luc/tham khao sau cho Chuong 4 |
 
-## Nguyên tắc viết báo cáo (rút từ `.report/22`)
+## Quy trinh viet bao cao
 
-- ✅ Chỉ ghi *"đã triển khai"* khi có code + screenshot + test chứng minh.
-- ✅ Số liệu hiệu năng (RPS, p95, p99) — chỉ điền sau khi đo thật, không placeholder.
-- ✅ Trích dẫn hàn lâm (Newman, Richardson, Evans, Fowler, RFC) cho mọi định nghĩa lớn.
-- ❌ Tránh "nói chay" — mỗi pattern phải gắn số liệu cụ thể của dự án (vd: rate limit `replenish=3, burst=5` thay vì "có rate limit").
-- ❌ Tránh paste nguyên file code; chỉ snippet quan trọng (≤ 30 dòng/snippet).
+1. Doc [00-de-cuong-bao-cao-datn.md](./00-de-cuong-bao-cao-datn.md) de nam tong the 6 chuong.
+2. Viet theo thu tu: Chuong 1 -> Chuong 3 -> Chuong 4 -> Chuong 5 -> Chuong 6 -> Chuong 2. Chuong 2 co nhieu ly thuyet, nen viet sau khi da ro he thong can giai thich nhung gi.
+3. Moi muc lon can co it nhat mot trong ba bang chung: file `.report`, file `.guide`, hoac source code.
+4. Moi so lieu hieu nang, latency, RPS, pass/fail chi dien sau khi do that. Neu chua do, ghi ro la "kich ban de xuat".
+5. Moi so do nen ve lai bang PlantUML/Mermaid/draw.io, khong chup man hinh ASCII trong tai lieu.
+
+## Nguyen tac quan trong
+
+- Khong viet "da trien khai" neu khong co code, test, log hoac screenshot chung minh.
+- Khong dua Kubernetes, CI/CD, JaCoCo, k6/JMeter vao phan ket qua neu repo chua co bang chung hoac chua chay do.
+- Khong paste nguyen file code vao bao cao. Chi trich snippet ngan, co giai thich vi sao snippet do quan trong.
+- Cac khai niem lon nhu Microservices, Saga, CAP, OAuth2, JWT, Outbox, Idempotency phai co tai lieu tham khao.
+- Cac diem an diem cua de tai nen viet ky: Saga Orchestration, Transactional Outbox, Idempotent Consumer, Flash Sale Redis Lua, API Gateway security/rate limit, Observability.
+
+## Nguon tham chieu nhanh
+
+- Ly thuyet Microservices: `.report/01-kien-truc-microservices.md`
+- Spring Boot/Spring Cloud: `.report/02-spring-boot-spring-cloud.md`
+- Gateway: `.report/05-api-gateway.md`, `.guide/15-gateway-security.md`
+- Bao mat Keycloak/JWT: `.report/06-bao-mat-keycloak-oauth-jwt.md`
+- REST/OpenFeign va Kafka: `.report/07-*`, `.report/08-*`, `.guide/12-kafka-topics.md`
+- Saga/Outbox/Idempotency: `.report/09-*`, `.report/10-*`
+- Flash sale concurrency: `.report/13-flash-sale-concurrency.md`, `.guide/13-state-machines.md`
+- Docker/Deploy: `.report/21-docker-container-deployment.md`, `.guide/03-build-va-chay-docker.md`
+- Testing: `.report/20-testing-microservices.md`
