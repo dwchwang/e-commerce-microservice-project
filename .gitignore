@@ -1,26 +1,144 @@
-.codex/
-.DS_Store
+# ============================================================
+# .gitignore for e-commerce microservice project
+# ============================================================
+# Files already tracked are NOT removed by patterns added here.
+# To stop tracking a file that matches a new pattern, run
+#   git rm --cached <path>
+# explicitly. This file does not do that automatically.
 
-# IDE/editor
-.idea/
-.vscode/
-*.iml
-
-# Logs
-*.log
-logs/
-
-# Java/Maven build output
-*.class
-build/
-out/
+# ============================================================
+# Build output
+# ============================================================
 target/
 **/target/
+build/
+out/
+*.class
+*.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
 
-# Maven wrapper caches
+# ============================================================
+# Maven wrapper internal caches
+# ============================================================
 .mvn/wrapper/apache-maven-*/
 .mvn/wrapper/dists/
 
-# Environment files
+# ============================================================
+# IDE / editor (user-specific; project-shared IDE files like
+# .idea/.gitignore that are already tracked stay tracked)
+# ============================================================
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# ============================================================
+# OS metadata
+# ============================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ============================================================
+# Logs and runtime artifacts
+# ============================================================
+*.log
+logs/
+log/
+*.pid
+*.seed
+*.pid.lock
+
+# ============================================================
+# Environment files (never commit local secrets; .env.example
+# stays tracked because it has no leading dot variant)
+# ============================================================
 .env
 .env.*
+!.env.example
+
+# ============================================================
+# Local-only directories (per project convention)
+# ============================================================
+.codex/
+.test/
+.review/
+.claude/
+.windsurf/
+
+# ============================================================
+# Coverage and test reports
+# ============================================================
+*.exec
+.surefire-reports/
+**/jacoco.exec
+**/jacoco-it.exec
+**/coverage/
+**/htmlcov/
+
+# ============================================================
+# Docker / container runtime artifacts
+# ============================================================
+docker-compose.override.yml
+docker-compose.override.yaml
+*.tar
+*.tar.gz
+volumes/
+
+# ============================================================
+# Secrets / keystores (extra defense in case a developer drops
+# files locally; tracked production-grade keys are intentional)
+# ============================================================
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.truststore
+secrets/
+.envrc
+
+# ============================================================
+# Temporary / scratch files
+# ============================================================
+*.swp
+*.swo
+*~
+.~lock.*
+*.bak
+*.tmp
+*.temp
+tmp/
+temp/
+
+# ============================================================
+# Frontend / Node (preempted for the next stage)
+# ============================================================
+node_modules/
+.pnp
+.pnp.js
+.yarn/
+.npm/
+.next/
+.nuxt/
+.cache/
+dist/
+.parcel-cache/
+.turbo/
+.eslintcache
+*.tsbuildinfo

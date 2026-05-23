@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 class PaymentEventOutboxPollerTest {
 
     private final PaymentOutboxRepository outboxRepository = mock(PaymentOutboxRepository.class);
+    @SuppressWarnings("unchecked")
     private final KafkaTemplate<String, String> kafkaTemplate = mock(KafkaTemplate.class);
     private final PaymentEventOutboxPoller poller = new PaymentEventOutboxPoller(outboxRepository, kafkaTemplate);
 
@@ -31,8 +32,10 @@ class PaymentEventOutboxPollerTest {
         when(outboxRepository.findPendingBatch()).thenReturn(List.of(failing, succeeding));
         when(kafkaTemplate.send("payment-success", "order-1", "{}"))
                 .thenThrow(new KafkaException("broker unavailable"));
+        @SuppressWarnings("unchecked")
+        SendResult<String, String> sendResult = mock(SendResult.class);
         when(kafkaTemplate.send("payment-failed", "order-2", "{}"))
-                .thenReturn(CompletableFuture.completedFuture(mock(SendResult.class)));
+                .thenReturn(CompletableFuture.completedFuture(sendResult));
 
         poller.poll();
 

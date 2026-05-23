@@ -8,16 +8,18 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Component
 public class GuestSessionFilter implements GlobalFilter, Ordered {
+
+    private static final Pattern SESSION_ID_PATTERN = Pattern.compile("^[A-Za-z0-9_.\\-]{8,128}$");
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getPath().value();
         String sessionId = exchange.getRequest().getHeaders().getFirst("X-Session-Id");
-        if (path.startsWith("/api/cart") && sessionId != null && !sessionId.isBlank() && !isUuid(sessionId)) {
+        if (path.startsWith("/api/cart") && sessionId != null && !sessionId.isBlank() && !SESSION_ID_PATTERN.matcher(sessionId).matches()) {
             exchange.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
             return exchange.getResponse().setComplete();
         }
@@ -27,13 +29,5 @@ public class GuestSessionFilter implements GlobalFilter, Ordered {
     @Override
     public int getOrder() {
         return 0;
-    }
-
-    private boolean isUuid(String value) {
-        try {
-            return UUID.fromString(value).version() == 4;
-        } catch (IllegalArgumentException ex) {
-            return false;
-        }
     }
 }

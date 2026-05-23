@@ -159,6 +159,12 @@ services:
     container_name: ecommerce-zipkin
     ports:
       - "9411:9411"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9411/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - ecommerce-network
 
@@ -203,6 +209,12 @@ services:
       SPRING_PROFILES_ACTIVE: docker
       EUREKA_USER: ${EUREKA_USER}
       EUREKA_PASSWORD: ${EUREKA_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8761/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
     networks:
       - ecommerce-network
 
@@ -217,7 +229,13 @@ services:
       SPRING_PROFILES_ACTIVE: native,docker
     depends_on:
       discovery-server:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8888/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
     networks:
       - ecommerce-network
 
