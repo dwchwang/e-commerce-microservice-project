@@ -1,0 +1,62 @@
+# Caddyfile — Reverse proxy + HTTPS for AWS EC2 deployment.
+# Deploy to /etc/caddy/Caddyfile on EC2 instance.
+# nip.io auto-resolves <anything>.<elastic-ip>.nip.io to <elastic-ip>.
+# Caddy auto-obtains Let's Encrypt certificates via HTTP-01 challenge.
+# Prerequisites: port 80 & 443 must be publicly open (Security Group).
+
+{
+  email admin@ecommerce.local
+}
+
+# ============================================================
+# API Gateway (all backend API traffic)
+# ============================================================
+api.{$ELASTIC_IP_DASHED}.nip.io {
+  reverse_proxy localhost:8080
+  encode gzip
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    X-XSS-Protection "1; mode=block"
+  }
+}
+
+# ============================================================
+# Frontend (Next.js — deployed in Phase 12)
+# ============================================================
+app.{$ELASTIC_IP_DASHED}.nip.io {
+  reverse_proxy localhost:3000
+  encode gzip
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+  }
+}
+
+# ============================================================
+# Keycloak (auth server — MUST be HTTPS for OAuth2/OIDC)
+# ============================================================
+auth.{$ELASTIC_IP_DASHED}.nip.io {
+  reverse_proxy localhost:8180
+  encode gzip
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+  }
+}
+
+# ============================================================
+# Grafana (optional — protected by basic auth on top)
+# ============================================================
+grafana.{$ELASTIC_IP_DASHED}.nip.io {
+  basicauth {
+    admin {$GRAFANA_HTPASSWD}
+  }
+  reverse_proxy localhost:3001
+  encode gzip
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+  }
+}

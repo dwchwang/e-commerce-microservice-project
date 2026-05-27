@@ -1,0 +1,199 @@
+# Production override for AWS deployment.
+# Usage:
+#   docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Differences from docker-compose.yml:
+# - Replaces local `build:` with `image:` pointing to GHCR pre-built images.
+# - Adds memory limits per service to prevent runaway JVMs / Kafka / ES.
+# - Removes ports that should NOT be exposed to public on EC2 (only 80/443 via Caddy).
+# - Frontend service added (built in Phase 12).
+
+services:
+
+  # ============================================================
+  # INFRASTRUCTURE - PostgreSQL / Redis / Kafka / ES / Keycloak
+  # ============================================================
+  postgres:
+    mem_limit: 768m
+    ports: !reset []
+
+  keycloak-db:
+    mem_limit: 256m
+
+  redis:
+    mem_limit: 256m
+    ports: !reset []
+
+  mailpit:
+    mem_limit: 128m
+    ports: !reset []
+
+  kafka:
+    mem_limit: 1024m
+    ports: !reset []
+
+  elasticsearch:
+    mem_limit: 768m
+    ports: !reset []
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.ml.enabled=false
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+
+  keycloak:
+    mem_limit: 768m
+    # Bind to 8180 still needed for Caddy reverse proxy on host
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HEALTH_ENABLED: "true"
+      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_HOSTNAME_STRICT: "false"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+
+  # ============================================================
+  # OBSERVABILITY
+  # ============================================================
+  zipkin:
+    mem_limit: 256m
+    ports: !reset []
+
+  prometheus:
+    mem_limit: 256m
+    # Keep 9090 exposed only to home IP (Security Group enforces)
+
+  grafana:
+    mem_limit: 256m
+    # Frontend port 3000 conflict resolution: remap Grafana to 3001 in prod
+    ports:
+      - "3001:3000"
+
+  # ============================================================
+  # SPRING CLOUD INFRASTRUCTURE
+  # ============================================================
+  discovery-server:
+    image: ghcr.io/${GITHUB_OWNER}/discovery-server:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 384m
+    mem_reservation: 256m
+
+  config-server:
+    image: ghcr.io/${GITHUB_OWNER}/config-server:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 384m
+    mem_reservation: 256m
+
+  api-gateway:
+    image: ghcr.io/${GITHUB_OWNER}/api-gateway:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 512m
+    mem_reservation: 384m
+
+  # ============================================================
+  # BUSINESS SERVICES
+  # ============================================================
+  identity-service:
+    image: ghcr.io/${GITHUB_OWNER}/identity-service:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 512m
+    mem_reservation: 384m
+
+  user-service:
+    image: ghcr.io/${GITHUB_OWNER}/user-service:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 384m
+    mem_reservation: 256m
+
+  product-service:
+    image: ghcr.io/${GITHUB_OWNER}/product-service:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 384m
+    mem_reservation: 256m
+
+  inventory-service:
+    image: ghcr.io/${GITHUB_OWNER}/inventory-service:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 384m
+    mem_reservation: 256m
+
+  cart-service:
+    image: ghcr.io/${GITHUB_OWNER}/cart-service:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 384m
+    mem_reservation: 256m
+
+  voucher-service:
+    image: ghcr.io/${GITHUB_OWNER}/voucher-service:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 384m
+    mem_reservation: 256m
+
+  order-service:
+    image: ghcr.io/${GITHUB_OWNER}/order-service:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 512m
+    mem_reservation: 384m
+
+  payment-service:
+    image: ghcr.io/${GITHUB_OWNER}/payment-service:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 384m
+    mem_reservation: 256m
+
+  notification-service:
+    image: ghcr.io/${GITHUB_OWNER}/notification-service:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 384m
+    mem_reservation: 256m
+
+  review-service:
+    image: ghcr.io/${GITHUB_OWNER}/review-service:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 384m
+    mem_reservation: 256m
+
+  search-service:
+    image: ghcr.io/${GITHUB_OWNER}/search-service:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 512m
+    mem_reservation: 384m
+
+  content-service:
+    image: ghcr.io/${GITHUB_OWNER}/content-service:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 384m
+    mem_reservation: 256m
+
+  flash-sale-service:
+    image: ghcr.io/${GITHUB_OWNER}/flash-sale-service:${IMAGE_TAG:-latest}
+    build: !reset null
+    mem_limit: 512m
+    mem_reservation: 384m
+
+  # ============================================================
+  # FRONTEND (added in Phase 12)
+  # ============================================================
+  frontend:
+    image: ghcr.io/${GITHUB_OWNER}/frontend:${IMAGE_TAG:-latest}
+    container_name: ecommerce-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      API_BASE_URL: http://api-gateway:8080
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+    depends_on:
+      api-gateway:
+        condition: service_started
+    mem_limit: 384m
+    mem_reservation: 256m
+    networks:
+      - ecommerce-network

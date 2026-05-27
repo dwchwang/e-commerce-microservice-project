@@ -1,0 +1,49 @@
+name: Deploy to AWS EC2
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (latest | main | <sha>)'
+        required: true
+        default: 'latest'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/ecommerce
+
+            # Pull latest compose files & scripts
+            git fetch --all
+            git reset --hard origin/main
+
+            # Login GHCR
+            echo "${{ secrets.GHCR_PULL_TOKEN }}" | \
+              docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
+
+            # Pull images
+            export IMAGE_TAG=${{ inputs.image_tag }}
+            docker compose --env-file .env.prod \
+              -f docker-compose.yml -f docker-compose.prod.yml pull
+
+            # Rolling restart
+            docker compose --env-file .env.prod \
+              -f docker-compose.yml -f docker-compose.prod.yml \
+              up -d --no-build --remove-orphans
+
+            # Cleanup old images
+            docker image prune -af --filter "until=72h"
+
+            # Wait & report
+            sleep 30
+            docker compose ps

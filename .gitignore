@@ -70,6 +70,7 @@ log/
 .env
 .env.*
 !.env.example
+!.env.prod.example
 
 # ============================================================
 # Local-only directories (per project convention)
@@ -79,6 +80,7 @@ log/
 .review/
 .claude/
 .windsurf/
+aws/config.env
 
 # ============================================================
 # Coverage and test reports
