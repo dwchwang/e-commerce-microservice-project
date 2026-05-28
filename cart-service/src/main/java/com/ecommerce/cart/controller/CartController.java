@@ -23,61 +23,71 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CartController {
 
-    private final CartService cartService;
+  private final CartService cartService;
 
-    @GetMapping("/api/cart")
-    public ApiResponse<CartResponse> getCart(
-            @RequestHeader(value = "X-User-Id", required = false) String userId,
-            @RequestHeader(value = "X-Session-Id", required = false) String sessionId) {
-        return ApiResponse.ok(cartService.getCart(resolveCartKey(userId, sessionId)));
-    }
+  @GetMapping("/api/cart")
+  public ApiResponse<CartResponse> getCart(
+      @RequestHeader(value = "X-User-Id", required = false) String userId,
+      @RequestHeader(value = "X-Session-Id", required = false) String sessionId) {
+    return ApiResponse.ok(cartService.getCart(resolveCartKey(userId, sessionId)));
+  }
 
-    @PostMapping("/api/cart/items")
-    public ApiResponse<CartResponse> addItem(
-            @RequestHeader(value = "X-User-Id", required = false) String userId,
-            @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
-            @Valid @RequestBody AddToCartRequest request) {
-        return ApiResponse.ok("Item added to cart", cartService.addItem(resolveCartKey(userId, sessionId), request));
-    }
+  @PostMapping("/api/cart/items")
+  public ApiResponse<CartResponse> addItem(
+      @RequestHeader(value = "X-User-Id", required = false) String userId,
+      @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+      @Valid @RequestBody AddToCartRequest request) {
+    return ApiResponse.ok("Item added to cart", cartService.addItem(resolveCartKey(userId, sessionId), request));
+  }
 
-    @PutMapping("/api/cart/items/{productId}")
-    public ApiResponse<CartResponse> updateItem(
-            @RequestHeader(value = "X-User-Id", required = false) String userId,
-            @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
-            @PathVariable UUID productId,
-            @Valid @RequestBody UpdateCartItemRequest request) {
-        return ApiResponse.ok(cartService.updateItem(resolveCartKey(userId, sessionId), productId, request));
-    }
+  @PutMapping("/api/cart/items/{productId}")
+  public ApiResponse<CartResponse> updateItem(
+      @RequestHeader(value = "X-User-Id", required = false) String userId,
+      @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+      @PathVariable UUID productId,
+      @Valid @RequestBody UpdateCartItemRequest request) {
+    return ApiResponse.ok(cartService.updateItem(resolveCartKey(userId, sessionId), productId, request));
+  }
 
-    @DeleteMapping("/api/cart/items/{productId}")
-    public ApiResponse<CartResponse> removeItem(
-            @RequestHeader(value = "X-User-Id", required = false) String userId,
-            @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
-            @PathVariable UUID productId) {
-        return ApiResponse.ok(cartService.removeItem(resolveCartKey(userId, sessionId), productId));
-    }
+  @DeleteMapping("/api/cart/items/{productId}")
+  public ApiResponse<CartResponse> removeItem(
+      @RequestHeader(value = "X-User-Id", required = false) String userId,
+      @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+      @PathVariable UUID productId) {
+    return ApiResponse.ok(cartService.removeItem(resolveCartKey(userId, sessionId), productId));
+  }
 
-    @DeleteMapping("/api/cart")
-    public ApiResponse<Void> clearCurrentCart(
-            @RequestHeader(value = "X-User-Id", required = false) String userId,
-            @RequestHeader(value = "X-Session-Id", required = false) String sessionId) {
-        cartService.clearCart(resolveCartKey(userId, sessionId));
-        return ApiResponse.ok("Cart cleared", null);
-    }
+  @DeleteMapping("/api/cart")
+  public ApiResponse<Void> clearCurrentCart(
+      @RequestHeader(value = "X-User-Id", required = false) String userId,
+      @RequestHeader(value = "X-Session-Id", required = false) String sessionId) {
+    cartService.clearCart(resolveCartKey(userId, sessionId));
+    return ApiResponse.ok("Cart cleared", null);
+  }
 
-    @DeleteMapping("/internal/cart/{userId}")
-    public ApiResponse<Void> clearUserCart(@PathVariable String userId) {
-        cartService.clearCart("cart:" + userId);
-        return ApiResponse.ok("Cart cleared", null);
-    }
+  @DeleteMapping("/internal/cart/{userId}")
+  public ApiResponse<Void> clearUserCart(@PathVariable String userId) {
+    cartService.clearCart("cart:" + userId);
+    return ApiResponse.ok("Cart cleared", null);
+  }
 
-    private String resolveCartKey(String userId, String sessionId) {
-        if (userId != null && !userId.isBlank()) {
-            return "cart:" + userId;
-        }
-        if (sessionId != null && !sessionId.isBlank()) {
-            return "cart:guest:" + sessionId;
-        }
-        throw new BusinessException("Either X-User-Id or X-Session-Id header is required");
+  /**
+   * Merge guest cart into user cart (called after login).
+   */
+  @PostMapping("/api/cart/merge")
+  public ApiResponse<CartResponse> mergeCart(
+      @RequestHeader("X-User-Id") String userId,
+      @RequestHeader("X-Session-Id") String sessionId) {
+    return ApiResponse.ok(cartService.mergeGuestToUser(sessionId, userId));
+  }
+
+  private String resolveCartKey(String userId, String sessionId) {
+    if (userId != null && !userId.isBlank()) {
+      return "cart:" + userId;
     }
+    if (sessionId != null && !sessionId.isBlank()) {
+      return "cart:guest:" + sessionId;
+    }
+    throw new BusinessException("Either X-User-Id or X-Session-Id header is required");
+  }
 }
