@@ -62,7 +62,17 @@ export default async function HomePage() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {flashSales.slice(0, 4).map((fs) => (
-              <ProductCard key={fs.id} product={fs as unknown as Product} />
+              <ProductCard
+                key={fs.id}
+                product={{
+                  id: fs.productId || fs.id,
+                  name: fs.productName || fs.name,
+                  slug: fs.productId || fs.id,
+                  price: fs.flashSalePrice,
+                  originalPrice: fs.originalPrice,
+                  imageUrl: fs.productImage,
+                }}
+              />
             ))}
           </div>
         </section>

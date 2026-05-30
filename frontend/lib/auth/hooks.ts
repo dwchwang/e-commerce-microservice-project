@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api/client";
 import { qk } from "@/lib/query/keys";
@@ -16,9 +16,11 @@ export function useSession() {
 
 export function useLogout() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   return async () => {
     await apiFetch("/api/auth/logout", { method: "POST" });
+    queryClient.clear();
     router.push("/");
     router.refresh();
   };

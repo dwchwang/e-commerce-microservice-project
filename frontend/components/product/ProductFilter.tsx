@@ -5,12 +5,19 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Facets } from "@/lib/api/types";
+
+const DEFAULT_MAX_PRICE = 50_000_000;
 
 export function ProductFilter({ facets }: { facets: Facets | null }) {
   const router = useRouter();
   const params = useSearchParams();
+
+  const maxPrice = useMemo(
+    () => facets?.priceRange?.max || DEFAULT_MAX_PRICE,
+    [facets]
+  );
 
   const buildParams = useCallback(
     (overrides: Record<string, string | string[]>) => {
@@ -37,21 +44,21 @@ export function ProductFilter({ facets }: { facets: Facets | null }) {
   // Price range filter
   const [priceRange, setPriceRange] = useState<[number, number]>([
     Number(params.get("minPrice")) || 0,
-    Number(params.get("maxPrice")) || 50_000_000,
+    Number(params.get("maxPrice")) || maxPrice,
   ]);
 
   useEffect(() => {
     setPriceRange([
       Number(params.get("minPrice")) || 0,
-      Number(params.get("maxPrice")) || 50_000_000,
+      Number(params.get("maxPrice")) || maxPrice,
     ]);
-  }, [params]);
+  }, [params, maxPrice]);
 
   const applyPrice = () => {
     const sp = new URLSearchParams(params);
     if (priceRange[0] > 0) sp.set("minPrice", String(priceRange[0]));
     else sp.delete("minPrice");
-    if (priceRange[1] < 50_000_000) sp.set("maxPrice", String(priceRange[1]));
+    if (priceRange[1] < maxPrice) sp.set("maxPrice", String(priceRange[1]));
     else sp.delete("maxPrice");
     router.push(`/products?${sp.toString()}`);
   };
@@ -126,7 +133,7 @@ export function ProductFilter({ facets }: { facets: Facets | null }) {
             <AccordionContent className="space-y-3 px-1">
               <Slider
                 min={0}
-                max={50_000_000}
+                max={maxPrice}
                 step={500_000}
                 value={priceRange}
                 onValueChange={(v) => setPriceRange(v as [number, number])}

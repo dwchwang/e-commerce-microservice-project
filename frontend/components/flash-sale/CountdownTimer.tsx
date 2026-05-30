@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export function CountdownTimer({ targetDate }: { targetDate: string }) {
   const [timeLeft, setTimeLeft] = useState("");
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const target = new Date(targetDate).getTime();
@@ -13,6 +14,10 @@ export function CountdownTimer({ targetDate }: { targetDate: string }) {
       const diff = target - now;
       if (diff <= 0) {
         setTimeLeft("00:00:00");
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
         return;
       }
       const h = Math.floor(diff / 3600000);
@@ -24,8 +29,10 @@ export function CountdownTimer({ targetDate }: { targetDate: string }) {
     };
 
     tick();
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
+    intervalRef.current = setInterval(tick, 1000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [targetDate]);
 
   return (

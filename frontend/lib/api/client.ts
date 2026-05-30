@@ -11,6 +11,22 @@ export class ApiError extends Error {
   }
 }
 
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+async function refreshToken(): Promise<boolean> {
+  if (isRefreshing) return refreshPromise!;
+  isRefreshing = true;
+  refreshPromise = fetch("/api/auth/refresh", { method: "POST" })
+    .then((res) => res.ok)
+    .catch(() => false)
+    .finally(() => {
+      isRefreshing = false;
+      refreshPromise = null;
+    });
+  return refreshPromise;
+}
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {}
@@ -24,11 +40,22 @@ export async function apiFetch<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  const res = await fetch(url, {
-    ...init,
-    headers,
-    credentials: "include",
-  });
+  const doFetch = () =>
+    fetch(url, {
+      ...init,
+      headers,
+      credentials: "include",
+    });
+
+  let res = await doFetch();
+
+  // Auto-refresh on 401
+  if (res.status === 401 && !path.startsWith("/api/auth")) {
+    const refreshed = await refreshToken();
+    if (refreshed) {
+      res = await doFetch();
+    }
+  }
 
   if (!res.ok) {
     let body: unknown = null;

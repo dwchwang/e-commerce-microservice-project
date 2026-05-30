@@ -30,9 +30,9 @@ export default async function ComparePage({
     const results = await Promise.allSettled(
       ids.map((id) => serverFetch<Product>(`/products/${id}`, {}, { revalidate: 60 }))
     );
-    products = results
-      .filter((r) => r.status === "fulfilled")
-      .map((r) => (r as PromiseFulfilledResult<Product>).value);
+    for (const r of results) {
+      if (r.status === "fulfilled") products.push(r.value);
+    }
   } catch {
     // ignore
   }

@@ -74,9 +74,10 @@ export async function POST(req: NextRequest) {
             "X-Session-Id": guestId,
           },
         });
+        // Only clear guest cookie if merge succeeded
         r.cookies.set("guest_session_id", "", { maxAge: 0, path: "/" });
       } catch {
-        // merge is best-effort
+        // merge is best-effort; keep guest cookie so cart isn't lost
       }
     }
 
