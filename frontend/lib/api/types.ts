@@ -1,7 +1,59 @@
-// Shared API types used across the frontend.
+// Shared API types — aligned with the actual backend DTOs.
+
+// --- Backend raw shapes (as returned by services, inside ApiResponse.data) ---
+
+/** Spring Data Page<T> shape returned by paginated endpoints. */
+export interface SpringPage<T> {
+  content: T[];
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first?: boolean;
+  last?: boolean;
+}
+
+export interface ProductSpec {
+  specName: string;
+  specValue: string;
+}
+
+/** product-service ProductResponse (detail). */
+export interface ProductResponse {
+  id: string;
+  sku: string;
+  name: string;
+  description?: string;
+  price: number;
+  categoryId?: string;
+  categoryName?: string;
+  brandId?: string;
+  brandName?: string;
+  isActive?: boolean;
+  imageUrls?: string[];
+  specs?: ProductSpec[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** product-service ProductSummaryResponse (list items). */
+export interface ProductSummaryResponse {
+  id: string;
+  sku: string;
+  name: string;
+  price: number;
+  categoryId?: string;
+  categoryName?: string;
+  brandId?: string;
+  brandName?: string;
+  primaryImageUrl?: string;
+}
+
+// --- Normalized UI types (what components consume) ---
 
 export interface Product {
   id: string;
+  sku?: string;
   name: string;
   slug: string;
   description?: string;
@@ -12,21 +64,12 @@ export interface Product {
   imageUrl?: string;
   images?: string[];
   specs?: Record<string, string>;
-  stock?: number;
   rating?: number;
   reviewCount?: number;
-  createdAt?: string;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
 }
 
 export interface CartItem {
+  /** Cart items are keyed by productId in the backend. */
   id: string;
   productId: string;
   productName: string;
@@ -36,96 +79,93 @@ export interface CartItem {
   subtotal: number;
 }
 
-export interface CartResponse {
-  id: string;
+export interface Cart {
   items: CartItem[];
-  totalAmount: number;
-  discountAmount?: number;
-  voucherCode?: string;
+  totalPrice: number;
+  totalItems: number;
 }
 
 export interface OrderItem {
-  productId: string;
+  id?: string;
+  productId?: string;
+  sku?: string;
   productName: string;
-  productImage?: string;
   price: number;
   quantity: number;
   subtotal: number;
 }
 
+export type OrderStatus = "PENDING" | "STOCK_RESERVED" | "CONFIRMED" | "CANCELLED";
+
 export interface Order {
   id: string;
-  orderNumber?: string;
-  items: OrderItem[];
-  totalAmount: number;
+  userId?: string;
+  userEmail?: string;
+  status: OrderStatus | string;
+  paymentMethod: "COD" | "VNPAY" | string;
+  subtotal?: number;
   discountAmount?: number;
-  status: OrderStatus;
-  paymentMethod: "COD" | "VNPAY";
-  paymentStatus?: string;
-  paymentUrl?: string;
-  address?: Address;
+  totalAmount: number;
   voucherCode?: string;
+  shippingName?: string;
+  shippingPhone?: string;
+  shippingAddress?: string;
+  cancelReason?: string;
+  isFlashSale?: boolean;
   createdAt: string;
   updatedAt?: string;
+  items: OrderItem[];
 }
 
-export type OrderStatus =
-  | "CREATED"
-  | "STOCK_RESERVED"
-  | "CONFIRMED"
-  | "SHIPPED"
-  | "COMPLETED"
-  | "CANCELLED"
-  | "FAILED";
-
+/** user-service AddressResponse / AddressRequest shape. */
 export interface Address {
   id?: string;
-  fullName: string;
-  phone: string;
+  recipientName: string;
+  phoneNumber: string;
   addressLine: string;
-  city: string;
-  district?: string;
   ward?: string;
-  isDefault?: boolean;
+  district?: string;
+  city: string;
+  defaultAddress?: boolean;
 }
 
 export interface Review {
   id: string;
   productId: string;
   userId: string;
-  userName?: string;
   rating: number;
-  title: string;
-  content: string;
+  comment?: string;
   createdAt: string;
 }
 
+export interface ProductRating {
+  productId: string;
+  averageRating?: number;
+  reviewCount?: number;
+}
+
+/** flash-sale-service CampaignResponse. */
 export interface FlashSale {
   id: string;
-  name: string;
   productId: string;
-  productName?: string;
-  productImage?: string;
-  flashSalePrice: number;
+  sku?: string;
+  productName: string;
   originalPrice?: number;
-  totalStock: number;
-  soldCount: number;
-  startAt: string;
-  endAt: string;
-  status: "UPCOMING" | "ACTIVE" | "ENDED";
+  salePrice: number;
+  quantity: number;
+  soldCount?: number;
+  remainingStock?: number;
+  startTime: string;
+  endTime: string;
+  status: "SCHEDULED" | "ACTIVE" | "ENDED" | "CANCELLED" | string;
 }
 
+/** flash-sale-service PurchaseResponse. */
 export interface FlashSalePurchaseResult {
   success: boolean;
-  orderId?: string;
-  code: number; // 0=success, -1=sold out, -2=duplicate, -3=not started
   message?: string;
-}
-
-export interface Facets {
-  brands?: { value: string; count: number }[];
-  categories?: { value: string; count: number }[];
-  priceRange?: { min: number; max: number };
+  campaignId?: string;
+  remainingStock?: number;
 }
 
 export interface UserSession {

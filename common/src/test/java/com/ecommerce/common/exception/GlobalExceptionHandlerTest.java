@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
@@ -38,5 +39,16 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().isSuccess()).isFalse();
         assertThat(response.getBody().getMessage()).isEqualTo("Not found");
+    }
+
+    @Test
+    void authorizationDeniedReturnsForbidden() {
+        ResponseEntity<ApiResponse<Void>> response = handler.handleAccessDenied(
+                new AuthorizationDeniedException("Access Denied"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().isSuccess()).isFalse();
+        assertThat(response.getBody().getMessage()).isEqualTo("Access denied");
     }
 }

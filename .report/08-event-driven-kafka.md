@@ -193,7 +193,7 @@ public record OrderCreatedEvent(
 ```
 Producer side:
   Lưu event vào table `outbox` cùng transaction với business data
-  OutboxPoller (5s) đọc và publish lên Kafka
+  OutboxPoller (1s) đọc và publish lên Kafka
   → Không mất event dù service crash
 
 Consumer side:

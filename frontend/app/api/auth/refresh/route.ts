@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 const BE_URL = process.env.API_BASE_URL || "http://localhost:8080";
 
-export async function POST(_req: NextRequest) {
+export async function POST() {
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get("refresh_token")?.value;
 
@@ -21,12 +21,16 @@ export async function POST(_req: NextRequest) {
     return NextResponse.json({ error: "Refresh failed" }, { status: 401 });
   }
 
-  const data = (await res.json()) as {
-    accessToken?: string;
-    refreshToken?: string;
-    expiresIn?: number;
-    token?: string;
-  };
+  const raw = await res.json().catch(() => ({}));
+  const data = (() => {
+    const inner = (raw as { data?: unknown }).data;
+    return (inner ?? raw) as {
+      accessToken?: string;
+      refreshToken?: string;
+      expiresIn?: number;
+      token?: string;
+    };
+  })();
 
   const accessToken = data.accessToken || data.token;
   if (!accessToken) {

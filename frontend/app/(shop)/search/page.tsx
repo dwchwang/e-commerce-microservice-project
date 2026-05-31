@@ -1,5 +1,6 @@
 import { serverFetch } from "@/lib/api/server-client";
-import type { Product, PaginatedResponse } from "@/lib/api/types";
+import type { Product, SpringPage } from "@/lib/api/types";
+import { mapSearchResult, type SearchResultItem } from "@/lib/api/mappers";
 import { ProductGrid } from "@/components/product/ProductGrid";
 
 export default async function SearchPage({
@@ -14,12 +15,12 @@ export default async function SearchPage({
 
   if (query) {
     try {
-      const res = await serverFetch<PaginatedResponse<Product>>(
+      const res = await serverFetch<SpringPage<SearchResultItem>>(
         `/search?q=${encodeURIComponent(query)}&size=20`,
         {},
         { revalidate: 30 }
       );
-      products = res.data ?? [];
+      products = (res.content ?? []).map(mapSearchResult);
     } catch {
       // empty
     }

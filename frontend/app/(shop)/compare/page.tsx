@@ -1,6 +1,6 @@
 import { serverFetch } from "@/lib/api/server-client";
-import type { Product } from "@/lib/api/types";
-import { Card, CardContent } from "@/components/ui/card";
+import type { Product, ProductResponse } from "@/lib/api/types";
+import { mapProductDetail } from "@/lib/api/mappers";
 import { PriceTag } from "@/components/shared/PriceTag";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -25,17 +25,12 @@ export default async function ComparePage({
     );
   }
 
-  let products: Product[] = [];
-  try {
-    const results = await Promise.allSettled(
-      ids.map((id) => serverFetch<Product>(`/products/${id}`, {}, { revalidate: 60 }))
-    );
-    for (const r of results) {
-      if (r.status === "fulfilled") products.push(r.value);
-    }
-  } catch {
-    // ignore
-  }
+  const results = await Promise.allSettled(
+    ids.map((id) => serverFetch<ProductResponse>(`/products/${id}`, {}, { revalidate: 60 }))
+  );
+  const products: Product[] = results.flatMap((result) =>
+    result.status === "fulfilled" ? [mapProductDetail(result.value)] : []
+  );
 
   if (products.length === 0) {
     return (

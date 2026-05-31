@@ -1,6 +1,8 @@
 # 13. High Concurrency — Flash Sale, Atomic Counter, Distributed Lock
 
 > Module flash-sale là "killer feature" của đồ án. Trong báo cáo, đây là chương cho thấy bạn hiểu **race condition**, **atomic operation**, **eventual consistency**.
+>
+> Cập nhật sau Phase 13: flash-sale đã có spike test thật trên AWS với 500 VU, 100 stock và kết quả durable là 100 purchase thành công, 100 confirmed orders, 0 duplicate buyer. Đây là số liệu mạnh nhất nên đưa vào Chương 6.
 
 ## 1. Mục Tiêu Nghiên Cứu
 
@@ -229,19 +231,42 @@ SET key value NX EX ttl
 
 ## 6. Đo Lường & Tối Ưu
 
-### 6.1. Benchmark mục tiêu (cho báo cáo Chương 5)
-- 1,000 concurrent user, 100 slot
-- Chỉ tiêu đúng đắn: số đơn thành công không vượt quá số slot; nếu không có hủy/fail downstream thì kỳ vọng đúng 100 đơn
-- Latency/RPS: ghi theo kết quả đo thực tế từ k6/JMeter, không dùng số giả
-- Chụp Grafana/Prometheus trong lúc chạy test để có bằng chứng
+### 6.1. Kết quả đã đo trong Phase 13
 
-### 6.2. Tools test
+Môi trường: AWS EC2 chạy Docker Compose production stack, k6 chạy từ laptop, ngày 31/05/2026.
+
+| Metric | Expected | Observed |
+|---|---:|---:|
+| VU profile | 0 -> 500 -> 0 | max 500 VU |
+| Duration | 90s | 1m30s |
+| HTTP requests | - | 78,448 |
+| Successful purchases | 100 exactly | 100 |
+| Sold-out responses | > 0 | 36,134 |
+| Campaign sold_count | 100 | 100 |
+| Confirmed flash-sale orders | 100 | 100 |
+| Duplicate buyer rows | 0 | 0 |
+| p95 latency | - | 1.04s overall, 335.55ms expected responses |
+
+Nguồn: `.test/results/flash-sale-spike-20260531-114752.{json,txt}`, `.test/results/SUMMARY.md`.
+
+### 6.2. Cách diễn giải đúng trong báo cáo
+
+Có thể kết luận:
+- Trong kịch bản 500 VU tranh mua 100 slot, hệ thống không oversell theo nguồn kiểm chứng durable: campaign `sold_count = 100`, số đơn flash-sale confirmed = 100, duplicate buyer = 0.
+- Redis Lua atomic reservation và buyer set hoạt động đúng trong kịch bản thực nghiệm đã chạy.
+- Sold-out response lớn là hành vi kỳ vọng vì số request cao hơn nhiều so với 100 slot.
+
+Không nên kết luận:
+- "Không bao giờ oversell trong mọi điều kiện production" vì bài test chỉ đại diện cho cấu hình, dataset và thời gian đã chạy.
+- "Kafka/outbox replay đã pass khi Kafka down" vì scenario đó chưa verify được trong Phase 13.
+
+### 6.3. Tools test
 - **Apache Bench (ab)**: đơn giản, ít control concurrency
 - **Apache JMeter**: GUI, chi tiết
 - **k6** (Grafana): script JS, chuyên load test
 - **Gatling**: Scala, mạnh
 
-### 6.3. Bottleneck thường gặp
+### 6.4. Bottleneck thường gặp
 - Tomcat thread pool full → tăng `server.tomcat.threads.max`
 - DB connection pool full → tăng `spring.datasource.hikari.maximum-pool-size`
 - Kafka producer batch quá lớn → tune `linger.ms`, `batch.size`

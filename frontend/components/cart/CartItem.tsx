@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { PriceTag } from "@/components/shared/PriceTag";
 import { Trash2, Plus, Minus } from "lucide-react";
@@ -16,17 +15,7 @@ export function CartItem({ item, onUpdate, onRemove }: CartItemProps) {
   return (
     <div className="flex items-center gap-3 py-2">
       <div className="w-14 h-14 bg-muted rounded shrink-0 flex items-center justify-center overflow-hidden">
-        {item.productImage ? (
-          <Image
-            src={item.productImage}
-            alt={item.productName}
-            width={56}
-            height={56}
-            className="object-cover"
-          />
-        ) : (
-          <span className="text-xl">📦</span>
-        )}
+        <span className="text-xl">📦</span>
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{item.productName}</p>

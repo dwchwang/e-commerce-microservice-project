@@ -1,5 +1,7 @@
 # 21. Docker, Docker Compose & Container Deployment
 
+> Cập nhật sau Phase 10-11: dự án không chỉ chạy local Compose mà đã có hướng production-like trên AWS EC2 với `docker-compose.prod.yml` và GitHub Actions build/push/deploy. Kubernetes vẫn là hướng phát triển, không phải phạm vi hiện tại.
+
 ## 1. Mục Tiêu Nghiên Cứu
 
 - Hiểu container vs VM
@@ -133,6 +135,7 @@ Docker network mặc định bridge. Trong network, container resolve nhau qua *
 - Single host (laptop/server đơn)
 - Đơn giản, demo nhanh
 - Không cần overhead K8s
+- Phù hợp với EC2 single-instance và giới hạn tài nguyên DATN
 
 ---
 
@@ -218,13 +221,33 @@ order-service:
 
 → Tránh 1 service tham lam, OOMKill các container khác.
 
+### 3.6. Production-like deployment sau Phase 10
+
+| Thành phần | Cách áp dụng |
+|---|---|
+| Production override | `docker-compose.prod.yml` ghi đè image/env/resource cho EC2 |
+| CORS | `CORS_ALLOWED_ORIGINS` cấu hình qua env, không hardcode local-only |
+| JVM memory | Cap heap/metaspace qua compose/env thay vì sửa từng Dockerfile |
+| HTTPS/reverse proxy | Caddy/nip.io theo kế hoạch Phase 10 |
+| Data persistence | Named volumes/EBS, hỗ trợ stop/start EC2 manual |
+| Public entrypoint | Gateway/API và frontend qua reverse proxy; debug ports không nên public rộng |
+
+### 3.7. CI/CD sau Phase 11
+
+| Workflow | Vai trò |
+|---|---|
+| `.github/workflows/build-and-push.yml` | Build Maven/JAR, build Docker images, push GHCR |
+| `.github/workflows/deploy.yml` | Manual deploy qua SSH lên EC2, pull images và restart compose stack |
+
+Khi viết báo cáo, có thể gọi đây là **CI/CD deployment pipeline cho môi trường EC2**, không phải full Kubernetes/GitOps pipeline.
+
 ---
 
 ## 4. Production-Grade Tweaks (cho mục "Đề xuất phát triển")
 
 - **Kubernetes**: Mỗi service Helm chart, autoscaling
 - **Service Mesh**: Istio cho mTLS, traffic shifting, observability
-- **CI/CD**: GitHub Actions / GitLab CI build image, push registry, deploy K8s
+- **GitOps**: Argo CD/Flux thay cho SSH deploy khi chuyển sang K8s
 - **Secrets**: HashiCorp Vault, K8s sealed secrets
 - **Image scanning**: Trivy, Snyk
 - **Multi-arch image**: ARM (Mac M1) + x86

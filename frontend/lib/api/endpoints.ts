@@ -1,8 +1,9 @@
 // API endpoint constants.
-// All paths are relative to API base (without /api prefix — added by client).
+// All paths are relative to API base (without /api prefix — added by client/proxy).
+// These mirror the real backend controllers.
 
 export const endpoints = {
-  // Auth
+  // Auth (handled by FE BFF routes, not the proxy)
   auth: {
     login: "/auth/login",
     register: "/auth/register",
@@ -13,20 +14,21 @@ export const endpoints = {
   // Products
   products: {
     list: "/products",
-    detail: (slug: string) => `/products/${slug}`,
-    facets: "/products/facets",
+    detail: (id: string) => `/products/${id}`,
+    categories: "/products/categories",
+    brands: "/products/brands",
   },
 
   // Search
   search: "/search",
 
-  // Cart
+  // Cart (items keyed by productId)
   cart: {
     get: "/cart",
     addItem: "/cart/items",
-    updateItem: (itemId: string) => `/cart/items/${itemId}`,
-    removeItem: (itemId: string) => `/cart/items/${itemId}`,
-    applyVoucher: "/cart/voucher",
+    updateItem: (productId: string) => `/cart/items/${productId}`,
+    removeItem: (productId: string) => `/cart/items/${productId}`,
+    clear: "/cart",
   },
 
   // Orders
@@ -36,35 +38,40 @@ export const endpoints = {
     detail: (id: string) => `/orders/${id}`,
   },
 
+  // Payments
+  payments: {
+    vnpayCreate: (orderId: string) => `/payments/vnpay/create?orderId=${orderId}`,
+  },
+
   // Addresses
   addresses: {
-    list: "/users/addresses",
-    create: "/users/addresses",
-    update: (id: string) => `/users/addresses/${id}`,
-    delete: (id: string) => `/users/addresses/${id}`,
-    setDefault: (id: string) => `/users/addresses/${id}/default`,
+    list: "/users/me/addresses",
+    create: "/users/me/addresses",
+    update: (id: string) => `/users/me/addresses/${id}`,
+    delete: (id: string) => `/users/me/addresses/${id}`,
   },
 
   // Reviews
   reviews: {
     byProduct: (productId: string) => `/reviews/product/${productId}`,
+    rating: (productId: string) => `/reviews/product/${productId}/rating`,
     create: "/reviews",
   },
 
   // Flash Sales
   flashSales: {
-    active: "/flash-sales/active",
+    list: "/flash-sales",
     detail: (id: string) => `/flash-sales/${id}`,
     purchase: (id: string) => `/flash-sales/${id}/purchase`,
   },
 
   // Content
   content: {
-    bySlug: (slug: string) => `/content/${slug}`,
+    bySlug: (slug: string) => `/content/posts/${slug}`,
   },
 
   // Users
   users: {
-    profile: "/users/profile",
+    profile: "/users/me",
   },
 } as const;

@@ -16,7 +16,7 @@ export function CartDrawer() {
   const removeItem = useRemoveCartItem();
 
   const itemCount = cart?.items?.length ?? 0;
-  const total = (cart?.totalAmount || 0) - (cart?.discountAmount || 0);
+  const total = cart?.totalPrice ?? 0;
 
   return (
     <Sheet>
@@ -45,7 +45,7 @@ export function CartDrawer() {
           <>
             <div className="flex-1 overflow-y-auto space-y-3 py-4">
               {cart.items.map((item) => (
-                <div key={item.id} className="flex items-center gap-3">
+                <div key={item.productId} className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-muted rounded shrink-0 flex items-center justify-center">
                     📦
                   </div>
@@ -59,7 +59,7 @@ export function CartDrawer() {
                       size="icon"
                       className="h-7 w-7"
                       disabled={item.quantity <= 1}
-                      onClick={() => updateItem.mutate({ itemId: item.id, quantity: item.quantity - 1 })}
+                      onClick={() => updateItem.mutate({ productId: item.productId, quantity: item.quantity - 1 })}
                     >
                       <Minus className="h-3 w-3" />
                     </Button>
@@ -68,7 +68,7 @@ export function CartDrawer() {
                       variant="outline"
                       size="icon"
                       className="h-7 w-7"
-                      onClick={() => updateItem.mutate({ itemId: item.id, quantity: item.quantity + 1 })}
+                      onClick={() => updateItem.mutate({ productId: item.productId, quantity: item.quantity + 1 })}
                     >
                       <Plus className="h-3 w-3" />
                     </Button>
@@ -77,7 +77,7 @@ export function CartDrawer() {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 text-destructive"
-                    onClick={() => removeItem.mutate(item.id)}
+                    onClick={() => removeItem.mutate(item.productId)}
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>

@@ -1,10 +1,12 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { serverFetch } from "@/lib/api/server-client";
-import type { Product, Review, PaginatedResponse } from "@/lib/api/types";
+import type { Product, ProductResponse, ProductRating } from "@/lib/api/types";
+import { mapProductDetail } from "@/lib/api/mappers";
 import { PriceTag } from "@/components/shared/PriceTag";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { CompareButton } from "@/components/product/CompareButton";
+import { ProductReviews } from "@/components/product/ProductReviews";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
@@ -18,19 +20,27 @@ export default async function ProductDetailPage({
 
   let product: Product | null = null;
   try {
-    product = await serverFetch<Product>(`/products/${slug}`, {}, { revalidate: 60 });
+    const raw = await serverFetch<ProductResponse>(`/products/${slug}`, {}, { revalidate: 60 });
+    product = mapProductDetail(raw);
   } catch {
     notFound();
   }
 
   if (!product) notFound();
 
+  let rating: ProductRating | null = null;
+  try {
+    rating = await serverFetch<ProductRating>(`/reviews/product/${product.id}/rating`, {}, { revalidate: 60 });
+  } catch {
+    rating = null;
+  }
+
   const hasDiscount = product.originalPrice && product.originalPrice > product.price;
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Image Gallery */}
+        {/* Image */}
         <div className="aspect-square relative bg-muted rounded-lg overflow-hidden">
           {product.imageUrl ? (
             <Image
@@ -51,29 +61,22 @@ export default async function ProductDetailPage({
           )}
         </div>
 
-        {/* Product Info */}
+        {/* Info */}
         <div>
           {product.brand && (
             <p className="text-sm text-muted-foreground mb-1">{product.brand}</p>
           )}
           <h1 className="text-2xl md:text-3xl font-bold mb-4">{product.name}</h1>
 
-          {product.rating && (
+          {rating && rating.reviewCount && rating.reviewCount > 0 && (
             <div className="flex items-center gap-1 mb-4">
               <span className="text-yellow-500 text-lg">★</span>
-              <span className="font-medium">{product.rating.toFixed(1)}</span>
-              {product.reviewCount && (
-                <span className="text-muted-foreground">({product.reviewCount} đánh giá)</span>
-              )}
+              <span className="font-medium">{(rating.averageRating ?? 0).toFixed(1)}</span>
+              <span className="text-muted-foreground">({rating.reviewCount} đánh giá)</span>
             </div>
           )}
 
-          <PriceTag
-            price={product.price}
-            originalPrice={product.originalPrice}
-            size="lg"
-            className="mb-6"
-          />
+          <PriceTag price={product.price} originalPrice={product.originalPrice} size="lg" className="mb-6" />
 
           <div className="flex gap-3 mb-6">
             <AddToCartButton productId={product.id} className="h-10 px-8" />
@@ -82,14 +85,13 @@ export default async function ProductDetailPage({
 
           <Separator className="my-6" />
 
-          {/* Tabs: Description, Specs, Reviews */}
           <Tabs defaultValue="description">
             <TabsList>
               <TabsTrigger value="description">Mô tả</TabsTrigger>
               <TabsTrigger value="specs">Thông số</TabsTrigger>
               <TabsTrigger value="reviews">Đánh giá</TabsTrigger>
             </TabsList>
-            <TabsContent value="description" className="mt-4 text-sm text-muted-foreground leading-relaxed">
+            <TabsContent value="description" className="mt-4 text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
               {product.description || "Chưa có mô tả cho sản phẩm này."}
             </TabsContent>
             <TabsContent value="specs" className="mt-4">
@@ -109,9 +111,7 @@ export default async function ProductDetailPage({
               )}
             </TabsContent>
             <TabsContent value="reviews" className="mt-4">
-              <p className="text-sm text-muted-foreground">
-                Tính năng đánh giá sẽ có trong bản cập nhật tiếp theo.
-              </p>
+              <ProductReviews productId={product.id} />
             </TabsContent>
           </Tabs>
         </div>

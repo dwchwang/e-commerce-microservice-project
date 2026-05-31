@@ -2,6 +2,7 @@
 // Calls BE directly via Docker network (or localhost in dev).
 
 import { cookies } from "next/headers";
+import { unwrapEnvelope } from "@/lib/api/envelope";
 
 const BE_URL = process.env.API_BASE_URL || "http://localhost:8080";
 
@@ -40,5 +41,6 @@ export async function serverFetch<T>(
 
   if (res.status === 204) return undefined as T;
 
-  return res.json() as Promise<T>;
+  const json = await res.json();
+  return unwrapEnvelope<T>(json);
 }

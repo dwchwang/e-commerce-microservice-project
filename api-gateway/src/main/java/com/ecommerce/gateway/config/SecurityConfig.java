@@ -28,6 +28,31 @@ public class SecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(Customizer.withDefaults())
                 .authorizeExchange(auth -> auth
+                        // --- Admin-only routes (checked first) ---
+                        .pathMatchers("/api/orders/admin/**").hasAuthority("ROLE_ADMIN")
+                        .pathMatchers("/api/users/admin/**").hasAuthority("ROLE_ADMIN")
+                        .pathMatchers("/api/inventory/admin/**").hasAuthority("ROLE_ADMIN")
+                        .pathMatchers("/api/reviews/admin/**").hasAuthority("ROLE_ADMIN")
+                        .pathMatchers(HttpMethod.GET, "/api/vouchers/active").authenticated()
+                        .pathMatchers(HttpMethod.GET, "/api/vouchers", "/api/vouchers/*").hasAuthority("ROLE_ADMIN")
+                        .pathMatchers(HttpMethod.POST, "/api/vouchers/**").hasAuthority("ROLE_ADMIN")
+                        .pathMatchers(HttpMethod.PUT, "/api/vouchers/**").hasAuthority("ROLE_ADMIN")
+                        .pathMatchers(HttpMethod.DELETE, "/api/vouchers/**").hasAuthority("ROLE_ADMIN")
+                        // Product mutations: admin-only
+                        .pathMatchers(HttpMethod.POST, "/api/products/**").hasAuthority("ROLE_ADMIN")
+                        .pathMatchers(HttpMethod.PUT, "/api/products/**").hasAuthority("ROLE_ADMIN")
+                        .pathMatchers(HttpMethod.DELETE, "/api/products/**").hasAuthority("ROLE_ADMIN")
+                        // Flash-sale mutations: admin-only
+                        .pathMatchers(HttpMethod.POST, "/api/flash-sales/**").hasAuthority("ROLE_ADMIN")
+                        .pathMatchers(HttpMethod.PUT, "/api/flash-sales/**").hasAuthority("ROLE_ADMIN")
+                        .pathMatchers(HttpMethod.DELETE, "/api/flash-sales/**").hasAuthority("ROLE_ADMIN")
+                        // Content mutations: admin-only (banners, CMS pages)
+                        .pathMatchers(HttpMethod.POST, "/api/content/**").hasAuthority("ROLE_ADMIN")
+                        .pathMatchers(HttpMethod.PUT, "/api/content/**").hasAuthority("ROLE_ADMIN")
+                        .pathMatchers(HttpMethod.DELETE, "/api/content/**").hasAuthority("ROLE_ADMIN")
+                        // Inventory stock adjustments: admin-only
+                        .pathMatchers("/api/inventory/stock-in", "/api/inventory/stock-out").hasAuthority("ROLE_ADMIN")
+                        // --- Public endpoints (storefront) ---
                         .pathMatchers("/api/auth/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/search/**").permitAll()
@@ -41,7 +66,8 @@ public class SecurityConfig {
                         .pathMatchers("/eureka/**").permitAll()
                         .pathMatchers("/actuator/**").permitAll()
                         .anyExchange().authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(new KeycloakJwtAuthConverter())))
                 .build();
     }
 

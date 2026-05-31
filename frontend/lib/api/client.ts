@@ -1,6 +1,8 @@
 // Browser-side API client — calls BFF proxy /api/proxy/*
 // Token & session ID are handled by the proxy route handler automatically.
 
+import { unwrapEnvelope } from "@/lib/api/envelope";
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -70,5 +72,6 @@ export async function apiFetch<T>(
   // 204 No Content
   if (res.status === 204) return undefined as T;
 
-  return res.json() as Promise<T>;
+  const json = await res.json();
+  return unwrapEnvelope<T>(json);
 }

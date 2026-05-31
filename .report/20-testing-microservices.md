@@ -1,5 +1,7 @@
 # 20. Testing Strategies cho Microservices
 
+> Cập nhật sau Phase 13: dự án đã có backend readiness smoke test, k6 performance test và một số resilience/chaos scripts. Khi viết Chương 6, dùng [23-bang-chung-kiem-thu-va-so-lieu.md](./23-bang-chung-kiem-thu-va-so-lieu.md) làm nguồn số liệu chính.
+
 ## 1. Mục Tiêu Nghiên Cứu
 
 - Hiểu Test Pyramid (Mike Cohn) và Test Honeycomb (Spotify)
@@ -198,6 +200,18 @@ Cách test full saga (without spinning all 13 services):
 - **Integration**: Test 1 service + Testcontainers Kafka, verify event published correctly
 - **E2E manual**: Postman collection chạy qua Docker compose, kiểm tra order state thay đổi
 
+### 3.6. Smoke/performance/resilience artifacts hiện có
+
+| Loại test | Kết quả chính | Nguồn |
+|---|---|---|
+| Backend readiness | 9/9 split suites pass sau khi sửa bug/test infra | `.test/backend-readiness-final.md`, `.test/results/01-*.md` đến `09-*.md` |
+| Catalog soak | 34 phút, max 200 VU, p95 61.68 ms, error 0.00% | `.test/results/catalog-soak-20260530-215904.{json,txt}` |
+| Checkout stress | 7 phút, max 50 VU, order success 100.00%, p95 160.92 ms | `.test/results/checkout-stress-20260531-022416.{json,txt}` |
+| Flash-sale spike | 500 VU, 100 stock, 100 purchase success, 100 confirmed orders, duplicate buyer 0 | `.test/results/flash-sale-spike-20260531-114752.{json,txt}` |
+| Resilience | Kill order-service completed; inventory compensation pass; Kafka/Redis có phần inconclusive | `.test/results/SUMMARY.md`, `.test/results/chaos-*` |
+
+Nguyên tắc: không copy metric trực tiếp từ file này nếu chưa đối chiếu với [23](./23-bang-chung-kiem-thu-va-so-lieu.md).
+
 ---
 
 ## 4. Test Coverage & Mutation Testing
@@ -245,8 +259,8 @@ Cách test full saga (without spinning all 13 services):
 2. Integration: full saga 1 service với Testcontainers Kafka
 3. Cẩn thận với timing — dùng `Awaitility` await condition
 
-**Q5: Có chaos test không?**
-→ Đồ án không. Production: Chaos Monkey, Litmus — kill service ngẫu nhiên, kiểm tra resilience. Em có thể demo bằng `docker stop product-service` rồi xem Circuit Breaker hoạt động.
+**Q5: Có chaos/resilience test không?**
+→ Có ở mức phù hợp DATN: dùng script trong `.test/chaos/` để stop order-service, Kafka, Redis và ép inventory fail. Kết quả Phase 13: kill order-service chứng minh recovery sau downtime, inventory-failed compensation pass; Kafka outbox replay và Redis cart degradation chưa đủ bằng chứng nên không ghi là pass.
 
 **Q6: E2E test khó duy trì, em tránh thế nào?**
 → Tập trung integration test cho mỗi service. E2E chỉ cho golden path (đặt đơn end-to-end). Postman collection chạy manual sau mỗi release.

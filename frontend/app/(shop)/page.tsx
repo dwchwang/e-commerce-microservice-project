@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { serverFetch } from "@/lib/api/server-client";
-import type { Product, FlashSale, PaginatedResponse } from "@/lib/api/types";
+import type { Product, FlashSale, ProductSummaryResponse, SpringPage } from "@/lib/api/types";
+import { mapProductSummary } from "@/lib/api/mappers";
 import { ProductCard } from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowRight, Zap } from "lucide-react";
 
 export default async function HomePage() {
@@ -12,10 +12,10 @@ export default async function HomePage() {
 
   try {
     const [productsRes, flashRes] = await Promise.all([
-      serverFetch<PaginatedResponse<Product>>("/products?size=8&sort=createdAt,desc", {}, { revalidate: 60 }),
-      serverFetch<FlashSale[]>("/flash-sales/active", {}, { revalidate: 30 }),
+      serverFetch<SpringPage<ProductSummaryResponse>>("/products?size=8&sort=createdAt,desc", {}, { revalidate: 60 }),
+      serverFetch<FlashSale[]>("/flash-sales", {}, { revalidate: 30 }),
     ]);
-    featured = productsRes.data ?? [];
+    featured = (productsRes.content ?? []).map(mapProductSummary);
     flashSales = Array.isArray(flashRes) ? flashRes : [];
   } catch {
     // BE might not be running — show empty state
@@ -65,12 +65,11 @@ export default async function HomePage() {
               <ProductCard
                 key={fs.id}
                 product={{
-                  id: fs.productId || fs.id,
-                  name: fs.productName || fs.name,
-                  slug: fs.productId || fs.id,
-                  price: fs.flashSalePrice,
+                  id: fs.productId,
+                  name: fs.productName,
+                  slug: fs.productId,
+                  price: fs.salePrice,
                   originalPrice: fs.originalPrice,
-                  imageUrl: fs.productImage,
                 }}
               />
             ))}

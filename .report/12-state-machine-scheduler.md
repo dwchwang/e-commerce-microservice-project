@@ -1,5 +1,7 @@
 # 12. State Machine + Scheduled Reconciliation
 
+> Cập nhật sau Phase 13: các scheduler quan trọng đã được kiểm chứng gián tiếp qua smoke test và load test. Flash-sale campaign activation từng gặp OOM Metaspace do test infra, đã sửa và suite flash-sale pass. Reconciliation/compensation được chứng minh qua flash-sale spike và inventory-failed compensation.
+
 ## 1. Mục Tiêu Nghiên Cứu
 
 - Hiểu Finite State Machine (FSM) trong domain modeling
@@ -125,8 +127,8 @@ Transitions trên `reserved_quantity`:
 |-----------|---------|----------|----------|
 | ReservationExpiryScheduler | order-service | 60s | Hủy đơn VNPAY quá 30 phút |
 | PaymentTimeoutScheduler | payment-service | 60s | Mark Payment TIMEOUT |
-| OutboxPoller | order-service | 5s | Publish events từ outbox table |
-| PaymentEventOutboxPoller | payment-service | 5s | Publish payment events |
+| OutboxPoller | order-service | 1s | Publish events từ outbox table |
+| PaymentEventOutboxPoller | payment-service | 1s | Publish payment events |
 | CampaignScheduler | flash-sale-service | 5s | Activate/end flash sale, recover Redis |
 | ReconciliationScheduler | flash-sale-service | 5 min | Đồng bộ soldCount với actual orders |
 
@@ -217,7 +219,24 @@ For each ACTIVE/ENDED campaign:
 
 ---
 
-## 5. Từ Khóa Nghiên Cứu
+## 5. Bằng Chứng Thực Nghiệm Và Cách Viết
+
+| Nội dung | Bằng chứng | Ghi chú khi viết |
+|---|---|---|
+| CampaignScheduler activate campaign | `.test/results/08-flash-sale-PASS-after-fix.md` | Suite flash-sale pass sau khi tăng Metaspace test infra |
+| Flash-sale không oversell trong spike test | `.test/results/flash-sale-spike-20260531-114752.{json,txt}`, `.test/results/SUMMARY.md` | 500 VU, 100 stock, 100 purchases, 100 confirmed orders, duplicate buyer 0 |
+| Inventory-failed compensation | `.test/results/chaos-inventory-*-20260531-120641.*` | Order chuyển `CANCELLED`, reserved stock không treo |
+| Payment timeout scheduler | `payment-service/src/main/java/com/ecommerce/payment/scheduler/PaymentTimeoutScheduler.java` | Có code; chỉ đưa kết quả nếu có test/log/screenshot riêng |
+| Outbox poller 1s | `order-service/src/main/java/com/ecommerce/order/scheduler/OutboxPoller.java`, `payment-service/src/main/java/com/ecommerce/payment/kafka/PaymentEventOutboxPoller.java` | Không ghi 5s trong báo cáo vì code hiện tại là 1s |
+
+Khi viết Chương 6, nên gắn state machine với kết quả cụ thể:
+- Order: inventory failed -> `CANCELLED`.
+- Campaign: `SCHEDULED` -> `ACTIVE` qua scheduler -> mua thành công trong flash-sale suite.
+- Flash-sale consistency: sold_count và confirmed orders đều bằng 100 sau spike.
+
+---
+
+## 6. Từ Khóa Nghiên Cứu
 
 ```
 - finite state machine domain modeling
@@ -233,7 +252,7 @@ For each ACTIVE/ENDED campaign:
 
 ---
 
-## 6. Câu Hỏi Phản Biện
+## 7. Câu Hỏi Phản Biện
 
 **Q1: Tại sao em không dùng Spring State Machine framework?**
 → FSM của em chỉ 4 states, code thủ công đơn giản hơn framework. Spring State Machine phù hợp khi 10+ states với transitions phức tạp, cần persistance state.
@@ -265,7 +284,7 @@ scheduler_processed_items_total{name="ReservationExpiry"}
 
 ---
 
-## 7. Tài Liệu Tham Khảo
+## 8. Tài Liệu Tham Khảo
 
 ### State Machine
 - Erich Gamma et al, *Design Patterns* — State pattern

@@ -1,5 +1,7 @@
 # 14. Database per Service & Flyway Migration
 
+> Cập nhật sau Phase 10-13: cấu trúc database-per-service đã được dùng trong Docker Compose/AWS single-host. Các service dùng Flyway và `ddl-auto: validate`; smoke test backend readiness và Testcontainers của order-service là bằng chứng tốt để đưa vào báo cáo.
+
 ## 1. Mục Tiêu Nghiên Cứu
 
 - Hiểu pattern Database per Service
@@ -155,7 +157,7 @@ order-service/src/main/resources/db/migration/
 ### 3.2. init-db/
 
 ```
-init-db/init.sql
+init-db/01-create-databases.sql
   → script chạy 1 lần khi PostgreSQL container khởi tạo
   → CREATE DATABASE user_db; CREATE DATABASE product_db; ...
 ```
@@ -222,7 +224,23 @@ public abstract class BaseEntity {
 
 ---
 
-## 5. Từ Khóa Nghiên Cứu
+## 5. Bằng Chứng Trong Repo Và Kết Quả Kiểm Thử
+
+| Nội dung | Bằng chứng |
+|---|---|
+| Database creation | `init-db/01-create-databases.sql` |
+| Service config dùng Flyway + validate | `config-server/src/main/resources/configs/*-service.yml`, các `*/src/main/resources/application.yml` |
+| Order schema có orders/order_items/outbox/processed_events | `order-service/src/main/resources/db/migration/`, `order-service/src/test/java/com/ecommerce/order/integration/OrderServicePostgresContainerTest.java` |
+| Payment schema có payments/payment_outbox/processed_events | `payment-service/src/main/resources/db/migration/` |
+| Flash-sale constraint/sold_count | `flash-sale-service/src/main/resources/db/migration/` |
+| Backend smoke chứng minh các DB/service chạy E2E | `.test/backend-readiness-final.md` |
+| Load test checkout/flash-sale ghi dữ liệu thành công | `.test/results/SUMMARY.md` |
+
+Khi viết báo cáo, nên nhấn mạnh đây là **logical database per service trên cùng một PostgreSQL instance** để tiết kiệm tài nguyên trong DATN. Production thật có thể tách physical instance/cluster cho từng bounded context quan trọng.
+
+---
+
+## 6. Từ Khóa Nghiên Cứu
 
 ```
 - database per service pattern microservices
@@ -239,7 +257,7 @@ public abstract class BaseEntity {
 
 ---
 
-## 6. Câu Hỏi Phản Biện
+## 7. Câu Hỏi Phản Biện
 
 **Q1: Em có 10 DB physical hay logical?**
 → Logical — cùng 1 PostgreSQL instance, 10 databases khác nhau (CREATE DATABASE). Lý do: tiết kiệm RAM cho demo. Production phải tách physical, có thể khác cluster, version riêng.
@@ -275,7 +293,7 @@ public abstract class BaseEntity {
 
 ---
 
-## 7. Tài Liệu Tham Khảo
+## 8. Tài Liệu Tham Khảo
 
 ### Sách
 - Vlad Mihalcea, *High-Performance Java Persistence*, 2nd ed.

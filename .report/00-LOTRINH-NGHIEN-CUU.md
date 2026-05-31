@@ -12,7 +12,13 @@ Tài liệu này liệt kê **toàn bộ kiến thức nền tảng** mà bạn 
 
 Mỗi file con (`01-...`, `02-...`, ...) là **một chủ đề độc lập** — bạn có thể đọc tuần tự, hoặc theo nhu cầu khi viết từng chương.
 
-## 2. Bản Đồ Tổng 22 Chủ Đề
+Sau Phase 10-14, folder này có thêm 3 file điều hướng:
+- [README](./README.md): cách dùng `.report` để viết báo cáo.
+- [22](./22-phase-10-14-tong-hop-thuc-nghiem.md): tổng hợp AWS, CI/CD, Frontend, performance/resilience và admin panel.
+- [23](./23-bang-chung-kiem-thu-va-so-lieu.md): bảng bằng chứng, chỉ số k6 và các kết luận được phép đưa vào Chương 6.
+- [24](./24-cau-truc-bao-cao-datn.md): cấu trúc báo cáo DATN và cách map toàn bộ chủ đề vào chương.
+
+## 2. Bản Đồ Tổng 24 Chủ Đề
 
 ### NHÓM A — Nền tảng kiến trúc (BẮT BUỘC nắm vững đầu tiên)
 
@@ -65,11 +71,13 @@ Mỗi file con (`01-...`, `02-...`, ...) là **một chủ đề độc lập** 
 | [20](./20-testing-microservices.md) | Testing Strategies — Unit, Integration, Testcontainers | ★★★★ |
 | [21](./21-docker-container-deployment.md) | Containerization với Docker & Docker Compose | ★★★★ |
 
-### NHÓM G — Hướng dẫn viết báo cáo
+### NHÓM G — Hướng dẫn viết báo cáo & bằng chứng thực nghiệm
 
 | File | Chủ đề |
 |------|--------|
-| [22](./22-cau-truc-bao-cao-datn.md) | Đề xuất cấu trúc báo cáo DATN & cách map chủ đề vào chương |
+| [22](./22-phase-10-14-tong-hop-thuc-nghiem.md) | Tổng hợp Phase 10-14: AWS, CI/CD, Frontend, performance/resilience, admin |
+| [23](./23-bang-chung-kiem-thu-va-so-lieu.md) | Evidence matrix: số liệu k6, smoke test, resilience và phần còn thiếu |
+| [24](./24-cau-truc-bao-cao-datn.md) | Đề xuất cấu trúc báo cáo DATN & cách map chủ đề vào chương |
 
 ---
 
@@ -93,7 +101,9 @@ Mỗi file con (`01-...`, `02-...`, ...) là **một chủ đề độc lập** 
 **Tuần 4 — Vận hành & Hoàn thiện**
 - Đọc 17, 18 (Observability)
 - Đọc 19, 20, 21
-- Đọc 22 để map nội dung vào báo cáo
+- Đọc 22 để đưa phase 10-14 vào Chương 5-6
+- Đọc 23 để lấy số liệu kiểm thử và hạn chế còn lại
+- Đọc 24 cuối cùng để map toàn bộ nội dung vào cấu trúc báo cáo
 
 ---
 
@@ -118,8 +128,8 @@ Hội đồng phản biện thường hỏi về các thuật ngữ sau. Bạn p
 | **OAuth 2.0** | Authorization framework chuẩn cho phép cấp quyền truy cập tài nguyên |
 | **OIDC** | OpenID Connect — lớp authentication trên OAuth 2.0, thêm ID token |
 | **Distributed Tracing** | Theo dõi 1 request đi qua nhiều service, mỗi span có trace_id chung |
-| **Eventual Consistency** | Trạng thái cuối hệ thống nhất quán, dù tạm thời lệch |
 | **CQRS** | Tách Command (ghi) và Query (đọc) — search-service trong dự án là ví dụ light-weight |
+| **Evidence-based reporting** | Chỉ đưa số liệu/kết luận vào báo cáo khi có artifact raw, log hoặc screenshot đối chiếu được |
 
 ---
 
@@ -152,7 +162,9 @@ Hội đồng phản biện thường hỏi về các thuật ngữ sau. Bạn p
 
 3. **Sơ đồ nhiều hơn chữ**: Báo cáo IT đánh giá cao sequence diagram, component diagram, ERD, flowchart. Folder `.guide` của dự án đã có nhiều sơ đồ ASCII bạn có thể chuyển thành PlantUML/Mermaid.
 
-4. **Đo lường thực tế**: Có Prometheus + Grafana → Chương 5 nên có **screenshot dashboard** + **số liệu thật** (RPS, latency p95, error rate) nếu đã chạy load test. Nếu chưa đo, chỉ trình bày kịch bản đánh giá và không điền số liệu giả.
+4. **Đo lường thực tế**: Chương 6 đã có số liệu k6 cho catalog soak, checkout stress và flash-sale spike trong `.test/results`. Chỉ copy số liệu có trong [23](./23-bang-chung-kiem-thu-va-so-lieu.md). Grafana/Zipkin screenshot vẫn cần capture trước khi đưa vào bản nộp.
+
+5. **Ghi đúng phần còn thiếu**: Kafka outbox replay và Redis cart degradation hiện chưa đủ bằng chứng kết luận pass; admin FE còn là phần cần hoàn thiện. Không viết quá mức so với artifact hiện có.
 
 ---
 
@@ -168,5 +180,3 @@ grep -r "Saga" .report/
 # Build & chạy hệ thống để chụp screenshot cho báo cáo
 ./mvnw clean package -DskipTests && docker compose up -d
 ```
-
-Chúc bạn bảo vệ đồ án thành công! 🎓

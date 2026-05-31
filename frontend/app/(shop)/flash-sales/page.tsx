@@ -3,13 +3,17 @@ import { serverFetch } from "@/lib/api/server-client";
 import type { FlashSale } from "@/lib/api/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Zap, Clock } from "lucide-react";
+
+function remainingOf(sale: FlashSale): number {
+  if (typeof sale.remainingStock === "number") return sale.remainingStock;
+  return Math.max(sale.quantity - (sale.soldCount ?? 0), 0);
+}
 
 export default async function FlashSalesPage() {
   let sales: FlashSale[] = [];
   try {
-    sales = await serverFetch<FlashSale[]>("/flash-sales/active", {}, { revalidate: 30 });
+    sales = await serverFetch<FlashSale[]>("/flash-sales", {}, { revalidate: 30 });
   } catch {
     // empty
   }
@@ -29,11 +33,11 @@ export default async function FlashSalesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {sales.map((sale) => {
-            const progress = sale.totalStock > 0
-              ? Math.round((sale.soldCount / sale.totalStock) * 100)
-              : 0;
+            const remaining = remainingOf(sale);
+            const sold = sale.soldCount ?? 0;
+            const progress = sale.quantity > 0 ? Math.round((sold / sale.quantity) * 100) : 0;
             const discount = sale.originalPrice
-              ? Math.round((1 - sale.flashSalePrice / sale.originalPrice) * 100)
+              ? Math.round((1 - sale.salePrice / sale.originalPrice) * 100)
               : 0;
 
             return (
@@ -42,14 +46,12 @@ export default async function FlashSalesPage() {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h3 className="font-semibold text-lg">{sale.productName || sale.name}</h3>
-                        {discount > 0 && (
-                          <Badge className="mt-1 bg-orange-500">-{discount}%</Badge>
-                        )}
+                        <h3 className="font-semibold text-lg">{sale.productName}</h3>
+                        {discount > 0 && <Badge className="mt-1 bg-orange-500">-{discount}%</Badge>}
                       </div>
                       <div className="text-right">
                         <p className="text-xl font-bold text-primary">
-                          {sale.flashSalePrice.toLocaleString("vi-VN")}₫
+                          {sale.salePrice.toLocaleString("vi-VN")}₫
                         </p>
                         {sale.originalPrice && (
                           <p className="text-sm line-through text-muted-foreground">
@@ -59,11 +61,10 @@ export default async function FlashSalesPage() {
                       </div>
                     </div>
 
-                    {/* Progress bar */}
                     <div className="mt-3">
                       <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>Đã bán: {sale.soldCount}</span>
-                        <span>Còn: {sale.totalStock - sale.soldCount}</span>
+                        <span>Đã bán: {sold}</span>
+                        <span>Còn: {remaining}</span>
                       </div>
                       <div className="h-2 bg-muted rounded-full overflow-hidden">
                         <div
@@ -75,9 +76,7 @@ export default async function FlashSalesPage() {
 
                     <div className="flex items-center gap-1 mt-3 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
-                      <span>
-                        {new Date(sale.endAt).toLocaleString("vi-VN")}
-                      </span>
+                      <span>{new Date(sale.endTime).toLocaleString("vi-VN")}</span>
                     </div>
                   </CardContent>
                 </Card>

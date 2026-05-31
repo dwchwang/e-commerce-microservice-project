@@ -16,6 +16,7 @@ import com.ecommerce.flashsale.service.FlashSaleService;
 import com.ecommerce.flashsale.util.FlashSaleRedisKeys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -65,6 +66,14 @@ public class FlashSaleServiceImpl implements FlashSaleService {
     @Transactional(readOnly = true)
     public List<CampaignResponse> getActiveCampaigns() {
         return campaignRepository.findActiveCampaigns(LocalDateTime.now()).stream()
+                .map(campaign -> CampaignResponse.from(campaign, readRemainingStock(campaign)))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CampaignResponse> getAllCampaigns() {
+        return campaignRepository.findAll(Sort.by(Sort.Direction.DESC, "startTime")).stream()
                 .map(campaign -> CampaignResponse.from(campaign, readRemainingStock(campaign)))
                 .toList();
     }

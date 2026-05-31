@@ -8,7 +8,7 @@ import com.ecommerce.flashsale.dto.PurchaseResponse;
 import com.ecommerce.flashsale.service.FlashSaleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,33 +34,35 @@ public class FlashSaleController {
         return ApiResponse.ok(flashSaleService.getActiveCampaigns());
     }
 
+    @GetMapping("/admin")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ApiResponse<List<CampaignResponse>> getAllCampaigns() {
+        return ApiResponse.ok(flashSaleService.getAllCampaigns());
+    }
+
     @GetMapping("/{id}")
     public ApiResponse<CampaignResponse> getCampaign(@PathVariable UUID id) {
         return ApiResponse.ok(flashSaleService.getCampaign(id));
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ApiResponse<CampaignResponse> createCampaign(
-            @RequestHeader(value = "X-User-Roles", required = false) String roles,
             @Valid @RequestBody CreateCampaignRequest request) {
-        requireAdmin(roles);
         return ApiResponse.ok("Campaign created", flashSaleService.createCampaign(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ApiResponse<CampaignResponse> updateCampaign(
             @PathVariable UUID id,
-            @RequestHeader(value = "X-User-Roles", required = false) String roles,
             @Valid @RequestBody CreateCampaignRequest request) {
-        requireAdmin(roles);
         return ApiResponse.ok("Campaign updated", flashSaleService.updateCampaign(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> cancelCampaign(
-            @PathVariable UUID id,
-            @RequestHeader(value = "X-User-Roles", required = false) String roles) {
-        requireAdmin(roles);
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ApiResponse<Void> cancelCampaign(@PathVariable UUID id) {
         flashSaleService.cancelCampaign(id);
         return ApiResponse.ok("Campaign cancelled", null);
     }
@@ -72,11 +74,5 @@ public class FlashSaleController {
             @RequestHeader(value = "X-User-Email", required = false) String userEmail,
             @Valid @RequestBody PurchaseRequest request) {
         return ApiResponse.ok(flashSaleService.purchase(id, userId, userEmail, request));
-    }
-
-    private void requireAdmin(String roles) {
-        if (roles == null || roles.isBlank() || !roles.contains("ROLE_ADMIN")) {
-            throw new AccessDeniedException("Admin role is required");
-        }
     }
 }

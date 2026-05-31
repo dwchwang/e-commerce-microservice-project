@@ -1,5 +1,7 @@
 # 11. Resilience4j — Circuit Breaker, Retry, Rate Limiting
 
+> Cập nhật sau Phase 13: hệ thống đã có smoke/security pass và một số resilience test trên AWS. Kết quả cần viết trung thực: kill order-service chứng minh recovery sau downtime; inventory-failed compensation pass; Kafka replay và Redis cart degradation chưa đủ bằng chứng kết luận pass.
+
 ## 1. Mục Tiêu Nghiên Cứu
 
 - Hiểu Resilience patterns: Circuit Breaker, Retry, Bulkhead, Timeout, Rate Limiter, Fallback
@@ -229,7 +231,20 @@ Client → Gateway (rate limit) → Backend
 
 ---
 
-## 5. Từ Khóa Nghiên Cứu
+## 5. Kết Quả Thực Nghiệm Phase 13
+
+| Scenario | Kỳ vọng | Kết quả thực tế | Cách đưa vào báo cáo |
+|---|---|---|---|
+| Kill order-service | Khi service bị dừng cưỡng bức, checkout fail có kiểm soát và phục hồi sau restart | Trong 30s downtime: `order_created` còn 47.15%, HTTP failure 25.94%; sau restart health gateway/order trả 200 | Dùng làm bằng chứng recovery, không gọi là zero-downtime |
+| Inventory failure compensation | Order bị hủy khi inventory không đủ, reserved stock không bị treo | Order `4170422f-fc2d-49f8-aa5f-c7cd1d79266a` chuyển `CANCELLED`, inventory `quantity=0`, `reserved_quantity=0` | Dùng làm bằng chứng saga compensation |
+| Kill Kafka | Outbox giữ event khi Kafka down và replay sau restart | Kafka stop/start xong nhưng order probe trả empty response; outbox replay chưa verify | Chỉ ghi là attempted/inconclusive |
+| Kill Redis | Redis-dependent feature degrade, Postgres-backed read vẫn hoạt động | Product list trả 200 trong/after outage; cart probe 401 do token expired | Chỉ dùng phần product read, không kết luận cart |
+
+Nguồn: `.test/results/SUMMARY.md`, `.docs/08-testing-and-evaluation.md`, `.test/results/chaos-*`.
+
+---
+
+## 6. Từ Khóa Nghiên Cứu
 
 ```
 - circuit breaker pattern michael nygard
@@ -246,7 +261,7 @@ Client → Gateway (rate limit) → Backend
 
 ---
 
-## 6. Câu Hỏi Phản Biện
+## 7. Câu Hỏi Phản Biện
 
 **Q1: Vì sao chọn Resilience4j thay vì Hystrix?**
 → Hystrix đã được Netflix đưa vào maintenance mode (2018). Resilience4j lightweight, modular, functional API, tích hợp Spring tốt hơn.
@@ -277,7 +292,7 @@ Client → Gateway (rate limit) → Backend
 
 ---
 
-## 7. Tài Liệu Tham Khảo
+## 8. Tài Liệu Tham Khảo
 
 ### Sách
 - **Michael Nygard**, *Release It! Design and Deploy Production-Ready Software*, 2nd ed., Pragmatic Bookshelf, 2018 — sách kinh điển về resilience patterns

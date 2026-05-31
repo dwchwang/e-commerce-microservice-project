@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 
 const schema = z.object({
-  username: z.string().min(1, "Vui lòng nhập tên đăng nhập"),
+  email: z.string().email("Email không hợp lệ"),
   password: z.string().min(1, "Vui lòng nhập mật khẩu"),
 });
 
@@ -70,10 +70,10 @@ function LoginForm() {
         )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <Label htmlFor="username">Tên đăng nhập</Label>
-            <Input id="username" {...register("username")} placeholder="Nhập tên đăng nhập" />
-            {errors.username && (
-              <p className="text-sm text-destructive mt-1">{errors.username.message}</p>
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" type="email" {...register("email")} placeholder="example@email.com" />
+            {errors.email && (
+              <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
             )}
           </div>
           <div>

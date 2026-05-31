@@ -3,7 +3,7 @@ import { serverFetch } from "@/lib/api/server-client";
 import type { FlashSale } from "@/lib/api/types";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Zap, Clock } from "lucide-react";
+import { Zap } from "lucide-react";
 import { FlashSaleBuyButton } from "@/components/flash-sale/FlashSaleBuyButton";
 import { CountdownTimer } from "@/components/flash-sale/CountdownTimer";
 
@@ -23,13 +23,13 @@ export default async function FlashSaleDetailPage({
 
   if (!sale) notFound();
 
-  const progress = sale.totalStock > 0
-    ? Math.round((sale.soldCount / sale.totalStock) * 100)
-    : 0;
+  const sold = sale.soldCount ?? 0;
+  const remaining = typeof sale.remainingStock === "number" ? sale.remainingStock : Math.max(sale.quantity - sold, 0);
+  const progress = sale.quantity > 0 ? Math.round((sold / sale.quantity) * 100) : 0;
 
-  const isUpcoming = sale.status === "UPCOMING";
+  const isUpcoming = sale.status === "SCHEDULED";
   const isActive = sale.status === "ACTIVE";
-  const isEnded = sale.status === "ENDED" || progress >= 100;
+  const isEnded = sale.status === "ENDED" || sale.status === "CANCELLED" || remaining <= 0;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -39,7 +39,7 @@ export default async function FlashSaleDetailPage({
 
       <div className="flex items-center gap-3 mb-6">
         <Zap className="h-8 w-8 text-orange-500" />
-        <h1 className="text-3xl font-bold">{sale.productName || sale.name}</h1>
+        <h1 className="text-3xl font-bold">{sale.productName}</h1>
       </div>
 
       {/* Countdown */}
@@ -47,25 +47,23 @@ export default async function FlashSaleDetailPage({
         {isUpcoming && (
           <div>
             <p className="text-sm text-muted-foreground mb-2">Bắt đầu sau:</p>
-            <CountdownTimer targetDate={sale.startAt} />
+            <CountdownTimer targetDate={sale.startTime} />
           </div>
         )}
         {isActive && (
           <div>
             <p className="text-sm text-muted-foreground mb-2">Kết thúc sau:</p>
-            <CountdownTimer targetDate={sale.endAt} />
+            <CountdownTimer targetDate={sale.endTime} />
           </div>
         )}
-        {isEnded && (
-          <Badge variant="secondary" className="text-lg px-4 py-2">Đã kết thúc</Badge>
-        )}
+        {isEnded && <Badge variant="secondary" className="text-lg px-4 py-2">Đã kết thúc</Badge>}
       </div>
 
       {/* Price */}
       <div className="bg-muted/50 rounded-lg p-6 mb-6">
         <div className="flex items-end gap-3">
           <span className="text-3xl font-bold text-primary">
-            {sale.flashSalePrice.toLocaleString("vi-VN")}₫
+            {sale.salePrice.toLocaleString("vi-VN")}₫
           </span>
           {sale.originalPrice && (
             <span className="text-lg line-through text-muted-foreground">
@@ -74,7 +72,7 @@ export default async function FlashSaleDetailPage({
           )}
           {sale.originalPrice && (
             <Badge className="bg-orange-500 mb-1">
-              -{Math.round((1 - sale.flashSalePrice / sale.originalPrice) * 100)}%
+              -{Math.round((1 - sale.salePrice / sale.originalPrice) * 100)}%
             </Badge>
           )}
         </div>
@@ -83,8 +81,8 @@ export default async function FlashSaleDetailPage({
       {/* Progress */}
       <div className="mb-6">
         <div className="flex justify-between text-sm mb-1">
-          <span>Đã bán: {sale.soldCount}</span>
-          <span>Tổng: {sale.totalStock}</span>
+          <span>Đã bán: {sold}</span>
+          <span>Còn: {remaining}</span>
         </div>
         <div className="h-3 bg-muted rounded-full overflow-hidden">
           <div
@@ -94,12 +92,7 @@ export default async function FlashSaleDetailPage({
         </div>
       </div>
 
-      {/* Buy Button */}
-      <FlashSaleBuyButton
-        saleId={sale.id}
-        disabled={!isActive || isEnded}
-        soldOut={progress >= 100}
-      />
+      <FlashSaleBuyButton saleId={sale.id} active={isActive} soldOut={remaining <= 0} />
     </div>
   );
 }

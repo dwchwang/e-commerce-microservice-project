@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 
 @Component
 public class AuthHeaderFilter implements GlobalFilter, Ordered {
@@ -65,16 +65,41 @@ public class AuthHeaderFilter implements GlobalFilter, Ordered {
         return username != null && !username.isBlank() ? username : jwt.getSubject();
     }
 
-    @SuppressWarnings("unchecked")
     private String extractRoles(Jwt jwt) {
-        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        if (realmAccess == null) {
-            return "";
+        TreeSet<String> roles = new TreeSet<>();
+        addRoles(roles, jwt.getClaimAsMap("realm_access"));
+
+        Map<String, Object> resourceAccess = jwt.getClaimAsMap("resource_access");
+        if (resourceAccess != null) {
+            resourceAccess.values().forEach(value -> {
+                if (value instanceof Map<?, ?> access) {
+                    addRoles(roles, access);
+                }
+            });
         }
-        Object roles = realmAccess.get("roles");
-        if (!(roles instanceof List<?> roleList)) {
-            return "";
+
+        return String.join(",", roles);
+    }
+
+    private void addRoles(TreeSet<String> roles, Map<?, ?> access) {
+        if (access == null) {
+            return;
         }
-        return String.join(",", (List<String>) roleList);
+        Object rawRoles = access.get("roles");
+        if (!(rawRoles instanceof Iterable<?> roleList)) {
+            return;
+        }
+
+        roleList.forEach(role -> {
+            String roleName = String.valueOf(role).trim();
+            if (!roleName.isBlank()) {
+                roles.add(normalizeRole(roleName));
+            }
+        });
+    }
+
+    private String normalizeRole(String role) {
+        String normalized = role.toUpperCase();
+        return normalized.startsWith("ROLE_") ? normalized : "ROLE_" + normalized;
     }
 }

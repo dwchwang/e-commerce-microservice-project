@@ -43,7 +43,7 @@ public class ProductService {
     @Cacheable(
             value = "products",
             key = "'list:' + #pageable.pageNumber + ':' + #pageable.pageSize + ':' + "
-                    + "(#pageable.sort.isSorted() ? #pageable.sort : 'created_at: DESC') + "
+                    + "(#pageable.sort.isSorted() ? #pageable.sort : 'created_at:DESC') + "
                     + "':' + #categoryId + ':' + #brandId + ':' + #minPrice + ':' + #maxPrice + ':' + #keyword")
     public Page<ProductSummaryResponse> getAllProducts(
             UUID categoryId,

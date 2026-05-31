@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const schema = z.object({
-  username: z.string().min(1),
   email: z.string().email(),
-  password: z.string().min(6),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
+  password: z.string().min(8),
+  fullName: z.string().min(1).max(255),
 });
 
 const BE_URL = process.env.API_BASE_URL || "http://localhost:8080";
@@ -20,10 +18,11 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(body),
     });
 
+    const json = await res.json().catch(() => ({}));
+
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
       return NextResponse.json(
-        { error: (err as Record<string, unknown>).message || "Registration failed" },
+        { error: (json as Record<string, unknown>).message || "Đăng ký thất bại" },
         { status: res.status }
       );
     }

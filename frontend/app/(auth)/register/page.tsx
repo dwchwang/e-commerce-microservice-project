@@ -14,11 +14,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 
 const schema = z.object({
-  username: z.string().min(3, "Tên đăng nhập ít nhất 3 ký tự"),
+  fullName: z.string().min(2, "Vui lòng nhập họ tên"),
   email: z.string().email("Email không hợp lệ"),
-  password: z.string().min(6, "Mật khẩu ít nhất 6 ký tự"),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
+  password: z.string().min(8, "Mật khẩu ít nhất 8 ký tự"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -82,21 +80,11 @@ export default function RegisterPage() {
           </Alert>
         )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="firstName">Họ</Label>
-              <Input id="firstName" {...register("firstName")} placeholder="Nguyễn" />
-            </div>
-            <div>
-              <Label htmlFor="lastName">Tên</Label>
-              <Input id="lastName" {...register("lastName")} placeholder="Văn A" />
-            </div>
-          </div>
           <div>
-            <Label htmlFor="username">Tên đăng nhập</Label>
-            <Input id="username" {...register("username")} placeholder="Nhập tên đăng nhập" />
-            {errors.username && (
-              <p className="text-sm text-destructive mt-1">{errors.username.message}</p>
+            <Label htmlFor="fullName">Họ tên</Label>
+            <Input id="fullName" {...register("fullName")} placeholder="Nguyễn Văn A" />
+            {errors.fullName && (
+              <p className="text-sm text-destructive mt-1">{errors.fullName.message}</p>
             )}
           </div>
           <div>
@@ -108,7 +96,7 @@ export default function RegisterPage() {
           </div>
           <div>
             <Label htmlFor="password">Mật khẩu</Label>
-            <Input id="password" type="password" {...register("password")} placeholder="Ít nhất 6 ký tự" />
+            <Input id="password" type="password" {...register("password")} placeholder="Ít nhất 8 ký tự" />
             {errors.password && (
               <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
             )}

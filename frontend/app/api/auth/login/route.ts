@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const schema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email("Email không hợp lệ"),
+  password: z.string().min(1, "Vui lòng nhập mật khẩu"),
 });
 
 const BE_URL = process.env.API_BASE_URL || "http://localhost:8080";
+
+type TokenPayload = {
+  accessToken?: string;
+  refreshToken?: string;
+  expiresIn?: number;
+  token?: string;
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,21 +25,17 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(body),
     });
 
+    const json = await res.json().catch(() => ({}));
+
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
       return NextResponse.json(
-        { error: (err as Record<string, unknown>).message || "Invalid credentials" },
+        { error: (json as Record<string, unknown>).message || "Email hoặc mật khẩu không đúng" },
         { status: res.status }
       );
     }
 
-    const data = (await res.json()) as {
-      accessToken?: string;
-      refreshToken?: string;
-      expiresIn?: number;
-      token?: string; // some BE use "token"
-    };
-
+    // BE wraps tokens in ApiResponse: { success, message, data: TokenResponse }
+    const data = ((json as { data?: TokenPayload }).data ?? json) as TokenPayload;
     const accessToken = data.accessToken || data.token;
     const refreshToken = data.refreshToken;
 
@@ -42,7 +45,6 @@ export async function POST(req: NextRequest) {
 
     const r = NextResponse.json({ ok: true });
 
-    // Set access token cookie (short-lived)
     r.cookies.set("access_token", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -51,7 +53,6 @@ export async function POST(req: NextRequest) {
       maxAge: data.expiresIn ?? 900,
     });
 
-    // Set refresh token cookie (long-lived)
     if (refreshToken) {
       r.cookies.set("refresh_token", refreshToken, {
         httpOnly: true,
@@ -62,20 +63,20 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Merge guest cart to user on login
-    const cookieStore = req.cookies;
-    const guestId = cookieStore.get("guest_session_id")?.value;
+    // Merge guest cart into the user's cart on login (best-effort).
+    const guestId = req.cookies.get("guest_session_id")?.value;
     if (guestId) {
       try {
-        await fetch(`${BE_URL}/api/cart/merge`, {
+        const mergeRes = await fetch(`${BE_URL}/api/cart/merge`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "X-Session-Id": guestId,
           },
         });
-        // Only clear guest cookie if merge succeeded
-        r.cookies.set("guest_session_id", "", { maxAge: 0, path: "/" });
+        if (mergeRes.ok) {
+          r.cookies.set("guest_session_id", "", { maxAge: 0, path: "/" });
+        }
       } catch {
         // merge is best-effort; keep guest cookie so cart isn't lost
       }

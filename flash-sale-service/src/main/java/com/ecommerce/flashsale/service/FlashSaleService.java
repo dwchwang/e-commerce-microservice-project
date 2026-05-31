@@ -12,6 +12,8 @@ public interface FlashSaleService {
 
     List<CampaignResponse> getActiveCampaigns();
 
+    List<CampaignResponse> getAllCampaigns();
+
     CampaignResponse getCampaign(UUID campaignId);
 
     CampaignResponse createCampaign(CreateCampaignRequest request);

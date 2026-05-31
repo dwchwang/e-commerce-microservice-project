@@ -1,6 +1,8 @@
 # 10. Transactional Outbox & Idempotency
 
 > Cùng với Saga, đây là pattern "ăn điểm" thứ hai. Hai pattern này cùng nhau giải bài toán "đảm bảo event không mất, không trùng".
+>
+> Cập nhật sau Phase 13: order-service và payment-service đã có outbox/poller trong code và smoke test E2E đi qua các luồng order/payment. Riêng resilience scenario "kill Kafka rồi verify outbox replay" mới dừng ở mức attempted, chưa đủ bằng chứng để ghi là pass trong báo cáo.
 
 ## 1. Mục Tiêu Nghiên Cứu
 
@@ -49,7 +51,7 @@ Có 4 trường hợp:
             │
             ▼
    ┌───────────────────┐
-   │ Outbox Poller (5s)│ — đọc outbox WHERE published=false
+   │ Outbox Poller     │ — đọc outbox WHERE published=false
    │   → publish Kafka  │
    │   → mark published │
    └───────────────────┘
@@ -150,11 +152,11 @@ public Order createOrder(CreateOrderRequest req) {
 }
 ```
 
-### 3.3. OutboxPoller (chạy mỗi 5s)
+### 3.3. OutboxPoller (dự án chạy mỗi 1s)
 
 ```java
 @Component
-@Scheduled(fixedDelay = 5_000)
+@Scheduled(fixedDelay = 1_000)
 public void pollAndPublish() {
   List<OutboxEntry> pending = outboxRepo
       .findByPublishedAtIsNullOrderByCreatedAtAsc(PageRequest.of(0, 100));
@@ -208,10 +210,20 @@ public void onOrderCreated(OrderCreatedEvent event) {
 
 | Service | Outbox | Processed Events |
 |---------|--------|------------------|
-| order-service | ✓ (`outbox` table) | ✓ (xử lý inventory-updated, payment-success...) |
-| payment-service | ✓ (`payment_outbox`) | ✓ |
+| order-service | ✓ (`outbox` table), `OutboxPoller` fixedDelay 1s | ✓ (xử lý inventory-updated, payment-success...) |
+| payment-service | ✓ (`payment_outbox`), `PaymentEventOutboxPoller` fixedDelay 1s | ✓ |
 | inventory-service | (publish trực tiếp trong consumer transaction) | ✓ |
 | flash-sale-service | Không có outbox riêng; publish Kafka đồng bộ + compensation Redis + reconciliation | Buyer set trong Redis chống mua trùng theo campaign |
+
+### 3.7. Bằng chứng trong repo
+
+| Nội dung | File kiểm chứng |
+|---|---|
+| Order outbox entity/schema/poller | `order-service/src/main/java/com/ecommerce/order/entity/OutboxEvent.java`, `order-service/src/main/java/com/ecommerce/order/scheduler/OutboxPoller.java`, `order-service/src/main/resources/db/migration/` |
+| Payment outbox entity/poller | `payment-service/src/main/java/com/ecommerce/payment/entity/PaymentOutboxEvent.java`, `payment-service/src/main/java/com/ecommerce/payment/kafka/PaymentEventOutboxPoller.java` |
+| Unit/integration test liên quan | `payment-service/src/test/java/com/ecommerce/payment/kafka/PaymentEventOutboxPollerTest.java`, `order-service/src/test/java/com/ecommerce/order/integration/OrderServicePostgresContainerTest.java` |
+| Smoke E2E order/payment | `.test/backend-readiness-final.md`, `.test/results/06-order-cod-review-PASS.md`, `.test/results/07-vnpay-PASS.md` |
+| Resilience Kafka | `.test/results/chaos-kafka-action-20260531-115518.txt` — attempted, chưa verify replay |
 
 ---
 
@@ -231,6 +243,15 @@ public void onOrderCreated(OrderCreatedEvent event) {
 | Dùng cho mọi consumer | Cần cleanup events cũ |
 
 → Trade-off **đáng giá** cho hệ thống quan trọng (order, payment).
+
+## 4.1. Cách viết kết quả vào báo cáo
+
+Có thể viết:
+- "Outbox được áp dụng cho `order-service` và `payment-service`, giúp tách thao tác ghi nghiệp vụ khỏi việc publish Kafka bằng một bảng bền vững và poller định kỳ."
+- "Các smoke test COD/VNPAY/flash-sale chứng minh luồng E2E đi qua được event pipeline."
+
+Không nên viết:
+- "Hệ thống đã chứng minh outbox replay thành công khi Kafka down" vì Phase 13 ghi rõ probe Kafka chưa verify được replay sau restart.
 
 ---
 

@@ -25,6 +25,7 @@ Khac voi:
 | [06-chuong-6-kiem-thu-danh-gia.md](./06-chuong-6-kiem-thu-danh-gia.md) | Khung viet Chuong 6 | Lap test case, chay test, danh gia hieu nang, bao mat, resilience |
 | [07-danh-muc-so-do-bang-bieu.md](./07-danh-muc-so-do-bang-bieu.md) | Danh muc so do, bang bieu, screenshot can ve/chup | Lap checklist hinh anh truoc khi viet ban chinh |
 | [08-huong-dan-ve-so-do-bao-cao.md](./08-huong-dan-ve-so-do-bao-cao.md) | Huong dan cach ve tung so do, bang bieu va sequence theo source code | Dung khi bat dau ve hinh cho bao cao |
+| [09-admin-panel.md](./09-admin-panel.md) | Mo ta Admin Panel Phase 14, role guard, modules, endpoint va gioi han | Viet phan frontend/admin trong Chuong 5 va phu luc screenshot |
 | [01-phan-tich-kien-truc-microservices.md](./01-phan-tich-kien-truc-microservices.md) | Tai lieu phan tich kien truc chi tiet da co | Dung lam phu luc/tham khao sau cho Chuong 4 |
 
 ## Quy trinh viet bao cao
