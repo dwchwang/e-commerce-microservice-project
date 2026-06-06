@@ -1,6 +1,6 @@
 # 11. Resilience4j — Circuit Breaker, Retry, Rate Limiting
 
-> Cập nhật sau Phase 13: hệ thống đã có smoke/security pass và một số resilience test trên AWS. Kết quả cần viết trung thực: kill order-service chứng minh recovery sau downtime; inventory-failed compensation pass; Kafka replay và Redis cart degradation chưa đủ bằng chứng kết luận pass.
+> Cập nhật sau Phase 13: hệ thống đã có smoke/security pass và resilience test trên AWS. Kết quả cần viết trung thực: kill order-service chứng minh recovery sau downtime, Kafka outbox replay pass, Redis degradation/recovery pass, inventory-failed compensation pass.
 
 ## 1. Mục Tiêu Nghiên Cứu
 
@@ -237,7 +237,7 @@ Client → Gateway (rate limit) → Backend
 |---|---|---|---|
 | Kill order-service | Khi service bị dừng cưỡng bức, checkout fail có kiểm soát và phục hồi sau restart | Trong 30s downtime: `order_created` còn 47.15%, HTTP failure 25.94%; sau restart health gateway/order trả 200 | Dùng làm bằng chứng recovery, không gọi là zero-downtime |
 | Inventory failure compensation | Order bị hủy khi inventory không đủ, reserved stock không bị treo | Order `4170422f-fc2d-49f8-aa5f-c7cd1d79266a` chuyển `CANCELLED`, inventory `quantity=0`, `reserved_quantity=0` | Dùng làm bằng chứng saga compensation |
-| Kill Kafka | Outbox giữ event khi Kafka down và replay sau restart | Kafka stop/start xong nhưng order probe trả empty response; outbox replay chưa verify | Chỉ ghi là attempted/inconclusive |
+| Kill Kafka | Outbox giữ event khi Kafka down và replay sau restart | Outbox row duoc ghi nhan khi Kafka down; sau restart cac event duoc process va order confirmed | Pass cho scope DATN |
 | Kill Redis | Redis-dependent feature degrade, Postgres-backed read vẫn hoạt động | Product list trả 200 trong/after outage; cart probe 401 do token expired | Chỉ dùng phần product read, không kết luận cart |
 
 Nguồn: `.test/results/SUMMARY.md`, `.docs/08-testing-and-evaluation.md`, `.test/results/chaos-*`.

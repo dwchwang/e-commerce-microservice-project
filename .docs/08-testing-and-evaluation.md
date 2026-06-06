@@ -7,10 +7,10 @@ Tai lieu nay la nguon chi tiet cho Chuong 6. Nguyen tac: **khong tu tao so lieu*
 | Thanh phan | Gia tri |
 |---|---|
 | He thong duoc test | AWS EC2 chay Docker Compose production stack |
-| Entry point | `http://13.213.118.96:8080` |
+| Entry point | API Gateway trên EC2, đọc từ `aws/config.env` (`ELASTIC_IP`) |
 | Load generator | Laptop chay k6 |
 | Dataset | 100 products, 500 users, flash sale 100 stock |
-| Thoi gian | 2026-05-30 den 2026-05-31 |
+| Thoi gian | 2026-05-30 den 2026-06-01 |
 
 ## 2. Chuan bi du lieu
 
@@ -46,11 +46,19 @@ Redis stock key was already expired by the time verification was collected becau
 | Scenario | Ket qua | Bang chung |
 |---|---|---|
 | Kill order-service | During forced 30s downtime, checkout k6 crossed thresholds as expected: order_created 47.15%, HTTP failure 25.94%. Gateway/order health returned 200 after recovery. | `chaos-order-kill-20260531-115007.*` |
-| Kill Kafka | Kafka stop/start completed, but the order probe during outage returned empty response; outbox replay was not verified. Do not present this as a pass. | `chaos-kafka-action-20260531-115518.txt` |
-| Kill Redis | Product list stayed 200 during Redis outage and after recovery. Cart probe was inconclusive because the token used had expired and returned 401. | `chaos-redis-*-20260531-120329.txt` |
+| Kill Kafka | Order `e460bab0-0856-4121-8f02-9e318623a1aa` was created while Kafka was stopped. `ORDER_CREATED` outbox row was captured as `processed=f`; after Kafka restarted, `ORDER_CREATED`, `PAYMENT_REQUESTED`, and `ORDER_CONFIRMED` were `processed=t`. Final order status was `CONFIRMED`; inventory recorded `RESERVE` and `STOCK_OUT`. | `chaos-kafka-*-20260601-231131.*` |
+| Kill Redis | Guest cart returned 200 before outage. During Redis outage, product list stayed 200 while Redis-backed cart returned 500. After Redis restart, product list and cart both returned 200. | `chaos-redis-*-20260601-231236.*` |
 | Inventory failure compensation | Forced SKU `LT-20260530212705-96` to quantity 0, created order `4170422f-fc2d-49f8-aa5f-c7cd1d79266a`, final status `CANCELLED` with insufficient-stock reason. | `chaos-inventory-*-20260531-120641.*` |
 
-## 6. Code/runtime fixes made before final runs
+## 6. Observability evidence
+
+| Evidence | Ket qua | Bang chung |
+|---|---|---|
+| Prometheus metrics | Captured `up`, request rate, p95 latency, and JVM heap from AWS Prometheus. Use this as the metric source if Grafana UI screenshot is unavailable. | `prometheus-phase13-metrics-20260601-234147.txt` |
+| Zipkin trace | Captured recent Zipkin traces and one `order-service` outbox poller detail with `outcome=SUCCESS`. | `zipkin-trace-detail-20260601-234035.png`, `zipkin-order-service-traces-20260601-234021.json` |
+| Grafana dashboard | Dashboard folder `E-commerce` contains `E-commerce Saga Overview`, `JVM Overview`, and `Spring Boot Overview`; use captured Grafana screenshots as thesis figures, with Prometheus transcript as raw metric evidence. | `grafana-*-20260601-*.png` |
+
+## 7. Code/runtime fixes made before final runs
 
 | Area | Fix |
 |---|---|
@@ -59,10 +67,9 @@ Redis stock key was already expired by the time verification was collected becau
 | Flash-sale script | Uses pre-seeded JWT tokens and custom k6 counters for exact threshold checks. |
 | Seed scripts | Product seed performs inventory stock-in; flash-sale seed uses live product and correct campaign DTO. |
 | Chaos scripts | SSH/EC2 config is env-driven; inventory script now uses `ecommerce-postgres`. |
+| Phase 13 scripts | Added reproducible Kafka replay, Redis degradation, and observability capture helpers under `.test/scripts/`. |
 
-## 7. Con lai truoc khi copy vao thesis
+## 8. Con lai truoc khi copy vao thesis
 
-- Export Grafana panels: request latency, JVM heap/GC, Kafka lag, Redis health, circuit breaker state.
-- Capture Zipkin traces: checkout happy path and inventory compensation path.
-- Re-run Kafka outbox replay with explicit HTTP status capture and DB `outbox_events` verification.
-- Re-run Redis cart degradation with a freshly logged-in token if that claim is needed.
+- Choose final Grafana panels for thesis figures: `E-commerce Saga Overview`, `JVM Overview`, and `Spring Boot Overview`.
+- Optional: capture more recent Zipkin checkout/inventory compensation traces if the EC2 stack is restarted because Zipkin storage is in-memory.

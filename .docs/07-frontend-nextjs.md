@@ -164,8 +164,8 @@ npm run dev
 With remote BE (AWS EC2 running):
 
 ```bash
-NEXT_PUBLIC_API_BASE_URL=https://api.13-213-118-96.nip.io
-API_BASE_URL=https://api.13-213-118-96.nip.io
+NEXT_PUBLIC_API_BASE_URL=https://api.<ELASTIC_IP_DASHED>.nip.io
+API_BASE_URL=https://api.<ELASTIC_IP_DASHED>.nip.io
 ```
 
 With local BE (Docker Compose):

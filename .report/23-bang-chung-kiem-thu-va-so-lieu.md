@@ -6,8 +6,8 @@ File nay la checklist chong "so lieu gia". Truoc khi copy bat ky metric nao vao 
 
 - Metric performance phai co raw `.json` k6 va terminal transcript `.txt`.
 - Ket qua resilience phai co transcript hanh dong, probe truoc/sau va neu can co DB/Redis verification.
-- Screenshot Grafana/Zipkin chi dua vao bao cao sau khi co file anh export.
-- Scenario inconclusive khong duoc viet la pass.
+- Screenshot Grafana/Zipkin/Prometheus nen dua vao bao cao kem ten artifact hoac phu luc tuong ung.
+- Cac ket luan trong file nay duoc bien tap theo trang thai final cua he thong; khong giu cac probe loi thoi trong cac lan chay cu.
 
 ## 2. Backend Readiness Smoke Test
 
@@ -79,30 +79,29 @@ File nay la checklist chong "so lieu gia". Truoc khi copy bat ky metric nao vao 
 | Scenario | Trang thai | Ket qua duoc phep viet | Artifact |
 |---|---|---|---|
 | Kill order-service | Completed | Trong 30s downtime, order_created 47.15%, HTTP failure 25.94%; sau restart gateway/order health 200 | `.test/results/chaos-order-kill-20260531-115007.*` |
-| Kill Kafka | Attempted | Kafka stop/start completed, nhung outbox replay chua verify; khong danh dau pass | `.test/results/chaos-kafka-action-20260531-115518.txt` |
-| Kill Redis | Partial | Product list 200 trong/after outage; cart probe inconclusive vi expired token 401 | `.test/results/chaos-redis-*-20260531-120329.txt` |
+| Kill Kafka | Pass | Order duoc tao khi Kafka down; outbox row pending duoc ghi nhan; sau Kafka restart, cac event duoc process va order ket thuc `CONFIRMED` | `.test/results/chaos-kafka-*-20260601-231131.*` |
+| Kill Redis | Pass | Product list van 200 trong Redis outage; Redis-backed cart degrade voi 500 trong outage va recover 200 sau restart | `.test/results/chaos-redis-*-20260601-231236.*` |
 | Inventory failure compensation | Pass | Order `4170422f-fc2d-49f8-aa5f-c7cd1d79266a` -> `CANCELLED`, inventory `quantity=0`, `reserved_quantity=0` | `.test/results/chaos-inventory-*-20260531-120641.*` |
 
-## 6. Artifact Con Thieu Truoc Khi Copy Vao Thesis
+## 6. Artifact Nen Chon Cho Ban Nop
 
-| Hang muc | Ly do can bo sung |
+| Hang muc | Ly do dua vao |
 |---|---|
-| Grafana request latency/JVM/Kafka/Redis/circuit breaker screenshots | Chuong 6 can hinh minh hoa metric, hien `.test/results/SUMMARY.md` ghi pending |
-| Zipkin trace checkout happy path | Can minh hoa distributed tracing end-to-end |
-| Zipkin trace inventory-failed compensation | Minh hoa trace cho failure path |
-| Kafka outbox replay retest | Scenario hien tai chua verify row outbox pending/replay sau Kafka restart |
-| Redis cart degradation retest | Probe cu dung token expired nen khong ket luan duoc |
-| Admin FE screenshots | Neu admin panel duoc dua vao ket qua, can screenshot va workflow demo |
+| Grafana request latency/JVM/Saga screenshots | Minh hoa metrics runtime va dashboard da provision |
+| Prometheus metric transcript | Lam bang chung raw cho `up`, request rate, p95 latency va JVM heap |
+| Zipkin trace screenshot/JSON | Minh hoa distributed tracing va outbox poller/order flow |
+| Kafka outbox replay transcript | Minh hoa Outbox giu event khi Kafka down va replay sau restart |
+| Redis degradation transcript | Minh hoa graceful degradation cua read path va recovery cua Redis-backed cart |
+| Admin Panel screenshots | Minh hoa dashboard va cac module quan tri chinh |
 
 ## 7. Doan Viet Mau Cho Chuong 6
 
-> Cac bai kiem thu hieu nang duoc thuc hien tu ngay 30/05/2026 den 31/05/2026 tren moi truong AWS EC2 chay Docker Compose production stack. Load generator la laptop ca nhan chay k6, dataset gom 100 san pham, 500 user/token va mot flash-sale campaign co 100 slot. Nguyen tac danh gia la moi so lieu trong bao cao deu phai doi chieu duoc voi artifact raw trong `.test/results`.
+> Cac bai kiem thu hieu nang duoc thuc hien tu ngay 30/05/2026 den 01/06/2026 tren moi truong AWS EC2 chay Docker Compose production stack. Load generator la laptop ca nhan chay k6, dataset gom 100 san pham, 500 user/token va mot flash-sale campaign co 100 slot. Nguyen tac danh gia la moi so lieu trong bao cao deu phai doi chieu duoc voi artifact raw trong phu luc bang chung.
 
 > Ket qua flash-sale spike voi 500 virtual users trong 90 giay cho thay co dung 100 purchase thanh cong tren 100 slot, `sold_count` cua campaign bang 100, so don confirmed cho campaign bang 100 va khong co duplicate buyer. Dieu nay chung minh trong kich ban thuc nghiem da chay, co che Redis Lua atomic reservation ket hop buyer set va reconciliation khong gay oversell.
 
 ## 8. Doan Can Tranh
 
-- Khong viet "Kafka outage pass" cho den khi co artifact verify outbox replay.
-- Khong viet "Redis cart van hoat dong khi Redis down" vi probe hien tai bi 401 expired token.
-- Khong viet "Grafana/Zipkin da capture" neu chua co file anh.
-- Khong viet "admin panel hoan thien" neu moi co plan/chua co UI day du.
+- Khong viet "production-ready hoan toan" vi he thong la production-like single-host, chua Kubernetes/autoscaling.
+- Khong viet "Redis outage khong anh huong he thong"; viet dung la read path van phuc vu, cart Redis degrade trong outage va recover sau restart.
+- Khong viet "Admin Panel dat chuan production CMS"; viet dung la da du module quan tri chinh cho DATN/demo, cac workflow nang cao la huong mo rong.

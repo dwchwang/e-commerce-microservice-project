@@ -52,7 +52,9 @@ Xay dung mot he thong thuong mai dien tu theo kien truc microservices, co kha na
 8. Su dung Redis cho cart, cache, rate-limit va atomic stock reservation trong flash sale.
 9. Su dung Elasticsearch cho full-text search theo huong CQRS-lite.
 10. Trien khai observability voi Actuator, Prometheus, Grafana va Zipkin.
-11. Dong goi va chay local bang Docker Compose.
+11. Xay dung frontend Next.js cho storefront va admin panel de demo day du luong nguoi dung/quan tri.
+12. Dong goi va chay bang Docker Compose cho local va moi truong AWS EC2 production-like.
+13. Xay dung pipeline CI/CD voi GitHub Actions va GHCR de build/push/deploy he thong.
 
 ### Nguon can doc
 
@@ -74,18 +76,19 @@ Xay dung mot he thong thuong mai dien tu theo kien truc microservices, co kha na
 | Security | Keycloak, OAuth2 Resource Server/JWT validation o Gateway, trusted identity headers |
 | Payment | VNPAY sandbox, Return URL, IPN, HMAC-SHA512 |
 | Observability | Actuator, Prometheus, Grafana, Zipkin, log traceId/spanId |
-| Deployment | Docker Compose single-host local demo |
-| Testing | Unit test, integration test co Testcontainers, manual/E2E scenario |
+| Frontend | Next.js storefront, account pages, checkout, order, flash-sale, review va admin panel |
+| Deployment | Docker Compose single-host cho local va AWS EC2 production-like, Caddy HTTPS reverse proxy |
+| CI/CD | GitHub Actions build/push GHCR va deploy manual len EC2 |
+| Testing | Unit test, integration test co Testcontainers, manual/E2E scenario, performance/resilience evaluation |
 
 ### Out-of-scope
 
 | Hang muc | Ly do |
 |---|---|
-| Frontend web/mobile hoan chinh | De tai tap trung backend microservices |
+| Mobile app | Phu hop huong phat trien rieng; de tai da co web storefront/admin |
 | Kubernetes/Helm | Phu hop huong phat trien, khong phai pham vi chinh |
 | Payment production | Chi dung sandbox de demo an toan |
 | Logistics/refund production | Vuot qua pham vi backend e-commerce loi |
-| CI/CD production | Neu repo chua co workflow that, dua vao huong phat trien |
 | Service mesh/mTLS | Nang cao, phu hop huong phat trien |
 
 ## 1.4. Doi tuong su dung va doi tuong nghien cuu
@@ -143,7 +146,7 @@ Nen trinh bay theo 3 nhom:
 2. **Dong gop ky thuat**: Saga, Outbox, Idempotency, Redis Lua flash-sale, Gateway security/rate-limit, observability.
 3. **Dong gop thuc nghiem**: source code chay duoc bang Docker Compose, co test va screenshot minh chung.
 
-Luu y: neu chua chay load test that, khong viet "da chung minh he thong chiu duoc 1000 user". Hay viet "he thong co co che thiet ke de giam rui ro oversell va can duoc danh gia bang kich ban tai trong o Chuong 6".
+Luu y: khong viet "da chung minh he thong chiu duoc 1000 user" neu con so do khong nam trong ket qua final. Hay viet theo dung bang chung cua Chuong 6 va nhan manh co che Redis Lua/atomic reservation da giam rui ro oversell trong kich ban da danh gia.
 
 ## 1.8. Bo cuc bao cao
 

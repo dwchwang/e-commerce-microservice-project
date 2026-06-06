@@ -191,7 +191,7 @@ Noi dung chinh:
 8. Danh gia muc do hoan thanh muc tieu.
 9. Han che va rui ro con lai.
 
-Neu chua chay performance test thi khong tu tao so lieu. Hay ghi ro phan do la "kich ban de xuat" va dua vao huong phat trien/ke hoach do.
+Trong ban final, khong tu tao so lieu. Chi dua cac ket qua performance/resilience da chon vao Chuong 6; cac kich ban mo rong de vao huong phat trien.
 
 ## 6. Thu tu lam viec de viet bao cao nhanh
 

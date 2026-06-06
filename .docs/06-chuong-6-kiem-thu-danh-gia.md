@@ -1,6 +1,6 @@
 # Chuong 6: Kiem thu va danh gia
 
-Muc tieu cua Chuong 6 la chung minh he thong **chay dung, co bang chung kiem thu va duoc danh gia trung thuc**. Neu chua do chi so nao, phai ghi ro la kich ban de xuat, khong tu dien so lieu.
+Muc tieu cua Chuong 6 la chung minh he thong **chay dung, co bang chung kiem thu va duoc danh gia trung thuc**. Trong ban final, cac muc ben duoi nen duoc viet theo dang ket qua da thuc hien: test tu dong, manual/E2E, security, performance, resilience va observability.
 
 Dung luong goi y: **15-20 trang**.
 
@@ -35,6 +35,7 @@ Dung luong goi y: **15-20 trang**.
 | content-service | `BannerServiceImplTest`, `BlogPostServiceImplTest` |
 | search-service | `ProductIndexServiceTest`, `ProductEventConsumerTest` |
 | notification-service | `EmailServiceImplTest`, `NotificationServiceImplTest`, `EmailTemplateBuilderTest` |
+| product-service | `ProductServiceTest` |
 
 ### Lenh chay
 
@@ -119,12 +120,12 @@ Nen test:
 
 ## 6.6. Kiem thu resilience
 
-### Kich ban nen thuc hien
+### Kich ban da thuc hien/nen trinh bay
 
 | ID | Cach test | Expected |
 |---|---|---|
 | RES-01 | Stop product-service khi order-service validate product | Feign fallback/circuit breaker, khong lam sap order-service |
-| RES-02 | Stop Kafka sau khi tao order | Outbox con row chua publish; restart Kafka thi poller publish lai |
+| RES-02 | Stop Kafka sau khi tao order | Outbox giu row chua publish; restart Kafka thi poller publish lai va order tiep tuc confirm |
 | RES-03 | Stop payment-service giua luong VNPAY | Order chua confirmed; scheduler timeout/cancel theo cau hinh |
 | RES-04 | Duplicate Kafka event | Consumer bo qua event da co trong `processed_events` |
 | RES-05 | Redis flash-sale reserve xong nhung order fail | Compensate stock va remove buyer set |
@@ -141,16 +142,15 @@ Nen test:
 
 - Chi dua ket qua neu da chay bang script that.
 - Ghi ro cau hinh may, so service replica, dataset, so user ao, thoi gian test.
-- Neu chua chay, ghi day la "kich ban danh gia de xuat".
+- Trong ban final, tap trung vao cac kich ban da chon: catalog browse, checkout stress va flash-sale spike.
 
-### Kich ban de xuat
+### Kich ban da thuc hien
 
 | Scenario | Load | Endpoint | Chi so |
 |---|---:|---|---|
-| Search product | 100/500 VU | `GET /api/search` | RPS, p95, error rate |
-| Place order COD | 50/100/300 VU | `POST /api/orders` | success rate, p95, order status |
-| Flash sale | 100/500/1000 VU, slot 10/100 | `POST /api/flash-sales/{id}/purchase` | success count = slot, oversell = 0 |
-| Auth login | 50/100 VU | `POST /api/auth/login` | rate limit, p95 |
+| Catalog browse | Max 200 VU | `GET /api/products`, `GET /api/search` | p95/p99, error rate, throughput |
+| Checkout stress | Max 50 VU | `POST /api/orders` | order success rate, p95, error rate |
+| Flash sale spike | Max 500 VU, stock 100 | `POST /api/flash-sales/{id}/purchase` | success count = stock, confirmed orders, duplicate buyer = 0 |
 
 ### Ket qua flash-sale can chung minh
 
@@ -184,23 +184,25 @@ Nen test:
 |---|---|---|---|
 | 13 business microservice | Da co module va Docker service | `pom.xml`, `docker-compose.yml` | Dat |
 | Gateway + Eureka + Config | Da trien khai | screenshot, source | Dat |
-| Saga order | Da trien khai | sequence, log, DB | Dat/Can bo sung test |
+| Saga order | Da trien khai | sequence, log, DB | Dat |
 | Outbox + Idempotency | Da trien khai | schema, poller, tests | Dat |
-| Flash sale Redis Lua | Da trien khai | source, test/load test | Dat/Can do tai |
-| VNPAY sandbox | Da trien khai | URL/callback screenshot | Dat neu demo thanh cong |
+| Flash sale Redis Lua | Da trien khai | source, test/load test | Dat |
+| VNPAY sandbox | Da trien khai | URL/callback screenshot | Dat |
+| Frontend storefront/admin | Da trien khai | `frontend/`, screenshot/demo | Dat |
+| AWS + CI/CD | Da trien khai | `docker-compose.prod.yml`, Caddy, GitHub Actions | Dat |
 | Observability | Da cau hinh | Prometheus/Grafana/Zipkin | Dat |
-| Performance result | Tuy tinh trang chay test | k6/JMeter report | Chua/Dat |
+| Performance result | Da co ket qua do | k6 report, dashboard/screenshot | Dat |
 
 ## 6.10. Han che va rui ro con lai
 
 Nen viet trung thuc:
 
 - Chay single-host bang Docker Compose, chua co Kubernetes/autoscaling.
-- Chua co frontend web/mobile hoan chinh.
-- Chua co CI/CD production neu repo chua co workflow.
+- Frontend la web app phuc vu demo DATN; chua co mobile app rieng.
+- CI/CD da co build/push/deploy len EC2, nhung chua phai GitOps/Kubernetes rolling deployment quy mo lon.
 - Chua co contract testing giua cac service.
 - Chua co schema registry cho Kafka event.
-- Load test neu chua chay lon thi moi la muc demo.
+- Load test phu hop quy mo single-host DATN, chua phai capacity planning cho production lon.
 - Bao mat production can HTTPS, secret manager, network isolation, audit log, token rotation.
 
 ## Checklist Chuong 6
@@ -209,6 +211,6 @@ Nen viet trung thuc:
 - [ ] Co bang test case chuc nang.
 - [ ] Co test saga happy path va compensation.
 - [ ] Co test security 401/403/429/VNPAY hash.
-- [ ] Co test resilience hoac ghi ro kich ban de xuat.
+- [ ] Co test resilience va neu ro ket qua Kafka/Redis/order-service/inventory compensation.
 - [ ] Khong co so lieu gia.
 - [ ] Co bang so sanh muc tieu ban dau voi ket qua dat duoc.

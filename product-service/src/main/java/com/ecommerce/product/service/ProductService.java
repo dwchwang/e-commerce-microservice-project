@@ -17,7 +17,6 @@ import com.ecommerce.product.repository.CategoryRepository;
 import com.ecommerce.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -40,11 +39,6 @@ public class ProductService {
     private final ProductEventProducer productEventProducer;
 
     @Transactional(readOnly = true)
-    @Cacheable(
-            value = "products",
-            key = "'list:' + #pageable.pageNumber + ':' + #pageable.pageSize + ':' + "
-                    + "(#pageable.sort.isSorted() ? #pageable.sort : 'created_at:DESC') + "
-                    + "':' + #categoryId + ':' + #brandId + ':' + #minPrice + ':' + #maxPrice + ':' + #keyword")
     public Page<ProductSummaryResponse> getAllProducts(
             UUID categoryId,
             UUID brandId,
@@ -52,7 +46,7 @@ public class ProductService {
             BigDecimal maxPrice,
             String keyword,
             Pageable pageable) {
-        Pageable effectivePageable = defaultSort(pageable);
+        Pageable effectivePageable = normalizePageableSort(pageable);
         return productRepository.searchProducts(
                         normalizeKeyword(keyword),
                         categoryId != null ? categoryId.toString() : null,
@@ -134,11 +128,33 @@ public class ProductService {
         return keyword == null || keyword.isBlank() ? null : keyword.trim();
     }
 
-    private Pageable defaultSort(Pageable pageable) {
-        if (pageable.getSort().isSorted()) {
-            return pageable;
+    Pageable normalizePageableSort(Pageable pageable) {
+        Sort normalizedSort = normalizeSort(pageable.getSort());
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), normalizedSort);
+    }
+
+    private Sort normalizeSort(Sort sort) {
+        if (sort.isUnsorted()) {
+            return Sort.by("created_at").descending();
         }
-        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by("created_at").descending());
+
+        List<Sort.Order> orders = sort.stream()
+                .map(this::normalizeOrder)
+                .filter(order -> order != null)
+                .toList();
+
+        return orders.isEmpty() ? Sort.by("created_at").descending() : Sort.by(orders);
+    }
+
+    private Sort.Order normalizeOrder(Sort.Order order) {
+        String property = switch (order.getProperty()) {
+            case "createdAt", "created_at" -> "created_at";
+            case "updatedAt", "updated_at" -> "updated_at";
+            case "isActive", "is_active" -> "is_active";
+            case "id", "sku", "name", "price" -> order.getProperty();
+            default -> null;
+        };
+        return property == null ? null : new Sort.Order(order.getDirection(), property);
     }
 
     private Category findCategory(UUID categoryId) {

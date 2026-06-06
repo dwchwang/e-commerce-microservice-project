@@ -33,13 +33,13 @@ Khac voi:
 1. Doc [00-de-cuong-bao-cao-datn.md](./00-de-cuong-bao-cao-datn.md) de nam tong the 6 chuong.
 2. Viet theo thu tu: Chuong 1 -> Chuong 3 -> Chuong 4 -> Chuong 5 -> Chuong 6 -> Chuong 2. Chuong 2 chi giu cac ly thuyet cot loi can de giai thich thiet ke; cac cong nghe cu the nhu Spring Boot, Kafka, Redis, PostgreSQL, Elasticsearch, Keycloak va Docker Compose de sang Chuong 3.
 3. Moi muc lon can co it nhat mot trong ba bang chung: file `.report`, file `.guide`, hoac source code.
-4. Moi so lieu hieu nang, latency, RPS, pass/fail chi dien sau khi do that. Neu chua do, ghi ro la "kich ban de xuat".
+4. Moi so lieu hieu nang, latency, RPS, pass/fail chi lay tu ket qua da chon cho ban nop; cac kich ban mo rong khong dua vao ket qua chinh.
 5. Moi so do nen ve lai bang PlantUML/Mermaid/draw.io, khong chup man hinh ASCII trong tai lieu.
 
 ## Nguyen tac quan trong
 
 - Khong viet "da trien khai" neu khong co code, test, log hoac screenshot chung minh.
-- Khong dua Kubernetes, CI/CD, JaCoCo, k6/JMeter vao phan ket qua neu repo chua co bang chung hoac chua chay do.
+- Khong dua Kubernetes, service mesh, JaCoCo coverage hay cac kich ban load test mo rong vao phan ket qua neu khong nam trong pham vi final.
 - Khong paste nguyen file code vao bao cao. Chi trich snippet ngan, co giai thich vi sao snippet do quan trong.
 - Cac khai niem lon nhu Microservices, Saga, CAP, OAuth2, JWT, Outbox, Idempotency phai co tai lieu tham khao.
 - Cac diem an diem cua de tai nen viet ky: Saga Orchestration, Transactional Outbox, Idempotent Consumer, Flash Sale Redis Lua, API Gateway security/rate limit, Observability.

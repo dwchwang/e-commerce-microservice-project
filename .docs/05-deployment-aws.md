@@ -1,6 +1,6 @@
 # 5.x. Triển khai hệ thống lên AWS EC2
 
-Tài liệu này mô tả quy trình triển khai toàn bộ hệ thống 16 microservice + infrastructure lên một EC2 instance duy nhất sử dụng Docker Compose, Caddy reverse proxy, và HTTPS qua Let's Encrypt.
+Tài liệu này mô tả quy trình triển khai toàn bộ hệ thống gồm 16 Spring Boot service/module (13 business services + API Gateway + Discovery Server + Config Server), frontend Next.js và infrastructure lên một EC2 instance duy nhất sử dụng Docker Compose, Caddy reverse proxy, và HTTPS qua Let's Encrypt.
 
 ---
 
@@ -69,7 +69,7 @@ Internet (HTTPS)
 | Region       | `ap-southeast-1` (Singapore)     | Gần Việt Nam, latency thấp      |
 | EBS Root     | gp3 60GB, 3000 IOPS, 125 MB/s    | Lưu trữ dữ liệu + Docker images |
 | Elastic IP   | Cố định khi stop/start           | IP công khai cho nip.io DNS     |
-| Key Pair     | `ecommerce-thesis-key` (ED25519) | SSH access                      |
+| Key Pair     | Đọc từ `aws/config.env` (`SSH_KEY_PATH`) | SSH access             |
 | Swap         | 4GB file-based                   | Safety net khi peak memory      |
 
 ### Security Group Rules
@@ -157,7 +157,7 @@ x-java-env: &java-env
 
 ### 5.x.5.1. nip.io Dynamic DNS
 
-nip.io là dịch vụ DNS miễn phí, tự động resolve `<anything>.<ip>.nip.io` về `<ip>`. Không cần mua domain name. Ví dụ: `api.13-213-118-96.nip.io` resolve về `13.213.118.96`.
+nip.io là dịch vụ DNS miễn phí, tự động resolve `<anything>.<ip>.nip.io` về `<ip>`. Không cần mua domain name. Ví dụ: `api.{ELASTIC_IP_DASHED}.nip.io` resolve về `{ELASTIC_IP}`; hai giá trị này đọc từ `aws/config.env` khi triển khai.
 
 ### 5.x.5.2. Caddyfile Configuration
 

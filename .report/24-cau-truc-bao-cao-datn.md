@@ -7,8 +7,8 @@ File nay huong dan map bo tai lieu `.report` vao bao cao DATN theo cau truc **6 
 Nguyen tac quan trong:
 - Chi viet "da trien khai" khi co source code, config, workflow, screenshot, log hoac raw test artifact.
 - So lieu hieu nang/resilience chi copy tu [23-bang-chung-kiem-thu-va-so-lieu.md](./23-bang-chung-kiem-thu-va-so-lieu.md).
-- Cac scenario chua du bang chung phai ghi trung thuc: Kafka outbox replay chua verify, Redis cart degradation inconclusive, Grafana/Zipkin screenshot con can capture.
-- Admin FE la phan con lai can hoan thien neu chua co UI/screenshot day du.
+- Cac ket qua final nen gan voi source code, config, workflow, screenshot, log hoac artifact phu luc; khong viet qua muc production multi-node.
+- Admin Panel la mot phan ket qua trien khai cua Phase 14; van ghi gioi han demo nhu upload bang URL, chua object storage/moderation workflow/ban user production.
 
 ## 2. Cau Truc Bao Cao 6 Chuong
 
@@ -49,7 +49,7 @@ Tong dung luong hop ly: 130-170 trang neu tinh ca phu luc; phan chinh nen giu kh
 | Observability | Actuator, Prometheus, Grafana, Zipkin, trace/log correlation |
 | Deployment | Docker Compose local va AWS EC2 production-like single-host |
 | CI/CD | GitHub Actions build/push GHCR va deploy manual len EC2 |
-| Frontend | Next.js storefront; admin panel la phan con lai neu chua hoan thien |
+| Frontend | Next.js storefront va Admin Panel trong cung app, BFF/proxy, httpOnly cookie, ROLE_ADMIN guard |
 | Evaluation | Smoke test 9/9 suites pass; k6 catalog/checkout/flash-sale co so lieu that |
 
 ## 4. Map Nhanh Chuong -> Nguon
@@ -70,7 +70,7 @@ Tong dung luong hop ly: 130-170 trang neu tinh ca phu luc; phan chinh nen giu kh
 1. Dat van de: e-commerce co traffic spike, flash sale, thanh toan, ton kho, search, user session.
 2. Gioi han cua monolith khi can scale rieng flash-sale/search/order.
 3. Muc tieu: xay dung he thong e-commerce microservices bang Spring Boot/Spring Cloud.
-4. Pham vi: backend, storefront FE, AWS/CI/CD, testing; admin FE ghi theo trang thai thuc te.
+4. Pham vi: backend, storefront FE, admin panel, AWS/CI/CD, testing/evaluation.
 5. Dong gop ky thuat: Saga, Outbox, Idempotency, Redis Lua flash-sale, observability, k6 evaluation.
 6. Bo cuc bao cao 6 chuong.
 
@@ -114,7 +114,7 @@ Muc tieu la tra loi "vi sao chon stack nay".
 | Keycloak | Open-source IdP, JWT/OIDC, role management | identity/auth |
 | Docker Compose | Phu hop DATN single-host, reproduce local/AWS | local va production-like EC2 |
 | GitHub Actions + GHCR | CI/CD don gian, reproducible image build | Phase 11 |
-| Next.js | Storefront SSR/RSC/BFF, deploy cung backend | Phase 12 |
+| Next.js | Storefront SSR/RSC/BFF va Admin Panel, deploy cung backend | Phase 12-14 |
 
 ## 8. Chuong 4 - Phan Tich Va Thiet Ke He Thong
 
@@ -167,7 +167,7 @@ Chuong nay chung minh thiet ke da thanh code/config/runbook.
 9. AWS deployment Phase 10: EC2, production compose override, Caddy/HTTPS, CORS env-driven.
 10. CI/CD Phase 11: build/push/deploy workflows.
 11. Frontend Phase 12: Next.js storefront, BFF/proxy, deploy chung container.
-12. Admin FE Phase 14: chi dua vao day neu da co UI/screenshot; neu chua thi de vao huong phat trien.
+12. Admin Panel Phase 14: ROLE_ADMIN guard, dashboard va cac module products/inventory/orders/users/vouchers/flash-sales/content/reviews.
 
 ### Bang code minh chung nen co
 
@@ -192,7 +192,7 @@ Chuong nay chung minh thiet ke da thanh code/config/runbook.
 4. Test case chuc nang: auth, catalog, cart, order, VNPAY, review, flash-sale.
 5. Security test: 401/403/duplicate rejection/rate limit.
 6. Performance test: catalog soak, checkout stress, flash-sale spike.
-7. Resilience test: kill order-service, inventory compensation, Kafka/Redis inconclusive notes.
+7. Resilience test: kill order-service, Kafka outbox replay, Redis degradation/recovery, inventory compensation.
 8. Danh gia muc tieu ban dau vs ket qua.
 9. Han che va rui ro con lai.
 
@@ -209,14 +209,14 @@ Chi copy tu [23](./23-bang-chung-kiem-thu-va-so-lieu.md). Cac metric chinh:
 | Kill order-service | Downtime co chu dich gay fail, sau restart health 200 |
 | Inventory compensation | Order inventory-failed chuyen `CANCELLED`, stock khong treo |
 
-### 10.3. Cac ket luan chua du bang chung
+### 10.3. Cac ket luan resilience/observability final
 
 | Muc | Trang thai |
 |---|---|
-| Kafka outbox replay khi Kafka down | Attempted, chua verify replay |
-| Redis cart degradation khi Redis down | Inconclusive vi token expired 401 |
-| Grafana/Zipkin screenshots | Pending capture |
-| Admin panel | Chi ghi la hoan thien neu co UI/screenshot/demo |
+| Kafka outbox replay khi Kafka down | Pass trong scope DATN: outbox pending khi Kafka down, replay sau restart, order confirmed |
+| Redis cart degradation khi Redis down | Pass theo ky vong: product list van 200, cart Redis degrade 500, recover 200 sau restart |
+| Grafana/Zipkin/Prometheus | Co evidence de minh hoa metrics va tracing |
+| Admin panel | Da trien khai module quan tri chinh; gioi han nang cao dua vao huong phat trien |
 
 ## 11. Ket Luan Va Huong Phat Trien
 
@@ -224,25 +224,23 @@ Chi copy tu [23](./23-bang-chung-kiem-thu-va-so-lieu.md). Cac metric chinh:
 
 - Xay dung duoc he thong e-commerce microservices voi Spring Boot/Spring Cloud.
 - Trien khai cac pattern quan trong: Saga, Outbox, Idempotency, Database per Service, Redis atomic flash-sale, scheduler/reconciliation.
-- Co AWS deployment, CI/CD va storefront FE theo phase 10-12.
+- Co AWS deployment, CI/CD, storefront FE va Admin Panel theo phase 10-14.
 - Co smoke test va performance/resilience artifact that cho Chuong 6.
 
 ### Han che nen viet trung thuc
 
-- Single-host Docker Compose, chua co Kubernetes/autoscaling.
+- Chua co Kubernetes/autoscaling/service mesh; hien tai la single-host Docker Compose.
 - Chua co schema registry/contract test day du cho Kafka event.
-- Kafka outbox replay resilience scenario can retest.
-- Grafana/Zipkin screenshot can capture truoc khi nop.
-- Admin FE con can hoan thien neu chua co UI day du.
+- Admin Panel phu hop demo/quan tri chinh; upload object storage, moderation workflow va ban/unban user la huong mo rong.
 
 ### Huong phat trien
 
-- Hoan thien Admin Panel.
 - Kubernetes/Helm, autoscaling va rolling deployment.
 - Contract testing/Pact, schema registry cho Kafka.
 - Dedicated analytics/reporting service.
 - S3/object storage cho product image.
-- Chaos test co he thong va long-running soak test.
+- Mobile app rieng va payment/logistics production.
+- Chaos test quy mo lon va long-running soak test.
 
 ## 12. Slide Defense Goi Y
 
@@ -266,7 +264,7 @@ Chi copy tu [23](./23-bang-chung-kiem-thu-va-so-lieu.md). Cac metric chinh:
 | 16 | Backend readiness test |
 | 17 | k6 performance results |
 | 18 | Flash-sale result: 100/100, duplicate 0 |
-| 19 | Resilience results va han che |
+| 19 | Resilience results va gioi han production-like |
 | 20 | Ket luan va huong phat trien |
 
 ## 13. Checklist Truoc Khi Nop
@@ -278,5 +276,5 @@ Chi copy tu [23](./23-bang-chung-kiem-thu-va-so-lieu.md). Cac metric chinh:
 - [ ] Co sequence diagram cho Order Saga, VNPAY va Flash-sale.
 - [ ] Co ERD/Redis key/Elasticsearch document model.
 - [ ] Co bang service ownership va Kafka topic catalog.
-- [ ] Co phan han che trung thuc ve single-host, Kafka replay, admin FE.
+- [ ] Co phan han che trung thuc ve single-host, chua Kubernetes/autoscaling, chua schema registry/contract test va cac gioi han admin production.
 - [ ] Tai lieu tham khao uu tien sach, paper, RFC, official docs.

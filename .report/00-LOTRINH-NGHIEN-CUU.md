@@ -162,9 +162,9 @@ Hội đồng phản biện thường hỏi về các thuật ngữ sau. Bạn p
 
 3. **Sơ đồ nhiều hơn chữ**: Báo cáo IT đánh giá cao sequence diagram, component diagram, ERD, flowchart. Folder `.guide` của dự án đã có nhiều sơ đồ ASCII bạn có thể chuyển thành PlantUML/Mermaid.
 
-4. **Đo lường thực tế**: Chương 6 đã có số liệu k6 cho catalog soak, checkout stress và flash-sale spike trong `.test/results`. Chỉ copy số liệu có trong [23](./23-bang-chung-kiem-thu-va-so-lieu.md). Grafana/Zipkin screenshot vẫn cần capture trước khi đưa vào bản nộp.
+4. **Đo lường thực tế**: Chương 6 đã có số liệu k6 cho catalog soak, checkout stress và flash-sale spike trong `.test/results`. Chỉ copy số liệu có trong [23](./23-bang-chung-kiem-thu-va-so-lieu.md). Grafana/Zipkin/Prometheus evidence da co the dung lam minh chung runtime.
 
-5. **Ghi đúng phần còn thiếu**: Kafka outbox replay và Redis cart degradation hiện chưa đủ bằng chứng kết luận pass; admin FE còn là phần cần hoàn thiện. Không viết quá mức so với artifact hiện có.
+5. **Ghi đúng phần hạn chế**: He thong da hoan thien o muc production-like single-host cho DATN, nhung khong viet thanh production multi-node/Kubernetes. Han che nen neu la autoscaling, service mesh, schema registry/contract test, mobile app rieng va payment production.
 
 ---
 

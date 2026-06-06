@@ -4,10 +4,6 @@
 # Caddy auto-obtains Let's Encrypt certificates via HTTP-01 challenge.
 # Prerequisites: port 80 & 443 must be publicly open (Security Group).
 
-{
-  email admin@ecommerce.local
-}
-
 # ============================================================
 # API Gateway (all backend API traffic)
 # ============================================================
@@ -50,7 +46,7 @@ auth.{$ELASTIC_IP_DASHED}.nip.io {
 # Grafana (optional — protected by basic auth on top)
 # ============================================================
 grafana.{$ELASTIC_IP_DASHED}.nip.io {
-  basicauth {
+  basic_auth {
     admin {$GRAFANA_HTPASSWD}
   }
   reverse_proxy localhost:3001

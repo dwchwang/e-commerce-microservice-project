@@ -1,6 +1,6 @@
 # 5.x. CI/CD Pipeline với GitHub Actions
 
-Tài liệu này mô tả quy trình CI/CD tự động build 16 microservice images, push lên GitHub Container Registry (GHCR), và deploy lên AWS EC2 bằng một click manual.
+Tài liệu này mô tả quy trình CI/CD tự động build 16 Spring Boot service images, build frontend image, push lên GitHub Container Registry (GHCR), và deploy lên AWS EC2 bằng một click manual.
 
 ---
 
@@ -31,7 +31,7 @@ Tài liệu này mô tả quy trình CI/CD tự động build 16 microservice im
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  GHCR: ghcr.io/dwchwang/<service>:latest                    │
+│  GHCR: ghcr.io/<owner>/<service>:latest                      │
 └────────────────┬────────────────────────────────────────────┘
                  │
                  │ (Manual trigger)
@@ -128,9 +128,9 @@ Tài liệu này mô tả quy trình CI/CD tự động build 16 microservice im
 
 | Secret | Value | Purpose |
 |---|---|---|
-| `EC2_HOST` | Elastic IP (vd `13.213.118.96`) | SSH target cho deploy |
+| `EC2_HOST` | Elastic IP từ `aws/config.env` (`ELASTIC_IP`) | SSH target cho deploy |
 | `EC2_SSH_KEY` | Private key content (`~/.ssh/aws-ecommerce`) | SSH authentication |
-| `GHCR_USERNAME` | GitHub username (vd `dwchwang`) | Docker login trên EC2 |
+| `GHCR_USERNAME` | GitHub username hoặc organization owner | Docker login trên EC2 |
 | `GHCR_PULL_TOKEN` | PAT classic với scope `read:packages` | Pull images từ GHCR trên EC2 |
 | `NEXT_PUBLIC_API_BASE_URL` | `https://api.<ip>.nip.io` | Frontend build arg |
 
@@ -140,7 +140,7 @@ Tài liệu này mô tả quy trình CI/CD tự động build 16 microservice im
 ### 5.x.3.2. Environment "production"
 
 **Protection rules:**
-- Required reviewers: 1 reviewer (`dwchwang`)
+- Required reviewers: 1 reviewer (`<reviewer-or-owner>`)
 - Deployment branches: `main` only
 
 **Workflow:**

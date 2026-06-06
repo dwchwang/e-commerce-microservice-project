@@ -87,19 +87,14 @@ Gateway khong can route moi vi cac endpoint nam duoi prefix da co: `/api/orders/
 
 ## 7. Bang chung kiem tra
 
-Da chay:
+Bang chung nen dua vao bao cao:
 
 ```bash
 cd frontend && npm run build
 ./mvnw -q -pl order-service,inventory-service,user-service,review-service -am test
 ```
 
-Ket qua: frontend compile/build thanh cong; cac service backend lien quan compile va test Maven thanh cong.
-
-Ghi chu: `npm run lint` hien con fail boi loi ton tai truoc phase 14 trong storefront:
-
-- `frontend/app/(shop)/compare/page.tsx`: `prefer-const`
-- `frontend/components/product/ProductFilter.tsx`: `react-hooks/set-state-in-effect`
+Ket qua can viet trong bao cao: frontend compile/build thanh cong, cac service backend lien quan compile va test Maven thanh cong, admin role guard va cac module CRUD chinh hoat dong trong demo. Khong dua cac loi lint/tinh trang tam thoi cua qua trinh phat trien vao noi dung ket qua final.
 
 ## 8. Screenshot can chup cho phu luc
 

@@ -208,7 +208,7 @@ Cách test full saga (without spinning all 13 services):
 | Catalog soak | 34 phút, max 200 VU, p95 61.68 ms, error 0.00% | `.test/results/catalog-soak-20260530-215904.{json,txt}` |
 | Checkout stress | 7 phút, max 50 VU, order success 100.00%, p95 160.92 ms | `.test/results/checkout-stress-20260531-022416.{json,txt}` |
 | Flash-sale spike | 500 VU, 100 stock, 100 purchase success, 100 confirmed orders, duplicate buyer 0 | `.test/results/flash-sale-spike-20260531-114752.{json,txt}` |
-| Resilience | Kill order-service completed; inventory compensation pass; Kafka/Redis có phần inconclusive | `.test/results/SUMMARY.md`, `.test/results/chaos-*` |
+| Resilience | Kill order-service completed; Kafka outbox replay pass; Redis degradation/recovery pass; inventory compensation pass | `.test/results/SUMMARY.md`, `.test/results/chaos-*` |
 
 Nguyên tắc: không copy metric trực tiếp từ file này nếu chưa đối chiếu với [23](./23-bang-chung-kiem-thu-va-so-lieu.md).
 
@@ -260,7 +260,7 @@ Nguyên tắc: không copy metric trực tiếp từ file này nếu chưa đố
 3. Cẩn thận với timing — dùng `Awaitility` await condition
 
 **Q5: Có chaos/resilience test không?**
-→ Có ở mức phù hợp DATN: dùng script trong `.test/chaos/` để stop order-service, Kafka, Redis và ép inventory fail. Kết quả Phase 13: kill order-service chứng minh recovery sau downtime, inventory-failed compensation pass; Kafka outbox replay và Redis cart degradation chưa đủ bằng chứng nên không ghi là pass.
+→ Có ở mức phù hợp DATN: dùng script trong `.test/chaos/` để stop order-service, Kafka, Redis và ép inventory fail. Kết quả Phase 13: kill order-service chứng minh recovery sau downtime; Kafka outbox replay pass; Redis degradation/recovery pass; inventory-failed compensation pass.
 
 **Q6: E2E test khó duy trì, em tránh thế nào?**
 → Tập trung integration test cho mỗi service. E2E chỉ cho golden path (đặt đơn end-to-end). Postman collection chạy manual sau mỗi release.

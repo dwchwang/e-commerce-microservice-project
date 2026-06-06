@@ -71,7 +71,7 @@ services:
   grafana:
     mem_limit: 256m
     # Frontend port 3000 conflict resolution: remap Grafana to 3001 in prod
-    ports:
+    ports: !override
       - "3001:3000"
 
   # ============================================================

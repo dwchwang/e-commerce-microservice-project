@@ -53,6 +53,12 @@ public class SecurityConfig {
                         // Inventory stock adjustments: admin-only
                         .pathMatchers("/api/inventory/stock-in", "/api/inventory/stock-out").hasAuthority("ROLE_ADMIN")
                         // --- Public endpoints (storefront) ---
+                        .pathMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
+                                "/webjars/**").permitAll()
                         .pathMatchers("/api/auth/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/search/**").permitAll()
