@@ -1,0 +1,46 @@
+% !TEX root = ../DoAn.tex
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+\begin{center}
+    \Large{\textbf{TÓM TẮT NỘI DUNG ĐỒ ÁN}}\\
+\end{center}
+\vspace{1cm}
+
+Đồ án trình bày toàn bộ quá trình phân tích, thiết kế và triển khai một hệ thống thương mại điện
+tử theo kiến trúc microservices, sử dụng Spring Boot 3.5, Spring Cloud 2025 và Java 21. Hệ thống
+được phân rã thành 13 microservice độc lập dựa trên nguyên tắc Domain-Driven Design (DDD) và
+Bounded Context, mỗi service sở hữu cơ sở dữ liệu và vòng đời triển khai riêng biệt.
+
+Về giao tiếp dịch vụ, hệ thống kết hợp REST + OpenFeign (đồng bộ) với Apache Kafka KRaft (bất
+đồng bộ). Bốn distributed pattern cốt lõi được áp dụng đầy đủ: Saga Orchestration với
+order-service đóng vai orchestrator quản lý distributed transaction; Transactional Outbox đảm bảo
+at-least-once event publishing; Idempotent Consumer đảm bảo exactly-once processing effect;
+CQRS-lite với Elasticsearch làm read model phục vụ full-text search.
+
+Hai tính năng kỹ thuật nổi bật của hệ thống là: (1) flash sale chống over-sell bằng Redis Lua
+atomic script, buyer set, cơ chế bù trừ và reconciliation; (2) tích hợp cổng thanh toán VNPAY
+sandbox với xác thực HMAC-SHA512, Return URL, IPN callback và timeout scheduler. Bảo mật được
+xử lý tập trung qua Keycloak 26 (OAuth 2.0/OIDC) với JWT RS256, API Gateway đóng vai Resource
+Server theo Trusted Subsystem Pattern --- các service nội bộ nhận thông tin định danh qua header
+mà không cần gọi lại Keycloak ở mỗi request.
+
+Ngoài backend, đồ án triển khai Next.js storefront và Admin Panel phục vụ các luồng người mua và
+quản trị. Hệ thống được đóng gói bằng Docker Compose, triển khai production-like trên một máy ảo
+AWS EC2 với Caddy reverse proxy/HTTPS và GitHub Actions/GHCR cho quy trình build/push image.
+Observability stack gồm Prometheus, Grafana và Zipkin cho phép giám sát metrics, trace và debug
+các luồng nghiệp vụ end-to-end. Kết quả thực nghiệm gồm smoke test backend 9/9 nhóm đạt, k6
+catalog/checkout/flash-sale và các kịch bản resilience cho order-service, Kafka, Redis và inventory
+compensation.
+
+\vspace{1cm}
+
+\begin{flushright}
+Sinh viên thực hiện\\
+\begin{tabular}{@{}c@{}}
+\textit{(Ký và ghi rõ họ tên)}\\
+\textbf{Nguyễn Đức Bảo Hoàng}
+\end{tabular}
+\end{flushright}
+
+\end{document}

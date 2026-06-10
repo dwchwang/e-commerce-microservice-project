@@ -143,5 +143,5 @@ dist/
 .parcel-cache/
 .turbo/
 .eslintcache
+.diagram
 *.tsbuildinfo
-DATN_Nguyen_Duc_Bao_Hoang_20227116

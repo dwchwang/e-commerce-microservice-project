@@ -1,0 +1,615 @@
+% !TEX root = ../DoAn.tex
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+Chương này trình bày toàn bộ kết quả phân tích và thiết kế hệ thống, từ việc xác định yêu
+cầu, mô hình hóa kiến trúc tổng thể, thiết kế cơ sở dữ liệu, thiết kế API và giao tiếp,
+đến thiết kế luồng sự kiện, bảo mật, máy trạng thái và các luồng nghiệp vụ chính. Đây là
+chương có mật độ sơ đồ và bảng biểu cao nhất, phản ánh toàn bộ quá trình chuyển đổi từ yêu
+cầu nghiệp vụ sang thiết kế kỹ thuật chi tiết. Các quyết định thiết kế trong chương này
+dựa trên nền tảng lý thuyết đã trình bày ở Chương~\ref{chapter:Related_works} và được hiện
+thực hóa bằng các công nghệ đã phân tích ở Chương~\ref{chapter:Methodology}.
+
+% =======================================================================
+\section{Phân tích yêu cầu hệ thống}
+\label{section:4.1}
+
+\subsection{Yêu cầu chức năng}
+
+Hệ thống được xây dựng để đáp ứng tập hợp đầy đủ các chức năng của một nền tảng thương mại
+điện tử, phục vụ hai nhóm người dùng chính là khách hàng và quản trị viên. Bảng~\ref{table:functional-requirements}
+tổng hợp các yêu cầu chức năng được nhóm theo miền nghiệp vụ.
+
+\begin{table}[H]
+\centering
+\caption{Yêu cầu chức năng theo miền nghiệp vụ}
+\label{table:functional-requirements}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{3.1cm}|L{2.4cm}|Y|}
+\hline
+\textbf{Miền nghiệp vụ} & \textbf{Đối tượng} & \textbf{Yêu cầu chức năng} \\ \hline
+Định danh \& Người dùng & Khách hàng & Đăng ký tài khoản, đăng nhập, làm mới token \\ \cline{3-3}
+                        & Khách hàng & Quản lý thông tin cá nhân, quản lý địa chỉ giao hàng \\ \hline
+Sản phẩm \& Danh mục    & Khách hàng & Xem danh sách sản phẩm, lọc theo danh mục/thương hiệu, xem chi tiết \\ \cline{3-3}
+                        & Quản trị viên & Tạo, sửa, xóa sản phẩm, danh mục, thương hiệu \\ \hline
+Tìm kiếm                & Khách hàng & Tìm kiếm toàn văn theo từ khóa, gợi ý sản phẩm liên quan \\ \hline
+Giỏ hàng                & Khách hàng & Thêm, sửa số lượng, xóa sản phẩm; hỗ trợ giỏ hàng khách vãng lai \\ \hline
+Đơn hàng                & Khách hàng & Tạo đơn hàng (COD/VNPAY), xem danh sách đơn hàng, xem chi tiết trạng thái \\ \cline{3-3}
+                        & Hệ thống & Tự động xử lý luồng Saga: trừ tồn kho, xác nhận thanh toán, hủy đơn quá hạn \\ \hline
+Thanh toán              & Khách hàng & Thanh toán online qua VNPAY, xem kết quả thanh toán \\ \cline{3-3}
+                        & Hệ thống & Xử lý IPN callback từ VNPAY, tự động timeout thanh toán quá hạn \\ \hline
+Khuyến mãi              & Khách hàng & Xem danh sách voucher khả dụng, áp dụng voucher khi đặt hàng \\ \cline{3-3}
+                        & Quản trị viên & Tạo, sửa, xóa voucher; cấu hình điều kiện sử dụng \\ \hline
+Flash Sale              & Khách hàng & Xem danh sách chiến dịch, mua hàng flash sale với số lượng giới hạn \\ \cline{3-3}
+                        & Quản trị viên & Tạo, kích hoạt, kết thúc chiến dịch; cấu hình sản phẩm và số lượng \\ \hline
+Đánh giá                & Khách hàng & Tạo, sửa, xóa đánh giá sản phẩm (chỉ sau khi mua hàng thành công) \\ \hline
+Nội dung                & Quản trị viên & Quản lý banner, bài viết blog \\ \hline
+Thông báo               & Hệ thống & Gửi email xác nhận đơn hàng, hủy đơn, thông báo flash sale \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+\subsection{Yêu cầu phi chức năng}
+
+Bên cạnh các yêu cầu chức năng, hệ thống phải đáp ứng các yêu cầu phi chức năng then chốt
+của một hệ thống phân tán, được tổng hợp trong Bảng~\ref{table:nfr}.
+
+\begin{table}[H]
+\centering
+\caption{Yêu cầu phi chức năng và chiến lược đáp ứng}
+\label{table:nfr}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{2.8cm}|Y|L{4.2cm}|}
+\hline
+\textbf{Yêu cầu} & \textbf{Mô tả} & \textbf{Chiến lược thiết kế} \\ \hline
+Khả năng mở rộng & Hệ thống có thể mở rộng độc lập từng dịch vụ theo tải & Phân rã 13 service; database per service \\ \hline
+Tính sẵn sàng   & Hệ thống tiếp tục hoạt động khi một service gặp sự cố & Circuit Breaker; stateless service; graceful degradation \\ \hline
+Tính nhất quán  & Dữ liệu nhất quán cuối cùng giữa các service & Saga Orchestration; Outbox + Idempotent Consumer \\ \hline
+Bảo mật         & Xác thực và phân quyền cho mọi API endpoint & Keycloak OAuth2/OIDC; JWT RS256; Gateway Trusted Subsystem \\ \hline
+Hiệu năng       & Đáp ứng tải cao trong flash sale; phản hồi nhanh cho catalog & Redis cache; Redis Lua atomic; k6 load test \\ \hline
+Khả năng quan sát & Giám sát và truy vết request end-to-end & Prometheus + Grafana; Zipkin; structured logging \\ \hline
+Khả năng triển khai & Dễ dàng khởi tạo toàn bộ hệ thống & Docker Compose; healthcheck; Flyway migration tự động \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+% =======================================================================
+\section{Mô hình hóa yêu cầu --- Biểu đồ Use Case}
+\label{section:4.2}
+
+Hệ thống có bốn tác nhân chính tương tác theo các vai trò và mục đích khác nhau. Khách hàng
+chưa đăng nhập (Guest) có thể duyệt sản phẩm, tìm kiếm và thao tác với giỏ hàng tạm thời.
+Khách hàng đã đăng nhập (Customer) có toàn quyền thực hiện các nghiệp vụ mua sắm: đặt hàng,
+thanh toán, tham gia flash sale và đánh giá sản phẩm. Quản trị viên (Admin) quản lý toàn
+bộ danh mục, sản phẩm, tồn kho, khuyến mãi, nội dung và chiến dịch flash sale. Hệ thống
+bên ngoài (External System) bao gồm VNPAY xử lý thanh toán và SMTP Server gửi email thông
+báo. Ngoài ra, các tác vụ nền (Scheduler) tự động xử lý các công việc định kỳ như hết hạn
+đặt chỗ tồn kho và timeout thanh toán.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong4/usecase.png}
+    \caption{Biểu đồ Use Case tổng thể hệ thống}
+    \label{fig:use-case}
+\end{figure}
+
+% =======================================================================
+\section{Kiến trúc tổng thể}
+\label{section:4.3}
+
+Hệ thống được tổ chức thành bốn tầng kiến trúc rõ ràng, mỗi tầng có trách nhiệm và phạm
+vi ảnh hưởng riêng biệt. Tầng Client bao gồm trình duyệt web, ứng dụng di động hoặc các
+công cụ kiểm thử API như Postman --- đây là nơi phát sinh yêu cầu vào hệ thống. Tầng Edge
+và Spring Cloud chứa API Gateway (cổng vào duy nhất), Eureka Server (đăng ký và khám phá
+dịch vụ), Config Server (quản lý cấu hình tập trung) và Keycloak (xác thực và cấp token).
+Tầng Business Services gồm 13 dịch vụ nghiệp vụ, mỗi dịch vụ đảm nhiệm một miền chức năng
+độc lập và sở hữu cơ sở dữ liệu riêng. Tầng Infrastructure chứa các hệ thống hỗ trợ:
+PostgreSQL, Redis, Kafka, Elasticsearch, Mailpit, Prometheus, Grafana và Zipkin.
+
+Giao tiếp giữa các tầng tuân theo nguyên tắc: Client chỉ giao tiếp với tầng Edge (qua API
+Gateway); các dịch vụ trong tầng Business giao tiếp với nhau qua REST/OpenFeign hoặc bất
+đồng bộ qua Kafka; mọi truy cập đến cơ sở dữ liệu đều thông qua dịch vụ sở hữu dữ liệu đó
+--- không có truy cập trực tiếp từ dịch vụ khác.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong4/kien-truc-4-tang-he-thong.png}
+    \caption{Sơ đồ thành phần bốn tầng của hệ thống}
+    \label{fig:component-diagram}
+\end{figure}
+
+% =======================================================================
+\section{Phân rã miền nghiệp vụ và sở hữu dịch vụ}
+\label{section:4.4}
+
+Áp dụng nguyên tắc Domain-Driven Design, hệ thống được phân rã thành 13 Bounded Context,
+mỗi context tương ứng với một microservice. Bảng~\ref{table:service-ownership} mô tả chi
+tiết trách nhiệm, dữ liệu sở hữu và phương thức giao tiếp của từng dịch vụ. Nguyên tắc
+cốt lõi là mỗi dịch vụ sở hữu toàn bộ logic nghiệp vụ và dữ liệu trong phạm vi Bounded
+Context của mình; mọi truy cập dữ liệu chéo phải thông qua API công khai hoặc sự kiện
+được công bố trên Kafka.
+
+\begin{table}[H]
+\centering
+\caption{Sở hữu dịch vụ và giao tiếp}
+\label{table:service-ownership}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{2.7cm}|L{1cm}|L{3cm}|Y|L{2.3cm}|}
+\hline
+\textbf{Dịch vụ} & \textbf{Cổng} & \textbf{Bounded Context} & \textbf{Dữ liệu sở hữu} & \textbf{Giao tiếp} \\ \hline
+identity-service & 8081 & Định danh \& Đăng ký & Keycloak users & Kafka (pub) \\ \hline
+user-service & 8082 & Hồ sơ người dùng & PostgreSQL (user\_db) & Kafka (sub) \\ \hline
+product-service & 8083 & Sản phẩm \& Danh mục & PostgreSQL (product\_db), Redis cache & REST, Kafka (pub) \\ \hline
+inventory-service & 8084 & Tồn kho \& Đặt chỗ & PostgreSQL (inventory\_db) & Kafka (pub/sub) \\ \hline
+cart-service & 8085 & Giỏ hàng & Redis (cart keys) & REST (Feign) \\ \hline
+order-service & 8086 & Đơn hàng (Saga orchestrator) & PostgreSQL (order\_db), Outbox & REST, Kafka (pub/sub) \\ \hline
+payment-service & 8087 & Thanh toán \& VNPAY & PostgreSQL (payment\_db), Outbox & REST, Kafka (pub/sub) \\ \hline
+voucher-service & 8088 & Khuyến mãi & PostgreSQL (voucher\_db) & REST \\ \hline
+notification-service & 8089 & Thông báo \& Email & PostgreSQL (notification\_db) & Kafka (sub) \\ \hline
+review-service & 8090 & Đánh giá sản phẩm & PostgreSQL (review\_db) & REST (Feign) \\ \hline
+search-service & 8091 & Tìm kiếm toàn văn & Elasticsearch indices & Kafka (sub) \\ \hline
+content-service & 8092 & Nội dung (Banner/Blog) & PostgreSQL (content\_db) & REST \\ \hline
+flash-sale-service & 8093 & Flash Sale & PostgreSQL (flash\_sale\_db), Redis stock & REST, Kafka (pub/sub) \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+% \begin{figure}[!htbp]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Bản đồ ngữ cảnh (Context Map) 13 Bounded Context}
+%     \label{fig:context-map}
+% \end{figure}
+
+% =======================================================================
+\section{Thiết kế cơ sở dữ liệu}
+\label{section:4.5}
+
+\subsection{Mô hình quan hệ --- PostgreSQL}
+
+Mỗi business service sử dụng PostgreSQL sở hữu một database riêng với schema được quản lý
+bởi Flyway migration. Dưới đây là thiết kế cho các database cốt lõi. Các bảng sử dụng UUID
+làm khóa chính, đảm bảo tính duy nhất toàn cục và tránh phụ thuộc vào sequence tự tăng của
+database --- điều quan trọng trong môi trường phân tán nơi dữ liệu có thể được tạo từ nhiều
+service khác nhau.
+
+\subsubsection*{Database đơn hàng --- \texttt{order\_db}}
+
+Đây là database quan trọng nhất, lưu trữ toàn bộ vòng đời của đơn hàng cùng với cơ chế
+Outbox và Idempotency. Bảng \texttt{orders} lưu thông tin đơn hàng với các trường chính:
+mã đơn, mã khách hàng, phương thức thanh toán, trạng thái, tổng tiền, mã voucher (nếu có)
+và thời điểm hết hạn đặt chỗ. Bảng \texttt{order\_items} lưu chi tiết từng mặt hàng trong
+đơn: mã sản phẩm, số lượng và đơn giá tại thời điểm đặt. Bảng \texttt{outbox} lưu các sự
+kiện cần phát hành lên Kafka, với các trường: mã sự kiện, loại aggregate, mã aggregate, loại
+sự kiện, payload JSON, cờ \texttt{processed} và thời điểm xử lý. Bảng
+\texttt{processed\_events} lưu mã các sự kiện đã được xử lý, phục vụ cơ chế Idempotent Consumer.
+
+\subsubsection*{Database thanh toán --- \texttt{payment\_db}}
+
+Bảng \texttt{payments} lưu thông tin thanh toán: mã thanh toán, mã đơn hàng, phương thức,
+số tiền, trạng thái và thời điểm hết hạn. Bảng \texttt{payment\_outbox} lưu sự kiện thanh
+toán ở trạng thái \texttt{PENDING}, số lần thử, lỗi cuối cùng và thời điểm phát hành, đảm bảo
+khả năng phát hành sự kiện thanh toán một cách tin cậy.
+
+\subsubsection*{Database sản phẩm --- \texttt{product\_db}}
+
+Bảng \texttt{products} lưu thông tin sản phẩm (tên, mô tả, giá, SKU, trạng thái hoạt động),
+liên kết với \texttt{categories} (danh mục phân cấp) và \texttt{brands} (thương hiệu).
+
+\subsubsection*{Database tồn kho --- \texttt{inventory\_db}}
+
+Bảng \texttt{inventory} lưu hai giá trị chính cho từng SKU: \path|quantity| là tổng số lượng
+còn trong kho và \path|reserved_quantity| là số lượng đang được đặt chỗ. Số lượng khả dụng
+được suy ra bằng \path|quantity - reserved_quantity|. Khi nhận sự kiện
+\path|order-created|, inventory-service tăng \path|reserved_quantity|; khi nhận
+\path|order-confirmed|, service giảm đồng thời \path|quantity| và
+\path|reserved_quantity|; khi nhận \path|order-cancelled|, service giảm
+\path|reserved_quantity| để giải phóng đặt chỗ.
+
+\subsubsection*{Các database còn lại}
+
+Các database \texttt{user\_db}, \texttt{voucher\_db}, \texttt{notification\_db},
+\texttt{review\_db}, \texttt{content\_db} và \texttt{flash\_sale\_db} lưu trữ dữ liệu
+nghiệp vụ tương ứng với mô hình quan hệ chuẩn hóa, mỗi database do một service duy nhất
+quản lý.
+
+% \begin{figure}[!htbp]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Mô hình ERD các database chính: order\_db, payment\_db, product\_db, inventory\_db}
+%     \label{fig:erd-main}
+% \end{figure}
+
+\subsection{Mô hình tài liệu --- Elasticsearch}
+
+Search-service sử dụng Elasticsearch để lưu trữ và truy vấn thông tin sản phẩm phục vụ tìm
+kiếm toàn văn. Mỗi sản phẩm được lưu dưới dạng một document trong index \texttt{products}
+với cấu trúc được tối ưu cho tìm kiếm: trường \texttt{name} và \texttt{description} được
+phân tích toàn văn (text analyzer với stemming tiếng Việt nếu có), trường \texttt{category}
+và \texttt{brand} được lưu dưới dạng keyword để lọc chính xác, trường \texttt{price} lưu
+dưới dạng số để lọc theo khoảng giá. Document được đồng bộ từ PostgreSQL của product-service
+thông qua Kafka event mỗi khi có thay đổi, đảm bảo eventual consistency giữa hai mô hình.
+
+\subsection{Mô hình khóa --- Redis}
+
+Redis được sử dụng cho ba mục đích với cấu trúc khóa được thiết kế rõ ràng. Đối với giỏ
+hàng, khóa có định dạng \path|cart:{userId}| hoặc \path|cart:{sessionId}| lưu trữ
+danh sách sản phẩm dưới dạng Hash, với TTL 7 ngày cho người dùng đã đăng nhập và 24 giờ
+cho khách vãng lai. Đối với cache sản phẩm, khóa \path|product:{productId}| lưu thông
+tin sản phẩm dưới dạng JSON string với TTL 30 phút, được tự động invalidate khi sản phẩm
+được cập nhật. Đối với flash sale, khóa \path|flash-sale:{campaignId}:stock| lưu số
+lượng slot còn lại dưới dạng integer, được khởi tạo khi chiến dịch được kích hoạt và tự động
+hết hạn theo TTL bằng với thời gian còn lại của chiến dịch; khóa
+\path|flash-sale:{campaignId}:buyers| lưu tập hợp (Set) mã người dùng đã mua thành công
+để chống trùng lặp.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong4/redis.png}
+    \caption{Mô hình khóa Redis: Cart, Cache, Flash Sale}
+    \label{fig:redis-keys}
+\end{figure}
+
+% =======================================================================
+\section{Thiết kế API và giao tiếp đồng bộ}
+\label{section:4.6}
+
+\subsection{Định tuyến API Gateway}
+
+API Gateway định tuyến yêu cầu từ client đến các dịch vụ backend dựa trên đường dẫn. Ngoài
+chức năng định tuyến, Gateway còn áp dụng các chính sách bảo mật và giới hạn tốc độ khác
+nhau cho từng nhóm endpoint. Bảng~\ref{table:gateway-routes} tổng hợp các route chính.
+
+\begin{table}[H]
+\centering
+\caption{Định tuyến API Gateway}
+\label{table:gateway-routes}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{3.8cm}|L{3cm}|Y|L{2.6cm}|}
+\hline
+\textbf{Đường dẫn} & \textbf{Dịch vụ đích} & \textbf{Xác thực} & \textbf{Rate Limit} \\ \hline
+\path|/api/auth/**| & identity-service & Không (public) & 10 req/s, burst 20 \\ \hline
+\path|/api/products/**| & product-service & Tùy chọn (GET public) & Không giới hạn \\ \hline
+\path|/api/search/**| & search-service & Tùy chọn & Không giới hạn \\ \hline
+\path|/api/cart/**| & cart-service & Tùy chọn (guest session) & Không giới hạn \\ \hline
+\path|/api/users/**| & user-service & Bắt buộc & Không giới hạn \\ \hline
+\path|/api/orders/**| & order-service & Bắt buộc & 10 req/s, burst 20 \\ \hline
+\path|/api/payments/**| & payment-service & Bắt buộc (trừ VNPAY IPN) & Không giới hạn \\ \hline
+\path|/api/vouchers/**| & voucher-service & Bắt buộc (admin cho CRUD) & Không giới hạn \\ \hline
+\path|/api/reviews/**| & review-service & Bắt buộc (tạo), tùy chọn (xem) & Không giới hạn \\ \hline
+\path|/api/flash-sales/*/purchase| & flash-sale-service & Bắt buộc & 3 req/s, burst 5 \\ \hline
+\path|/api/flash-sales/**| & flash-sale-service & Bắt buộc (admin cho CRUD) & Không giới hạn \\ \hline
+\path|/api/content/**| & content-service & Tùy chọn (GET public) & Không giới hạn \\ \hline
+\path|/api/notifications/**| & notification-service & Bắt buộc & Không giới hạn \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+\subsection{Giao tiếp Feign giữa các dịch vụ}
+
+Các tương tác đồng bộ giữa các dịch vụ được thực hiện thông qua OpenFeign client. Cart-service
+gọi product-service để xác minh tính hợp lệ của sản phẩm khi thêm vào giỏ hàng. Order-service
+--- với vai trò Saga orchestrator --- gọi product-service để kiểm tra giá và trạng thái sản
+phẩm, gọi inventory-service để kiểm tra tồn kho khả dụng trước khi tạo đơn, và gọi
+voucher-service để xác minh và đặt chỗ voucher. Review-service gọi order-service để kiểm tra
+người dùng đã có đơn hàng đã xác nhận chứa sản phẩm cần đánh giá hay chưa. Tất cả Feign
+client được cấu hình với timeout 5 giây và retry 1 lần, kết hợp với Circuit Breaker để ngăn
+cascading failure.
+
+% \begin{figure}[!htbp]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Sơ đồ phụ thuộc REST/Feign giữa các dịch vụ}
+%     \label{fig:feign-dependencies}
+% \end{figure}
+
+% =======================================================================
+\section{Thiết kế luồng sự kiện --- Kafka Topics}
+\label{section:4.7}
+
+Giao tiếp bất đồng bộ giữa các dịch vụ được thực hiện thông qua 13 Kafka topic, được tổ
+chức thành 11 nhóm nghiệp vụ. Mỗi topic có producer và consumer được xác định rõ ràng, cùng
+với cấu trúc payload cụ thể. Kafka được cấu hình với cơ chế tự động tạo topic
+(\texttt{auto.create.topics.enable=true}) cho hầu hết các topic, ngoại trừ
+\texttt{flash-sale-order-requested} được tạo thủ công với 3 partition để kiểm soát thứ tự
+xử lý.
+
+Bảng~\ref{table:kafka-topics} mô tả toàn bộ các topic, luồng sự kiện và vai trò của từng
+dịch vụ tham gia.
+
+\begin{table}[H]
+\centering
+\caption{Bản đồ Kafka Topics}
+\label{table:kafka-topics}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{3.3cm}|L{2.6cm}|L{3.6cm}|Y|}
+\hline
+\textbf{Topic} & \textbf{Producer} & \textbf{Consumer} & \textbf{Mục đích} \\ \hline
+\path|user-registered| & identity-service & user-service & Tạo hồ sơ người dùng sau đăng ký \\ \hline
+\path|product-created| & product-service & search-service & Index sản phẩm mới vào Elasticsearch \\ \hline
+\path|product-updated| & product-service & search-service & Cập nhật index khi sửa sản phẩm \\ \hline
+\path|product-deleted| & product-service & search-service & Xóa index khi xóa sản phẩm \\ \hline
+\path|order-created| & order-service & inventory-service & Yêu cầu đặt chỗ tồn kho \\ \hline
+\path|inventory-updated| & inventory-service & order-service & Xác nhận đặt chỗ thành công \\ \hline
+\path|inventory-failed| & inventory-service & order-service & Thông báo không đủ tồn kho \\ \hline
+\path|payment-requested| & order-service & payment-service & Yêu cầu xử lý thanh toán COD \\ \hline
+\path|payment-success| & payment-service & order-service & Thanh toán thành công, xác nhận đơn \\ \hline
+\path|payment-failed| & payment-service & order-service & Thanh toán thất bại, hủy đơn \\ \hline
+\path|order-confirmed| & order-service & inventory-service, notification-service & Xác nhận tồn kho, gửi email \\ \hline
+\path|order-cancelled| & order-service & inventory-service, voucher-service, notification-service & Hoàn tồn kho, hoàn voucher, gửi email \\ \hline
+\path|flash-sale-order-requested| & flash-sale-service & order-service & Tạo đơn hàng flash sale \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong4/kafka-flow.png}
+    \caption{Sơ đồ luồng sự kiện Kafka giữa các dịch vụ}
+    \label{fig:kafka-flow}
+\end{figure}
+
+% =======================================================================
+\section{Thiết kế bảo mật}
+\label{section:4.8}
+
+Hệ thống áp dụng mô hình bảo mật tập trung với API Gateway là điểm thực thi duy nhất. Luồng
+xác thực diễn ra qua bốn bước. Bước thứ nhất, client gửi thông tin đăng nhập đến Keycloak
+(qua identity-service hoặc trực tiếp) và nhận được bộ token JWT. Bước thứ hai, client gửi
+kèm Access Token trong header \texttt{Authorization: Bearer <token>} cho mọi request đến
+API Gateway. Bước thứ ba, Gateway xác minh chữ ký JWT sử dụng public key lấy từ endpoint
+JWKS của Keycloak, kiểm tra thời hạn và các claims cần thiết. Bước thứ tư, sau khi xác minh
+thành công, Gateway trích xuất thông tin định danh từ JWT (userId, roles, email) và chèn
+vào ba header \texttt{X-User-Id}, \texttt{X-User-Roles}, \texttt{X-User-Email} trước khi
+chuyển tiếp request đến dịch vụ backend.
+
+Các dịch vụ backend không thực hiện lại việc xác minh JWT mà hoàn toàn tin tưởng vào các
+header do Gateway cung cấp (Trusted Subsystem Pattern). Điều kiện để mô hình này an toàn
+là các dịch vụ backend chỉ lắng nghe trên mạng nội bộ của Docker, không có cổng nào được
+mở ra bên ngoài. Phân quyền được thực hiện dựa trên vai trò: các route quản trị như
+\path|/api/orders/admin/**|, \path|/api/users/admin/**|, \path|/api/inventory/admin/**|,
+\path|/api/reviews/admin/**| và các mutation product/voucher/flash-sale/content yêu cầu
+\path|ROLE_ADMIN|; các endpoint nghiệp vụ người dùng yêu cầu token hợp lệ hoặc được mở
+public tùy chức năng.
+
+Các endpoint đặc biệt nhạy cảm được bảo vệ bổ sung bằng Redis token bucket rate limiter.
+Endpoint đặt hàng (\texttt{POST /api/orders}) được giới hạn 10 request/giây với khả năng
+burst 20 request để ngăn chặn đặt hàng tự động. Endpoint mua flash sale
+(\texttt{POST /api/flash-sales/*/purchase}) được giới hạn 3 request/giây với burst 5
+request, đảm bảo công bằng giữa những người tham gia.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong4/keycloak.png}
+    \caption{Luồng xác thực và phân quyền qua API Gateway}
+    \label{fig:security-flow}
+\end{figure}
+
+% =======================================================================
+\section{Thiết kế máy trạng thái}
+\label{section:4.9}
+
+\subsection{Máy trạng thái đơn hàng}
+
+Đơn hàng trong hệ thống trải qua một vòng đời được kiểm soát chặt chẽ với bốn trạng thái
+chính. Trạng thái \texttt{PENDING} là trạng thái khởi tạo, ngay sau khi order-service tạo
+đơn hàng và ghi sự kiện \texttt{order-created} vào outbox. Trạng thái
+\texttt{STOCK\_RESERVED} đạt được khi inventory-service xác nhận đã đặt chỗ tồn kho thành
+công. Từ đây, luồng xử lý rẽ nhánh tùy theo phương thức thanh toán: với COD, đơn hàng được
+xác nhận ngay lập tức; với VNPAY, đơn hàng chờ khách hàng thanh toán trong vòng 30 phút.
+Trạng thái \texttt{CONFIRMED} là trạng thái kết thúc thành công, đạt được khi thanh toán
+COD được xác nhận hoặc VNPAY callback thành công. Trạng thái \texttt{CANCELLED} là trạng
+thái kết thúc thất bại, xảy ra khi tồn kho không đủ, thanh toán thất bại hoặc hết thời
+gian chờ thanh toán.
+
+% \begin{figure}[!htbp]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Sơ đồ máy trạng thái đơn hàng}
+%     \label{fig:order-state-machine}
+% \end{figure}
+
+\subsection{Máy trạng thái thanh toán}
+
+Thanh toán VNPAY có bốn trạng thái. \texttt{PENDING} --- URL thanh toán đã được tạo, khách
+hàng đang trong quá trình thanh toán. \texttt{COMPLETED} --- VNPAY xác nhận thanh toán
+thành công qua IPN callback hoặc Return URL. \texttt{FAILED} --- thanh toán thất bại do
+khách hàng hủy, thẻ không hợp lệ hoặc số dư không đủ. \texttt{TIMEOUT} --- quá thời gian
+chờ 30 phút, được phát hiện và xử lý bởi PaymentTimeoutScheduler. Một ràng buộc quan trọng
+là mỗi đơn hàng chỉ có thể có tối đa một thanh toán ở trạng thái \texttt{PENDING} tại mỗi
+thời điểm, được đảm bảo bằng partial unique index trên \texttt{order\_id} khi
+\texttt{status = 'PENDING'}.
+
+\subsection{Máy trạng thái chiến dịch Flash Sale}
+
+Chiến dịch flash sale vận hành qua bốn trạng thái. \texttt{SCHEDULED} --- chiến dịch đã được
+tạo và lên lịch, đang chờ đến thời điểm bắt đầu. \texttt{ACTIVE} --- chiến dịch đang diễn
+ra, người dùng có thể tham gia mua hàng; ở trạng thái này, CampaignScheduler đã khởi tạo
+Redis stock key và TTL. \texttt{ENDED} --- chiến dịch đã kết thúc theo thời gian, không nhận
+thêm yêu cầu mua mới. \texttt{CANCELLED} --- chiến dịch bị quản trị viên hủy trước hoặc trong
+thời gian diễn ra. Quá trình chuyển trạng thái từ \texttt{SCHEDULED} sang \texttt{ACTIVE}
+được thực hiện tự động bởi CampaignScheduler (chu kỳ 5 giây) dựa trên thời gian hệ thống.
+Việc chuyển sang \texttt{ENDED} cũng được CampaignScheduler xử lý khi thời gian kết thúc đã
+qua; khi hủy chiến dịch, service xóa các Redis key liên quan để không tiếp nhận mua mới.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong4/flashsale-state-machine.png}
+    \caption{Sơ đồ máy trạng thái thanh toán và chiến dịch Flash Sale}
+    \label{fig:payment-flashsale-state-machine}
+\end{figure}
+
+% =======================================================================
+\section{Thiết kế luồng nghiệp vụ chính}
+\label{section:4.10}
+
+\subsection{Luồng đăng ký người dùng}
+
+Khi người dùng gửi yêu cầu đăng ký qua \path|POST /api/auth/register|, identity-service
+tiếp nhận và gọi Keycloak Admin API để tạo tài khoản mới trong realm \texttt{ecommerce}.
+Sau khi tạo thành công, identity-service phát hành sự kiện \texttt{user-registered} lên
+Kafka, chứa thông tin: userId, email, username
+và timestamp. User-service tiêu thụ sự kiện này và tạo bản ghi User profile tương ứng
+trong \texttt{user\_db}, bao gồm các trường mặc định như họ tên (từ email), trạng thái
+hoạt động và thời điểm tạo. Luồng này minh họa mẫu giao tiếp bất đồng bộ: identity-service
+không cần biết user-service tồn tại, và user-service có thể được triển khai hoặc thay đổi
+độc lập.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong4/dangki-dangnhap.png}
+    \caption{Biểu đồ tuần tự luồng đăng kí và đăng nhập người dùng}
+    \label{fig:sequence-register-login}
+\end{figure}
+
+\subsection{Luồng đặt hàng COD --- Saga Orchestration}
+
+Đây là luồng phức tạp nhất, thể hiện đầy đủ Saga Orchestration Pattern với order-service
+đóng vai trò orchestrator. Luồng diễn ra qua các bước sau:
+
+\textbf{Bước 1 --- Tạo đơn hàng.} Khách hàng gửi yêu cầu \path|POST /api/orders| với
+payload chứa danh sách sản phẩm (productId, quantity), phương thức thanh toán COD, địa
+chỉ giao hàng và mã voucher (nếu có). Order-service thực hiện ba lời gọi Feign đồng bộ:
+gọi product-service để xác minh sản phẩm tồn tại và đang hoạt động, lấy đơn giá hiện tại;
+gọi inventory-service để kiểm tra số lượng tồn kho khả dụng cho từng sản phẩm; gọi
+voucher-service để xác minh và đặt chỗ voucher (nếu có). Nếu tất cả đều hợp lệ, order-service
+tạo bản ghi đơn hàng với trạng thái \texttt{PENDING} và đồng thời ghi sự kiện
+\texttt{order-created} vào bảng \texttt{outbox} trong cùng một giao dịch.
+
+\textbf{Bước 2 --- Đặt chỗ tồn kho.} OutboxPoller (chu kỳ 1 giây) của order-service phát
+hành sự kiện \texttt{order-created} lên Kafka. Inventory-service tiêu thụ sự kiện, thực
+hiện đặt chỗ cho từng sản phẩm trong đơn hàng bằng cách tăng \texttt{reserved\_quantity}
+trong khi \texttt{quantity} chưa đổi. Nếu tất cả sản phẩm đều đủ số lượng, inventory-service phát
+hành \texttt{inventory-updated} lên Kafka. Nếu bất kỳ sản phẩm nào không đủ, phát hành
+\texttt{inventory-failed}.
+
+\textbf{Bước 3 --- Xác nhận đơn COD.} Order-service tiêu thụ \path|inventory-updated|,
+chuyển trạng thái đơn hàng sang \texttt{STOCK\_RESERVED}. Với phương thức COD, quá trình
+thanh toán được xử lý tự động: order-service phát hành \texttt{order-confirmed} ngay lập
+tức. Inventory-service tiêu thụ \path|order-confirmed|, thực hiện confirm reservation
+(trừ hẳn số lượng tồn kho). Notification-service tiêu thụ \texttt{order-confirmed}, gửi
+email xác nhận đơn hàng đến khách hàng. Đơn hàng đạt trạng thái cuối cùng \texttt{CONFIRMED}.
+
+\textbf{Bước 4 --- Xử lý thất bại.} Nếu inventory-service phát hành \texttt{inventory-failed},
+order-service chuyển trạng thái đơn hàng sang \texttt{CANCELLED} với lý do không đủ tồn
+kho, phát hành \texttt{order-cancelled}. Inventory-service và voucher-service tiêu thụ
+\texttt{order-cancelled} để hoàn trả đặt chỗ và voucher. Notification-service gửi email
+thông báo hủy đơn.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong4/luong-COD-payment-success.png}
+    \caption{Biểu đồ tuần tự luồng đặt hàng COD --- Saga Orchestration}
+    \label{fig:sequence-cod}
+\end{figure}
+
+\subsection{Luồng đặt hàng VNPAY}
+
+Luồng VNPAY mở rộng luồng COD với các bước bổ sung cho thanh toán trực tuyến. Sau khi đơn
+hàng đạt trạng thái \path|STOCK_RESERVED|, order-service thiết lập
+\path|reservation_expired_at = NOW() + 30| phút. Khách hàng gọi
+\path|POST /api/payments/vnpay/create| để tạo URL thanh toán. Payment-service sinh URL
+với chữ ký HMAC-SHA512 và trả về cho client. Khách hàng được chuyển hướng đến trang thanh
+toán VNPAY.
+
+Khi VNPAY gọi IPN callback với kết quả thanh toán, payment-service xác minh chữ ký và cập
+nhật trạng thái. Nếu thành công, payment-service phát hành \texttt{payment-success} lên
+Kafka; order-service tiêu thụ và chuyển đơn hàng sang \texttt{CONFIRMED}. Nếu thất bại,
+phát hành \texttt{payment-failed} và đơn hàng bị hủy với cơ chế hoàn trả tương tự. Nếu sau
+30 phút không có callback, ReservationExpiryScheduler (order-service) và
+PaymentTimeoutScheduler (payment-service) cùng hoạt động từ hai phía để đảm bảo đơn hàng
+và thanh toán đều được chuyển sang trạng thái kết thúc phù hợp.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong4/luong-VNPAY-callback-thanhcong.png}
+    \caption{Biểu đồ tuần tự luồng đặt hàng VNPAY với xử lý IPN callback}
+    \label{fig:sequence-vnpay}
+\end{figure}
+
+\subsection{Luồng Flash Sale}
+
+Luồng flash sale được thiết kế đặc biệt để xử lý tình huống đồng thời cao với nhiều lớp bảo vệ.
+Khi khách hàng gọi \path|POST /api/flash-sales/{campaignId}/purchase|, flash-sale-service
+thực hiện tuần tự các bước kiểm tra. Đầu tiên, kiểm tra thời gian hiệu lực của chiến dịch
+(phải ở trạng thái ACTIVE và trong khoảng thời gian cho phép). Tiếp theo, thực thi Redis Lua
+script nguyên tử để kiểm tra buyer set và giảm số lượng slot: script kiểm tra khóa
+\path|flash-sale:{campaignId}:buyers| để chống mua trùng, sau đó kiểm tra khóa
+\path|flash-sale:{campaignId}:stock|; nếu stock lớn hơn 0 thì giảm 1 và thêm user vào
+buyer set, ngược lại trả về thất bại. Nếu Redis trả về thất bại, service phản hồi HTTP 409
+Conflict --- sản phẩm đã bán hết hoặc người dùng đã mua trước đó.
+
+Nếu Redis trả về thành công, flash-sale-service tăng soldCount trong database và
+phát hành sự kiện \path|flash-sale-order-requested| lên Kafka. Order-service tạo đơn hàng
+flash sale với giá đã giảm theo chiến dịch và xử lý tương tự luồng COD. Nếu bước tạo đơn
+thất bại, flash-sale-service dùng compensation script để hoàn lại slot Redis và loại người
+dùng khỏi buyer set. ReconciliationScheduler định kỳ đối chiếu \texttt{soldCount} với số
+đơn flash-sale thực tế trong order-service để phát hiện và bù trừ slot mồ côi.
+
+CampaignScheduler (chu kỳ 5 giây, với Redis distributed lock) đảm nhiệm ba nhiệm vụ nền:
+kích hoạt chiến dịch đến hạn (chuyển \texttt{SCHEDULED} sang \texttt{ACTIVE}, seed Redis
+stock), khôi phục khóa Redis bị mất (đọc \texttt{soldCount} từ database để tính lại stock
+còn lại), và kết thúc chiến dịch hết hạn (chuyển \texttt{ACTIVE} sang \texttt{ENDED}).
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong4/luong-flash-sale.png}
+    \caption{Biểu đồ tuần tự luồng mua hàng Flash Sale với cơ chế ba lớp bảo vệ}
+    \label{fig:sequence-flashsale}
+\end{figure}
+
+\subsection{Luồng tìm kiếm sản phẩm (CQRS-lite)}
+
+Luồng tìm kiếm minh họa áp dụng CQRS-lite với hai đường dữ liệu độc lập. Đường ghi
+(Command): khi quản trị viên tạo hoặc cập nhật sản phẩm qua product-service, dữ liệu được
+lưu vào PostgreSQL (\texttt{product\_db}). Đồng thời, product-service phát hành sự kiện
+\texttt{product-created} hoặc \texttt{product-updated} trực tiếp lên Kafka. Search-service
+tiêu thụ sự kiện và cập nhật document tương ứng trong Elasticsearch index. Đường đọc
+(Query): khi khách hàng tìm kiếm sản phẩm, request được gửi trực tiếp đến search-service,
+truy vấn Elasticsearch và trả về kết quả đã được tối ưu cho tìm kiếm toàn văn, không thông
+qua PostgreSQL. Hai đường dữ liệu hoạt động độc lập, chấp nhận độ trễ đồng bộ nhỏ (thường
+dưới 1 giây), đảm bảo eventual consistency.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong4/luong-tim-kiem-sp.png}
+    \caption{Biểu đồ tuần tự luồng tìm kiếm sản phẩm theo mô hình CQRS-lite}
+    \label{fig:sequence-cqrs}
+\end{figure}
+
+% =======================================================================
+\section{Thiết kế tác vụ nền --- Scheduled Jobs}
+\label{section:4.11}
+
+Hệ thống có sáu tác vụ nền (scheduled jobs) chạy định kỳ để xử lý các tình huống mà cơ chế
+event-driven không bao phủ được, đặc biệt là các tình huống liên quan đến timeout và phục
+hồi. Bảng~\ref{table:scheduled-jobs} tổng hợp toàn bộ các tác vụ.
+
+\begin{table}[H]
+\centering
+\caption{Tác vụ nền trong hệ thống}
+\label{table:scheduled-jobs}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{3.9cm}|L{2.7cm}|L{1.9cm}|Y|}
+\hline
+\textbf{Tác vụ} & \textbf{Dịch vụ} & \textbf{Chu kỳ} & \textbf{Nhiệm vụ} \\ \hline
+\makecell[l]{ReservationExpiry\\Scheduler} & order-service & 60 giây & Hủy đơn VNPAY quá hạn 30 phút, giải phóng voucher \\ \hline
+\makecell[l]{PaymentTimeout\\Scheduler} & payment-service & 60 giây & Chuyển payment PENDING quá hạn sang TIMEOUT \\ \hline
+OutboxPoller (Order) & order-service & 1 giây & Phát hành sự kiện chưa gửi từ bảng outbox \\ \hline
+OutboxPoller (Payment) & payment-service & 1 giây & Phát hành sự kiện chưa gửi từ bảng payment\_outbox \\ \hline
+\makecell[l]{Campaign\\Scheduler} & flash-sale-service & 5 giây & Kích hoạt campaign, khôi phục Redis key, kết thúc campaign hết hạn \\ \hline
+\makecell[l]{Reconciliation\\Scheduler} & flash-sale-service & 300 giây & Đối chiếu soldCount với số đơn flash-sale thực tế và bù slot mồ côi \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+Hai scheduler xử lý hết hạn reservation và timeout payment hoạt động song song để xử lý
+cùng một tình huống từ hai phía, tạo cơ chế dự phòng chéo: nếu một scheduler gặp sự cố hoặc
+bỏ sót, scheduler còn lại vẫn đảm bảo tài nguyên (tồn kho, voucher) được giải phóng.
+OutboxPoller với chu kỳ 1 giây đảm bảo độ trễ phát hành sự kiện thấp trong điều kiện
+bình thường, đồng thời phục hồi các sự kiện bị bỏ lỡ sau khi service khởi động lại.
+CampaignScheduler sử dụng Redis distributed lock (SETNX với TTL) để đảm bảo chỉ một
+instance của flash-sale-service thực thi tại mỗi thời điểm, tránh xung đột trong môi
+trường nhiều replica.
+
+\end{document}

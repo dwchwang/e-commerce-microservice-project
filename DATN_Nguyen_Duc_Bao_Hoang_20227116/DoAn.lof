@@ -1,0 +1,27 @@
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {1.1}{\ignorespaces Sơ đồ tổng quan sáu trụ cột kỹ thuật của hệ thống}}{6}{figure.caption.12}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces Saga Orchestration Pattern}}{15}{figure.caption.16}%
+\contentsline {figure}{\numberline {2.2}{\ignorespaces Saga Choreography Pattern}}{15}{figure.caption.17}%
+\contentsline {figure}{\numberline {2.3}{\ignorespaces Luồng hoạt động của Transactional Outbox Pattern}}{16}{figure.caption.18}%
+\contentsline {figure}{\numberline {2.4}{\ignorespaces Sơ đồ kiến trúc CQRS với mô hình ghi và mô hình đọc riêng biệt}}{17}{figure.caption.19}%
+\contentsline {figure}{\numberline {2.5}{\ignorespaces Sơ đồ trạng thái của Circuit Breaker Pattern}}{18}{figure.caption.20}%
+\contentsline {figure}{\numberline {2.6}{\ignorespaces Kiến trúc ứng dụng sử dụng API Gateway}}{21}{figure.caption.21}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Biểu đồ Use Case tổng thể hệ thống}}{39}{figure.caption.25}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Sơ đồ thành phần bốn tầng của hệ thống}}{40}{figure.caption.26}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Mô hình khóa Redis: Cart, Cache, Flash Sale}}{43}{figure.caption.28}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Sơ đồ luồng sự kiện Kafka giữa các dịch vụ}}{46}{figure.caption.31}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Luồng xác thực và phân quyền qua API Gateway}}{47}{figure.caption.32}%
+\contentsline {figure}{\numberline {4.6}{\ignorespaces Sơ đồ máy trạng thái thanh toán và chiến dịch Flash Sale}}{48}{figure.caption.33}%
+\contentsline {figure}{\numberline {4.7}{\ignorespaces Biểu đồ tuần tự luồng đăng kí và đăng nhập người dùng}}{49}{figure.caption.34}%
+\contentsline {figure}{\numberline {4.8}{\ignorespaces Biểu đồ tuần tự luồng đặt hàng COD --- Saga Orchestration}}{50}{figure.caption.35}%
+\contentsline {figure}{\numberline {4.9}{\ignorespaces Biểu đồ tuần tự luồng đặt hàng VNPAY với xử lý IPN callback}}{51}{figure.caption.36}%
+\contentsline {figure}{\numberline {4.10}{\ignorespaces Biểu đồ tuần tự luồng mua hàng Flash Sale với cơ chế ba lớp bảo vệ}}{52}{figure.caption.37}%
+\contentsline {figure}{\numberline {4.11}{\ignorespaces Biểu đồ tuần tự luồng tìm kiếm sản phẩm theo mô hình CQRS-lite}}{52}{figure.caption.38}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsfinish 
+\contentsfinish 

@@ -1,0 +1,43 @@
+% !TEX root = DoAn.tex
+\documentclass[DoAn.tex]{subfiles}
+\newcommand{\underwrite}[3][]{% \underwrite[<thickness>]{<numerator>}{<denominator>}
+  \genfrac{}{}{#1}{}{\textstyle #2}{\scriptstyle #3}
+}
+\begin{document}
+\begin{titlepage}
+\thispagestyle{empty}
+% \thisfancypage{
+% \setlength{\fboxsep}{3pt}
+% \fbox}{} 
+\begin{center}
+
+\textbf{\large{ĐẠI HỌC BÁCH KHOA HÀ NỘI}}\vspace{2.5cm}
+
+\textbf{\huge{ ĐỒ ÁN TỐT NGHIỆP}}\\[1cm]
+\textbf{\Large{Xây dựng hệ thống thương mại điện tử theo kiến trúc Microservices}}\\[1cm]
+
+\textbf{\large{NGUYỄN ĐỨC BẢO HOÀNG}}\\
+\large{hoang.ndb227116@sis.hust.edu.vn}\\[0.5cm]
+
+\textbf{\large{Chương trình đào tạo: Toán - Tin}}\\[0.5cm]
+%{\textbf{\large{Chuyên ngành Hệ thống thông tin}}}\\
+
+\vfill
+% Please add the following required packages to your document preamble:
+% \usepackage{graphicx}
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{ll}
+\multicolumn{1}{c}{\textbf{Giảng viên hướng dẫn:}} & TS. Vũ Khánh Quý \hspace{0.5cm} \underline{\hspace{3cm}}  \\[0.5cm]
+  & \multicolumn{1}{r}{Chữ kí GVHD}     \\[0.5cm]
+\textbf{Chuyên ngành:} & Toán - Tin                 \\[0.5cm]
+\textbf{Khoa:} & Toán - Tin \\[1.5cm]
+\multicolumn{2}{c}{\textbf{HÀ NỘI, 06/2026}}                                            
+\end{tabular}%
+}
+\end{table}
+\end{center}
+
+\end{titlepage}
+\end{document}

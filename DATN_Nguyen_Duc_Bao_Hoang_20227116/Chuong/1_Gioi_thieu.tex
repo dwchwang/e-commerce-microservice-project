@@ -1,0 +1,352 @@
+% !TEX root = ../DoAn.tex
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+\section{Đặt vấn đề}
+\label{section:1.1}
+
+Trong thập kỷ qua, thương mại điện tử (TMĐT) tại Việt Nam đã chứng kiến tốc độ tăng trưởng
+vượt bậc. Theo báo cáo của Hiệp hội Thương mại điện tử Việt Nam (VECOM) năm 2024, doanh thu
+TMĐT B2C ước đạt 25 tỷ USD, tăng trưởng bình quân trên 25\%/năm trong giai đoạn 2020--2024.
+Các sàn giao dịch lớn như Shopee, Lazada, Tiki đang phục vụ hàng chục triệu người dùng đồng
+thời, đặc biệt trong các sự kiện Flash Sale và Black Friday --- nơi lưu lượng giao dịch có
+thể tăng đột biến gấp 10--50 lần so với ngày thường.
+
+Thực tế vận hành cho thấy các hệ thống TMĐT xây dựng theo kiến trúc Monolith truyền thống
+gặp nhiều hạn chế nghiêm trọng khi đối mặt với bài toán quy mô lớn. Thứ nhất, toàn bộ hệ
+thống phải được mở rộng đồng thời dù chỉ một module đang chịu tải cao, dẫn đến lãng phí tài
+nguyên và chi phí vận hành. Thứ hai, mọi thay đổi dù nhỏ đều yêu cầu triển khai lại toàn bộ
+ứng dụng, làm chậm tốc độ phát hành tính năng mới và tăng rủi ro khi cập nhật. Thứ ba, một
+lỗi cục bộ có thể kéo sập toàn bộ hệ thống do thiếu cơ chế cách ly sự cố (fault isolation).
+Đối với các nghiệp vụ đặc thù như flash sale --- nơi hàng chục nghìn người dùng đồng thời
+cạnh tranh một số lượng hàng giới hạn trong vài phút --- Monolith không thể đáp ứng được yêu
+cầu về khả năng mở rộng chọn lọc và xử lý đồng thời cao.
+
+Kiến trúc microservices ra đời như một giải pháp cho những hạn chế nêu trên. Tuy nhiên, việc
+thiết kế và triển khai một hệ thống microservices hoàn chỉnh đòi hỏi nắm vững nhiều mẫu thiết
+kế phức tạp: từ Saga Pattern cho giao dịch phân tán, Transactional Outbox cho truyền thông
+điệp tin cậy, đến Idempotent Consumer cho xử lý phân phối at-least-once. Đây là những vấn đề
+được đề cập rộng rãi trong tài liệu học thuật nhưng ít dự án thực tế tại Việt Nam triển khai
+một cách đầy đủ và có hệ thống. Bên cạnh đó, việc tích hợp các thành phần hạ tầng như
+service discovery, API gateway, message broker, distributed caching, full-text search engine
+và identity provider vào một hệ thống vận hành thống nhất cũng là một thách thức kỹ thuật
+đáng kể.
+
+Xuất phát từ thực tiễn trên, đề tài đặt ra câu hỏi nghiên cứu: \textit{Làm thế nào để thiết
+kế và triển khai một hệ thống thương mại điện tử hoàn chỉnh theo kiến trúc microservices, có
+khả năng mở rộng độc lập theo từng miền nghiệp vụ, chịu lỗi cục bộ, đảm bảo tính nhất quán
+dữ liệu trong môi trường phân tán, và đặc biệt hỗ trợ tính năng flash sale chống over-sell
+trong điều kiện tải cao?}
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Biểu đồ minh họa lưu lượng truy cập tăng đột biến trong sự kiện Flash Sale so với ngày thường}
+%     \label{fig:traffic-spike}
+% \end{figure}
+
+\section{Mục tiêu đề tài}
+\label{section:1.2}
+
+\subsection*{Mục tiêu tổng quát}
+
+Thiết kế, triển khai và đánh giá một hệ thống thương mại điện tử đầy đủ chức năng theo kiến
+trúc microservices, sử dụng Spring Boot 3.5, Spring Cloud 2025 và Java 21, qua đó minh chứng
+tính khả thi và hiệu quả của kiến trúc này trong việc giải quyết các bài toán đặc thù của
+TMĐT: khả năng mở rộng chọn lọc, xử lý đồng thời cao, tính nhất quán dữ liệu phân tán và
+khả năng quan sát hệ thống từ đầu đến cuối.
+
+\subsection*{Mục tiêu cụ thể}
+
+Đề tài đặt ra sáu mục tiêu cụ thể, mỗi mục tiêu đều có thể đo lường và kiểm chứng thông qua
+mã nguồn, cấu hình hệ thống và kết quả kiểm thử:
+
+\begin{enumerate}
+    \item \textbf{Phân rã hệ thống theo Domain-Driven Design:} Phân tích và thiết kế 13
+    bounded context độc lập, mỗi context tương ứng với một microservice sở hữu cơ sở dữ
+    liệu, Dockerfile và vòng đời triển khai riêng biệt. Các service bao phủ đầy đủ các miền
+    nghiệp vụ cốt lõi của TMĐT: định danh, người dùng, sản phẩm, tồn kho, giỏ hàng, đơn
+    hàng, thanh toán, khuyến mãi, thông báo, đánh giá, tìm kiếm, nội dung và flash sale.
+
+    \item \textbf{Áp dụng các mẫu thiết kế phân tán cốt lõi:} Triển khai bốn mẫu thiết kế
+    quan trọng trong môi trường phân tán --- Saga Orchestration (với order-service làm bộ
+    điều phối giao dịch phân tán trong luồng đặt hàng); Transactional Outbox (đảm bảo phát
+    hành sự kiện at-least-once ngay cả khi service gặp sự cố); Idempotent Consumer (đảm
+    bảo hiệu ứng xử lý exactly-once ở phía nhận); và CQRS-lite (tách biệt mô hình đọc với
+    Elasticsearch phục vụ tìm kiếm toàn văn).
+
+    \item \textbf{Tích hợp bảo mật tập trung với Keycloak:} Sử dụng Keycloak 26 làm nhà cung
+    cấp định danh, cấu hình OAuth 2.0/OpenID Connect với JWT ký thuật toán RS256 (khóa bất
+    đối xứng). API Gateway đóng vai trò Resource Server duy nhất theo mẫu Trusted Subsystem
+    --- xác thực tập trung, chuyển tiếp thông tin định danh qua header tin cậy cho các
+    service backend, loại bỏ việc mỗi service phải gọi lại Keycloak để xác minh token.
+
+    \item \textbf{Tích hợp cổng thanh toán VNPAY:} Kết nối với môi trường sandbox của VNPAY,
+    sinh URL thanh toán với chữ ký xác thực HMAC-SHA512, xử lý Return URL và IPN callback,
+    đồng thời triển khai cơ chế tự động hủy thanh toán khi quá thời hạn 30 phút.
+
+    \item \textbf{Xây dựng cơ chế Flash Sale chống over-sell:} Thiết kế giải pháp chống tranh
+    chấp tài nguyên bằng Redis Lua atomic script, buyer set chống mua trùng, cơ chế bù trừ
+    khi tạo đơn thất bại và reconciliation scheduler đối chiếu lại số đơn thực tế. Mục tiêu:
+    trong điều kiện nhiều người dùng đồng thời, số đơn hàng thành công không vượt quá số
+    lượng slot của chiến dịch.
+
+    \item \textbf{Xây dựng hệ thống quan sát hoàn chỉnh:} Triển khai Prometheus và Grafana
+    cho thu thập và trực quan hóa số liệu (JVM heap, request rate, latency, error rate);
+    Zipkin cho truy vết phân tán theo chuẩn W3C Trace Context; structured logging với khả
+    năng liên kết traceId/spanId, cho phép giám sát và gỡ lỗi hệ thống từ đầu đến cuối.
+\end{enumerate}
+
+\section{Phạm vi đề tài}
+\label{section:1.3}
+
+\subsection*{Phạm vi thực hiện}
+
+Hệ thống được xây dựng bao gồm 13 business microservice, ba Spring Cloud infrastructure
+service, các hệ thống hạ tầng hỗ trợ, Next.js storefront/Admin Panel và bộ kịch bản kiểm
+thử thực nghiệm. Toàn bộ backend và hạ tầng được đóng gói bằng Docker Compose; môi trường
+production-like bổ sung frontend container, Caddy reverse proxy và GitHub Actions/GHCR cho
+quy trình build/push image. Bảng~\ref{table:in-scope} liệt kê chi tiết các thành phần trong
+phạm vi thực hiện của đề tài.
+
+\begin{table}[H]
+\centering
+\caption{Các thành phần trong phạm vi đề tài}
+\label{table:in-scope}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Nhóm} & \textbf{Thành phần} & \textbf{Công nghệ} \\ \hline
+\multirow{3}{2.5cm}{Spring Cloud} & API Gateway & Spring Cloud Gateway \\ \cline{2-3}
+                                  & Discovery Server & Netflix Eureka \\ \cline{2-3}
+                                  & Config Server & Spring Cloud Config \\ \hline
+\multirow{13}{2.5cm}{Business Services} & identity-service, user-service & Keycloak, PostgreSQL, Kafka \\ \cline{2-3}
+                                        & product-service & PostgreSQL, Redis, Kafka \\ \cline{2-3}
+                                        & inventory-service & PostgreSQL, Kafka \\ \cline{2-3}
+                                        & cart-service & Redis \\ \cline{2-3}
+                                        & order-service, payment-service & PostgreSQL, Kafka, VNPAY \\ \cline{2-3}
+                                        & voucher-service, content-service & PostgreSQL \\ \cline{2-3}
+                                        & notification-service & PostgreSQL, Kafka, Mailpit \\ \cline{2-3}
+                                        & review-service & PostgreSQL, OpenFeign \\ \cline{2-3}
+                                        & search-service & Elasticsearch, Kafka \\ \cline{2-3}
+                                        & flash-sale-service & PostgreSQL, Redis, Kafka \\ \hline
+\multirow{5}{2.5cm}{Infrastructure} & PostgreSQL 17, Redis 8 & Dữ liệu \& Cache \\ \cline{2-3}
+                                     & Kafka KRaft 8.2 & Message Broker \\ \cline{2-3}
+                                     & Elasticsearch 8.18 & Search Engine \\ \cline{2-3}
+                                     & Keycloak 26.6, Mailpit & Xác thực \& Email \\ \cline{2-3}
+                                     & Prometheus, Grafana, Zipkin & Observability \\ \hline
+\multirow{2}{2.5cm}{Frontend} & Storefront & Next.js App Router \\ \cline{2-3}
+                              & Admin Panel & Server Actions, ROLE\_ADMIN guard \\ \hline
+\multirow{4}{2.5cm}{Kiểm thử \& Triển khai} & Unit/Integration Test & JUnit 5, Testcontainers \\ \cline{2-3}
+                                            & Smoke/E2E Test & Bash scripts, Phase 14 demo \\ \cline{2-3}
+                                            & Performance Test & k6 \\ \cline{2-3}
+                                            & Docker Compose/AWS & EC2 single-host, Caddy, GHCR \\ \hline
+\end{tabular}
+}
+\end{table}
+
+\subsection*{Ngoài phạm vi}
+
+Các hạng mục sau nằm ngoài phạm vi của đề tài, xuất phát từ giới hạn về thời gian, tài
+nguyên và định hướng nghiên cứu của đồ án tốt nghiệp:
+
+\begin{itemize}
+    \item \textbf{Frontend cấp sản phẩm thương mại:} Đề tài đã triển khai Next.js storefront
+    và Admin Panel phục vụ demo các luồng chính. Tuy nhiên, các năng lực production như
+    tối ưu UX đa thiết bị, upload file thật qua object storage, workflow kiểm duyệt nâng cao
+    và mobile app riêng chưa nằm trong phạm vi.
+    \item \textbf{Kubernetes và Service Mesh:} Triển khai trên Kubernetes với Istio hoặc
+    Linkerd là hướng mở rộng trong tương lai. Phạm vi hiện tại dừng ở Docker Compose
+    single-host, phù hợp với quy mô của một đồ án tốt nghiệp.
+    \item \textbf{CI/CD pipeline cấp sản xuất đầy đủ:} GitHub Actions đã hỗ trợ build/push
+    image lên GitHub Container Registry và triển khai lên EC2 ở mức production-like. Phạm vi
+    hiện tại chưa bao gồm canary/blue-green deployment, quét bảo mật bắt buộc, quản lý secret
+    chuyên dụng và triển khai đa môi trường.
+    \item \textbf{Thanh toán VNPAY thực tế:} Chỉ sử dụng môi trường sandbox của VNPAY để
+    minh họa luồng thanh toán. Chưa đăng ký tài khoản merchant phục vụ giao dịch thật.
+    \item \textbf{Logistics và hoàn tiền:} Các nghiệp vụ vận chuyển, giao hàng và hoàn tiền
+    phức tạp nằm ngoài phạm vi backend e-commerce cốt lõi mà đề tài hướng tới.
+    \item \textbf{Triển khai đa vùng:} Hệ thống được triển khai trên một máy ảo EC2 duy nhất
+    tại khu vực ap-southeast-1 (Singapore), chưa hỗ trợ chuyển đổi dự phòng đa vùng địa lý.
+\end{itemize}
+
+\section{Khảo sát hệ thống tương tự}
+\label{section:1.4}
+
+Để có cơ sở thực tiễn cho các quyết định thiết kế, đề tài tiến hành khảo sát kiến trúc của
+một số hệ thống TMĐT tiêu biểu trên thị trường, cũng như các dự án mã nguồn mở có liên quan
+trong cộng đồng phát triển.
+
+\subsection*{Các sàn thương mại điện tử lớn}
+
+Bảng~\ref{table:survey-platforms} tổng hợp kết quả khảo sát kiến trúc của ba sàn TMĐT hàng
+đầu tại Việt Nam và Đông Nam Á, tập trung vào các khía cạnh: mô hình kiến trúc, ngôn ngữ
+lập trình chính, hệ quản trị cơ sở dữ liệu, message queue, giải pháp tìm kiếm và chiến lược
+xử lý flash sale.
+
+\begin{table}[H]
+\centering
+\caption{Khảo sát kiến trúc các sàn thương mại điện tử lớn}
+\label{table:survey-platforms}
+\begin{tabular}{|l|p{3.2cm}|p{3.2cm}|p{3.2cm}|}
+\hline
+\textbf{Tiêu chí} & \textbf{Shopee} & \textbf{Tiki} & \textbf{Lazada} \\ \hline
+Kiến trúc & Microservices (hàng trăm service) & Microservices kết hợp Monolith & Microservices (hệ sinh thái Alibaba) \\ \hline
+Ngôn ngữ chính & Go, Python, Java & Java (Spring), Go & Java \\ \hline
+Cơ sở dữ liệu & MySQL sharding, Redis, TiDB & PostgreSQL, MySQL, Redis, ES & MySQL, Redis, HBase \\ \hline
+Message Queue & Kafka, RabbitMQ & Kafka & RocketMQ, Kafka \\ \hline
+Tìm kiếm & Elasticsearch & Elasticsearch & Elasticsearch \\ \hline
+Flash Sale & Redis + Lua + DB constraint & Redis + Queue + DB lock & Alibaba Sentinel \\ \hline
+\end{tabular}
+\end{table}
+
+Từ kết quả khảo sát, có thể rút ra năm điểm chung trong kiến trúc của các sàn TMĐT lớn, qua
+đó củng cố cho các quyết định công nghệ của đề tài: (1)~kiến trúc microservices được sử dụng
+để phân rã nghiệp vụ phức tạp thành các dịch vụ độc lập; (2)~chiến lược polyglot persistence
+--- kết hợp nhiều loại cơ sở dữ liệu cho các mục đích khác nhau --- là cách tiếp cận phổ
+biến; (3)~message queue đóng vai trò trung tâm trong xử lý bất đồng bộ và giao tiếp giữa
+các dịch vụ; (4)~Elasticsearch là lựa chọn thống nhất cho bài toán tìm kiếm toàn văn; và
+(5)~Redis là thành phần then chốt trong kiến trúc xử lý flash sale, thường được kết hợp với
+các cơ chế bảo vệ ở tầng cơ sở dữ liệu.
+
+\subsection*{Dự án tham khảo}
+
+Bên cạnh các hệ thống thương mại thực tế, đề tài cũng tham khảo một số dự án mã nguồn mở
+triển khai microservices với Spring Boot:
+
+\begin{itemize}
+    \item \textbf{Spring PetClinic Microservices:} Dự án chính thức của Spring Team minh họa
+    quá trình tách một ứng dụng monolith thành các microservices sử dụng Spring Cloud. Đây
+    là nguồn tham khảo chính về cấu trúc dự án Maven multi-module, cấu hình Spring Cloud
+    và tổ chức Docker Compose cho môi trường phát triển cục bộ.
+
+    \item \textbf{AxonBank (Axon Framework):} Dự án minh họa việc áp dụng CQRS và Event
+    Sourcing với Axon Framework trên nền Spring Boot, cung cấp tài liệu tham khảo giá trị
+    về thiết kế hướng sự kiện và cách tổ chức luồng xử lý command/query.
+
+    \item \textbf{Các dự án E-Commerce Microservices trên GitHub:}\\
+    Nhiều dự án e-commerce
+    mã nguồn mở trên GitHub cung cấp ý tưởng tham khảo về cấu trúc thư mục dịch vụ, thiết
+    kế REST API và dockerization. Tuy nhiên, hầu hết các dự án này chưa triển khai đầy đủ
+    các mẫu thiết kế phân tán phức tạp như Saga, Transactional Outbox hay cơ chế atomic
+    counter cho flash sale --- những điểm mà đề tài này hướng tới giải quyết một cách trọn
+    vẹn.
+\end{itemize}
+
+\section{Định hướng giải pháp}
+\label{section:1.5}
+
+Dựa trên phân tích bài toán, khảo sát thực tiễn và nghiên cứu lý thuyết, đề tài xác định
+sáu định hướng kỹ thuật then chốt, chi phối toàn bộ quá trình thiết kế và triển khai hệ
+thống.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong1/6-tru-cot-ki-thuat.png}
+    \caption{Sơ đồ tổng quan sáu trụ cột kỹ thuật của hệ thống}
+    \label{fig:solution-overview}
+\end{figure}
+
+\textbf{Kiến trúc và phân rã dịch vụ.} Áp dụng phương pháp Domain-Driven Design với Bounded
+Context làm đơn vị phân rã, hệ thống được chia thành 13 microservice tương ứng với 13 miền
+nghiệp vụ độc lập. Mỗi service sở hữu cơ sở dữ liệu riêng và không được phép truy cập trực
+tiếp vào dữ liệu của service khác --- mọi tương tác dữ liệu phải thông qua API hoặc sự kiện.
+API Gateway đóng vai trò điểm vào duy nhất cho mọi yêu cầu từ phía client, kết hợp với
+Eureka Service Discovery để định tuyến động và Config Server để quản lý cấu hình tập trung,
+đảm bảo tính nhất quán về mặt vận hành trên toàn hệ thống.
+
+\textbf{Giao tiếp và tính nhất quán phân tán.} Hệ thống kết hợp hai phương thức giao tiếp:
+REST + OpenFeign cho các truy vấn đồng bộ cần phản hồi tức thời (xác minh giá sản phẩm,
+kiểm tra tồn kho) và Apache Kafka KRaft cho các tương tác bất đồng bộ không yêu cầu phản hồi
+ngay (cập nhật trạng thái đơn hàng, gửi thông báo). Saga Orchestration Pattern được áp dụng
+để quản lý giao dịch phân tán trong luồng đặt hàng, với order-service đóng vai trò bộ điều
+phối trung tâm, đảm bảo tính nhất quán cuối cùng thay vì two-phase commit. Toàn bộ 13 Kafka
+topic được thiết kế rõ ràng về producer, consumer và cấu trúc payload.
+
+\textbf{Truyền thông điệp tin cậy.} Transactional Outbox Pattern được triển khai tại
+order-service và payment-service để giải quyết bài toán dual-write: sự kiện được ghi vào
+bảng \texttt{outbox} hoặc \texttt{payment\_outbox} trong cùng một giao dịch cơ sở dữ liệu với
+dữ liệu nghiệp vụ. OutboxPoller (chu kỳ quét 1 giây) định kỳ đọc các sự kiện chưa được phát
+hành bằng truy vấn \texttt{FOR UPDATE SKIP LOCKED} và gửi lên Kafka, đảm bảo at-least-once
+delivery ngay cả khi service gặp sự cố giữa chừng. Phía nhận, Idempotent Consumer sử dụng
+bảng \texttt{processed\_events} để phát hiện và loại bỏ sự kiện trùng lặp, đạt được hiệu ứng
+exactly-once processing ở tầng ứng dụng. Sáu scheduled job chạy nền đảm bảo hệ thống tự phục
+hồi sau các tình huống bất thường: ReservationExpiryScheduler, PaymentTimeoutScheduler,
+OutboxPoller cho order và payment, CampaignScheduler và ReconciliationScheduler.
+
+\textbf{Flash sale chống over-sell.} Giải pháp được thiết kế theo mô hình phòng thủ đa lớp:
+lớp thứ nhất sử dụng Redis Lua atomic script để thực hiện thao tác kiểm tra buyer set, kiểm
+tra tồn kho và giảm slot trong bộ nhớ một cách nguyên tử; lớp thứ hai sử dụng logic tạo đơn
+và cơ chế bù trừ để hoàn slot khi quá trình tạo đơn thất bại; lớp thứ ba sử dụng
+ReconciliationScheduler để đối chiếu \texttt{soldCount} với số đơn flash-sale thực tế trong
+order-service. Cơ chế distributed lock dựa trên Redis đảm bảo chỉ một instance của
+flash-sale-service thực thi CampaignScheduler tại mỗi thời điểm, còn Redis stock key và
+buyers key được đặt TTL theo thời điểm kết thúc chiến dịch.
+
+\textbf{Bảo mật tập trung.} Toàn bộ hoạt động xác thực và phân quyền được xử lý tại API
+Gateway thông qua Keycloak 26 theo mẫu Trusted Subsystem Pattern: Gateway là điểm duy nhất
+xác minh JWT (RS256), sau đó chuyển tiếp thông tin định danh đã được xác thực qua ba header
+tin cậy --- \texttt{X-User-Id}, \texttt{X-User-Roles} và \texttt{X-User-Email} --- cho các
+service backend. Các service nội bộ hoàn toàn tin tưởng các header này mà không cần gọi lại
+Keycloak, giúp giảm độ trễ và giảm tải cho Identity Provider. Phân quyền dựa trên mô hình
+RBAC với hai vai trò chính: ROLE\_USER (khách hàng) và ROLE\_ADMIN (quản trị viên). Các
+endpoint nhạy cảm được bảo vệ bổ sung bằng Redis token bucket rate limiter: 10 request/giây
+cho đặt hàng và 3 request/giây cho mua flash sale.
+
+\textbf{Khả năng quan sát.} Hệ thống quan sát được xây dựng trên cả ba trụ cột. Về
+metrics: Prometheus định kỳ thu thập số liệu từ các endpoint \path|/actuator/prometheus|,
+Grafana trực quan hóa thông qua các dashboard được provision tự động cho JVM, Spring Boot
+service metrics và tổng quan Saga.
+Về distributed tracing: Zipkin tiếp nhận và hiển thị vết (trace) từ tất cả service theo
+chuẩn W3C Trace Context, mỗi request được gán một traceId duy nhất và mỗi đoạn xử lý trong
+một service là một span, cho phép tái tạo toàn bộ hành trình của request qua hệ thống. Về
+logging: structured logging với Logback pattern chứa traceId và spanId trong mỗi dòng log,
+cho phép liên kết chéo giữa logs và traces khi cần điều tra sự cố.
+
+\section{Bố cục báo cáo}
+\label{section:1.6}
+
+Báo cáo được tổ chức thành năm chương chính, một chương kết luận và hai phụ lục. Nội dung
+các chương được sắp xếp theo logic từ tổng quan đến chi tiết, từ lý thuyết đến thực hành,
+từ thiết kế đến kiểm chứng:
+
+\textbf{Chương 1 --- Giới thiệu đề tài} trình bày bối cảnh và câu hỏi nghiên cứu, mục tiêu,
+phạm vi, kết quả khảo sát hệ thống tương tự, định hướng giải pháp và bố cục của báo cáo.
+
+\textbf{Chương 2 --- Cơ sở lý thuyết} trình bày có hệ thống các khái niệm và nguyên lý nền
+tảng: kiến trúc microservices, Domain-Driven Design và Bounded Context, các mô hình giao tiếp
+đồng bộ và bất đồng bộ, giao dịch phân tán và Saga Pattern, Transactional Outbox và
+Idempotent Consumer, CQRS, Circuit Breaker, Rate Limiting, bảo mật phân tán (OAuth 2.0,
+OpenID Connect, JWT, Trusted Subsystem Pattern), API Gateway, Service Discovery và
+Observability.
+
+\textbf{Chương 3 --- Giải pháp công nghệ} phân tích và lý giải việc lựa chọn từng công nghệ
+trong hệ thống: Java 21, Maven multi-module, Spring Boot 3.5 và Spring Cloud 2025.0.0,
+Spring Cloud Gateway, Eureka, Config Server, OpenFeign, Apache Kafka KRaft, PostgreSQL,
+Redis, Elasticsearch, Keycloak và VNPAY. Chương này cũng trình bày Prometheus, Grafana,
+Zipkin, Mailpit, Docker Compose, Next.js, AWS EC2, Caddy và GitHub Actions/GHCR.
+
+\textbf{Chương 4 --- Phân tích và Thiết kế hệ thống} trình bày toàn bộ kết quả phân tích
+và thiết kế: yêu cầu chức năng và phi chức năng, biểu đồ use case, kiến trúc tổng thể,
+bản đồ ngữ cảnh 13 bounded context, thiết kế cơ sở dữ liệu, thiết kế API và giao tiếp,
+thiết kế luồng sự kiện Kafka, thiết kế bảo mật, máy trạng thái và biểu đồ tuần tự cho
+các luồng nghiệp vụ chính.
+
+\textbf{Chương 5 --- Cài đặt, Triển khai, Kiểm thử và Đánh giá} trình bày chi tiết quá
+trình hiện thực hóa thiết kế: môi trường phát triển, cấu trúc dự án, cài đặt các dịch vụ
+cốt lõi, frontend/Admin Panel, cấu hình Docker Compose, triển khai production-like trên
+AWS EC2 và quy trình CI/CD. Phần cuối chương trình bày chiến lược và kết quả kiểm thử:
+backend readiness, kiểm thử chức năng, hiệu năng, khả năng chịu lỗi và đánh giá tổng thể.
+
+\textbf{Kết luận và Hướng phát triển} tổng kết những kết quả đã đạt được, phân tích khách
+quan những hạn chế còn tồn tại và đề xuất các hướng phát triển tiềm năng trong tương lai.
+
+\textbf{Phụ lục A --- Hướng dẫn cài đặt và vận hành} cung cấp hướng dẫn từng bước để thiết
+lập môi trường phát triển, biên dịch mã nguồn, khởi động hệ thống, kiểm tra trạng thái và
+truy cập các endpoint của hệ thống.
+
+\textbf{Phụ lục B --- Đặc tả Use Case} cung cấp đặc tả chi tiết cho các use case chính của
+hệ thống, bao gồm điều kiện tiên quyết, luồng sự kiện chính, luồng sự kiện thay thế và
+điều kiện hậu kiểm.
+
+\end{document}

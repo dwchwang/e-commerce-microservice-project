@@ -1,0 +1,31 @@
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {1.1}{\ignorespaces Các thành phần trong phạm vi đề tài}}{3}{table.caption.10}%
+\contentsline {table}{\numberline {1.2}{\ignorespaces Khảo sát kiến trúc các sàn thương mại điện tử lớn}}{5}{table.caption.11}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces So sánh ba mô hình kiến trúc phần mềm}}{11}{table.caption.13}%
+\contentsline {table}{\numberline {2.2}{\ignorespaces So sánh hai mô hình giao tiếp trong microservices}}{13}{table.caption.14}%
+\contentsline {table}{\numberline {2.3}{\ignorespaces So sánh Saga Choreography và Saga Orchestration}}{14}{table.caption.15}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Các thư viện và công cụ phát triển chính}}{26}{table.caption.22}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Yêu cầu chức năng theo miền nghiệp vụ}}{37}{table.caption.23}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Yêu cầu phi chức năng và chiến lược đáp ứng}}{38}{table.caption.24}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces Sở hữu dịch vụ và giao tiếp}}{41}{table.caption.27}%
+\contentsline {table}{\numberline {4.4}{\ignorespaces Định tuyến API Gateway}}{44}{table.caption.29}%
+\contentsline {table}{\numberline {4.5}{\ignorespaces Bản đồ Kafka Topics}}{45}{table.caption.30}%
+\contentsline {table}{\numberline {4.6}{\ignorespaces Tác vụ nền trong hệ thống}}{53}{table.caption.39}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces Môi trường và công cụ phát triển}}{54}{table.caption.40}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Map service với lớp lưu trữ chính}}{55}{table.caption.41}%
+\contentsline {table}{\numberline {5.3}{\ignorespaces Chính sách phân quyền tại API Gateway}}{57}{table.caption.42}%
+\contentsline {table}{\numberline {5.4}{\ignorespaces Các module chính của Admin Panel}}{58}{table.caption.43}%
+\contentsline {table}{\numberline {5.5}{\ignorespaces Thành phần triển khai production-like}}{59}{table.caption.44}%
+\contentsline {table}{\numberline {5.6}{\ignorespaces Kết quả backend readiness smoke test}}{60}{table.caption.45}%
+\contentsline {table}{\numberline {5.7}{\ignorespaces Tổng hợp kết quả kiểm thử hiệu năng bằng k6}}{60}{table.caption.46}%
+\contentsline {table}{\numberline {5.8}{\ignorespaces Tổng hợp kết quả kiểm thử khả năng chịu lỗi}}{61}{table.caption.47}%
+\contentsline {table}{\numberline {5.9}{\ignorespaces Đối chiếu kết quả với mục tiêu ban đầu}}{62}{table.caption.48}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {A.1}{\ignorespaces Các URL truy cập hệ thống trên môi trường local}}{67}{table.caption.52}%
+\addvspace {10\p@ }
+\contentsfinish 
+\contentsfinish 

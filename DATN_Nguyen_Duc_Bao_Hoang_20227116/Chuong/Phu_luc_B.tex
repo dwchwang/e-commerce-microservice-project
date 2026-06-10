@@ -1,0 +1,122 @@
+% !TEX root = ../DoAn.tex
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+Phụ lục này cung cấp đặc tả chi tiết cho các use case nghiệp vụ chính của hệ thống. Mỗi
+use case được mô tả theo cấu trúc: tên use case, tác nhân chính, điều kiện tiên quyết,
+luồng sự kiện chính, luồng sự kiện thay thế và điều kiện hậu kiểm.
+
+\section*{B.1. Đăng ký tài khoản}
+
+\begin{compacttable}
+\noindent\begin{tabularx}{\textwidth}{|L{3.3cm}|Y|}
+\hline
+\textbf{Tên use case}   & Đăng ký tài khoản người dùng \\ \hline
+\textbf{Tác nhân}        & Khách hàng (Guest) \\ \hline
+\textbf{Điều kiện tiên quyết} & Người dùng chưa có tài khoản trong hệ thống \\ \hline
+\textbf{Luồng chính}     &
+1. Người dùng gửi yêu cầu đăng ký với email, mật khẩu và thông tin cá nhân \\
+                        & 2. Identity-service gọi Keycloak Admin API tạo user \\
+                        & 3. Identity-service phát hành sự kiện \path|user-registered| lên Kafka \\
+                        & 4. User-service tiêu thụ sự kiện, tạo hồ sơ người dùng \\
+                        & 5. Hệ thống trả về thông báo đăng ký thành công \\ \hline
+\textbf{Luồng thay thế}  &
+A1. Email đã tồn tại: trả về lỗi 409 Conflict \\
+                        & A2. Mật khẩu không đạt yêu cầu: trả về lỗi 400 Bad Request \\ \hline
+\textbf{Hậu kiểm}        & User tồn tại trong Keycloak, hồ sơ user được tạo trong \path|user_db| \\ \hline
+\end{tabularx}
+\end{compacttable}
+
+\section*{B.2. Đặt hàng COD}
+
+\begin{compacttable}
+\noindent\begin{tabularx}{\textwidth}{|L{3.3cm}|Y|}
+\hline
+\textbf{Tên use case}   & Đặt hàng thanh toán khi nhận hàng (COD) \\ \hline
+\textbf{Tác nhân}        & Khách hàng đã đăng nhập \\ \hline
+\textbf{Điều kiện tiên quyết} & Người dùng đã đăng nhập, giỏ hàng không rỗng, sản phẩm còn tồn kho \\ \hline
+\textbf{Luồng chính}     &
+1. Khách hàng gửi yêu cầu tạo đơn hàng (paymentMethod=COD, danh sách sản phẩm, địa chỉ) \\
+                        & 2. Order-service kiểm tra sản phẩm, tồn kho, voucher qua Feign \\
+                        & 3. Order-service tạo Order (PENDING) và OutboxEvent trong cùng transaction \\
+                        & 4. Inventory-service đặt chỗ tồn kho khi nhận \path|order-created| \\
+                        & 5. Order-service xác nhận đơn hàng (CONFIRMED) khi nhận \path|inventory-updated| \\
+                        & 6. Inventory-service xác nhận trừ tồn kho thực tế \\
+                        & 7. Notification-service gửi email xác nhận đơn hàng \\ \hline
+\textbf{Luồng thay thế}  &
+A1. Tồn kho không đủ: Inventory phát hành \path|inventory-failed|, Order chuyển CANCELLED \\
+                        & A2. Voucher không hợp lệ: Order-service trả lỗi, không tạo đơn \\ \hline
+\textbf{Hậu kiểm}        & Order status = CONFIRMED, tồn kho đã bị trừ, email đã được gửi \\ \hline
+\end{tabularx}
+\end{compacttable}
+
+\section*{B.3. Thanh toán VNPAY}
+
+\begin{compacttable}
+\noindent\begin{tabularx}{\textwidth}{|L{3.3cm}|Y|}
+\hline
+\textbf{Tên use case}   & Thanh toán trực tuyến qua VNPAY \\ \hline
+\textbf{Tác nhân}        & Khách hàng đã đăng nhập, Hệ thống VNPAY \\ \hline
+\textbf{Điều kiện tiên quyết} & Đơn hàng đã được tạo với paymentMethod=VNPAY, trạng thái STOCK\_RESERVED \\ \hline
+\textbf{Luồng chính}     &
+1. Khách hàng yêu cầu tạo URL thanh toán \\
+                        & 2. Payment-service tạo payment (PENDING), sinh URL với chữ ký HMAC-SHA512 \\
+                        & 3. Khách hàng được chuyển hướng đến trang thanh toán VNPAY \\
+                        & 4. Khách hàng nhập thông tin thẻ và xác nhận thanh toán \\
+                        & 5. VNPAY gọi IPN callback với kết quả thành công \\
+                        & 6. Payment-service xác minh chữ ký, cập nhật payment COMPLETED \\
+                        & 7. Order-service nhận \path|payment-success|, chuyển order CONFIRMED \\
+                        & 8. Inventory xác nhận tồn kho, Notification gửi email \\ \hline
+\textbf{Luồng thay thế}  &
+A1. Thanh toán thất bại: VNPAY trả về mã lỗi, payment chuyển FAILED, order CANCELLED \\
+                        & A2. Quá thời hạn 30 phút: Scheduler tự động hủy đơn và giải phóng tồn kho \\
+                        & A3. Chữ ký không hợp lệ: Payment-service từ chối, không cập nhật trạng thái \\ \hline
+\textbf{Hậu kiểm}        & Payment status = COMPLETED, Order status = CONFIRMED \\ \hline
+\end{tabularx}
+\end{compacttable}
+
+\section*{B.4. Tham gia Flash Sale}
+
+\begin{compacttable}
+\noindent\begin{tabularx}{\textwidth}{|L{3.3cm}|Y|}
+\hline
+\textbf{Tên use case}   & Mua hàng trong sự kiện Flash Sale \\ \hline
+\textbf{Tác nhân}        & Khách hàng đã đăng nhập \\ \hline
+\textbf{Điều kiện tiên quyết} & Chiến dịch đang ở trạng thái ACTIVE, trong thời gian diễn ra, còn tồn kho \\ \hline
+\textbf{Luồng chính}     &
+1. Khách hàng gửi yêu cầu mua hàng \path|POST /api/flash-sales/{id}/purchase| \\
+                        & 2. Flash-sale-service kiểm tra thời gian hiệu lực của chiến dịch \\
+                        & 3. Thực thi Redis Lua script: kiểm tra stock, kiểm tra chưa mua, giảm stock \\
+                        & 4. Nếu Redis trả về thành công, phát hành \path|flash-sale-order-requested| lên Kafka \\
+                        & 5. Order-service tạo đơn hàng với giá flash sale \\
+                        & 6. Xử lý Saga tương tự luồng COD \\ \hline
+\textbf{Luồng thay thế}  &
+A1. Hết hàng (Redis stock = 0): trả về HTTP 409 Conflict \\
+                        & A2. Đã mua trước đó: Redis buyers set phát hiện, trả về HTTP 409 \\
+                        & A3. Chiến dịch chưa bắt đầu/đã kết thúc: trả về HTTP 400 \\
+                        & A4. Tạo đơn thất bại sau khi giữ slot: compensation hoàn Redis stock và buyer set \\ \hline
+\textbf{Hậu kiểm}        & Đơn hàng flash sale được tạo, không vượt quá số lượng, không trùng người mua \\ \hline
+\end{tabularx}
+\end{compacttable}
+
+\section*{B.5. Tìm kiếm sản phẩm}
+
+\begin{compacttable}
+\noindent\begin{tabularx}{\textwidth}{|L{3.3cm}|Y|}
+\hline
+\textbf{Tên use case}   & Tìm kiếm sản phẩm toàn văn \\ \hline
+\textbf{Tác nhân}        & Khách hàng (Guest hoặc đã đăng nhập) \\ \hline
+\textbf{Điều kiện tiên quyết} & Elasticsearch đã được đồng bộ dữ liệu sản phẩm \\ \hline
+\textbf{Luồng chính}     &
+1. Người dùng gửi yêu cầu \texttt{GET /api/search?keyword=X\&\allowbreak category=Y\&\allowbreak minPrice=Z} \\
+                        & 2. Search-service xây dựng Boolean Query: full-text match + term filter + range filter \\
+                        & 3. Truy vấn Elasticsearch index \path|products| \\
+                        & 4. Trả về danh sách sản phẩm phù hợp kèm phân trang \\ \hline
+\textbf{Luồng thay thế}  &
+A1. Không có kết quả: trả về danh sách rỗng \\
+                        & A2. Elasticsearch không khả dụng: trả về lỗi 503 Service Unavailable \\ \hline
+\textbf{Hậu kiểm}        & Kết quả tìm kiếm được trả về với thời gian phản hồi dưới 100ms \\ \hline
+\end{tabularx}
+\end{compacttable}
+
+\end{document}

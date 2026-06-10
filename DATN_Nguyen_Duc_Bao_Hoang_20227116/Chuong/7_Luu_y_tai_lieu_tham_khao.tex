@@ -1,0 +1,75 @@
+% !TEX root = ../DoAn.tex
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+\section*{Kết luận}
+
+Đề tài đã hoàn thành việc phân tích, thiết kế, cài đặt, triển khai và kiểm chứng một hệ thống
+thương mại điện tử theo kiến trúc microservices với Java 21, Spring Boot 3.5 và Spring Cloud
+2025. Hệ thống gồm 13 business microservice, ba Spring Cloud infrastructure service, các
+thành phần hạ tầng dữ liệu/messaging/observability, cùng Next.js storefront và Admin Panel
+phục vụ demo các luồng nghiệp vụ chính.
+
+Về kiến trúc, hệ thống áp dụng Domain-Driven Design và Bounded Context để phân rã bài toán
+thành các service độc lập theo miền nghiệp vụ. Giao tiếp đồng bộ được thực hiện qua
+REST/OpenFeign, trong khi giao tiếp bất đồng bộ sử dụng Apache Kafka. Các mẫu thiết kế phân
+tán quan trọng đã được hiện thực và kiểm chứng gồm Saga Orchestration cho luồng đặt hàng,
+Transactional Outbox cho order/payment event, Idempotent Consumer để chống xử lý trùng lặp,
+CQRS-lite cho tìm kiếm sản phẩm bằng Elasticsearch, scheduler/reconciliation cho các tình
+huống timeout và tự phục hồi.
+
+Về tính năng, hệ thống đáp ứng các nghiệp vụ cốt lõi của một nền tảng thương mại điện tử:
+đăng ký và xác thực người dùng qua Keycloak, quản lý sản phẩm/danh mục/thương hiệu, giỏ hàng,
+đặt hàng COD và VNPAY sandbox, voucher, tồn kho, thông báo email, đánh giá sản phẩm, tìm kiếm
+toàn văn, nội dung CMS, flash-sale và quản trị hệ thống. Next.js storefront hỗ trợ các luồng
+người mua, còn Admin Panel cung cấp các module quản trị dashboard, products, inventory, orders,
+users, vouchers, flash-sales, content và reviews.
+
+Điểm nổi bật nhất về kỹ thuật là luồng đặt hàng và flash-sale. Luồng đặt hàng thể hiện đầy đủ
+Saga Orchestration, Outbox và Idempotent Consumer để đạt tính nhất quán cuối cùng giữa order,
+inventory, voucher, payment và notification. Luồng flash-sale sử dụng Redis Lua atomic script,
+buyer set, compensation và ReconciliationScheduler để chống over-sell. Spike test 500 VU cho
+kết quả đúng 100 purchase thành công trên 100 slot, 100 đơn confirmed và 0 duplicate buyer,
+cho thấy thiết kế đáp ứng mục tiêu thực nghiệm của đồ án.
+
+Về vận hành, hệ thống được đóng gói bằng Docker Compose và triển khai production-like trên AWS
+EC2 single-host. Hệ thống sử dụng Caddy reverse proxy, HTTPS và GitHub Actions/GHCR cho quy
+trình build/push image. Observability stack gồm Prometheus, Grafana và Zipkin giúp theo dõi metrics,
+trace và debug các luồng nghiệp vụ end-to-end. Kết quả kiểm thử cho thấy backend readiness
+đạt 9/9 split suites; catalog soak đạt p95 61.68 ms với 0.00\% lỗi; checkout stress đạt p95
+160.92 ms với order success 100.00\%; các kịch bản Kill Kafka, Kill Redis và inventory
+failure compensation đều đạt trong phạm vi thực nghiệm.
+
+\section*{Hướng phát triển}
+
+Bên cạnh kết quả đạt được, hệ thống vẫn còn một số hướng phát triển quan trọng nếu tiếp tục
+nâng cấp sau phạm vi đồ án.
+
+\textbf{Nâng cấp hạ tầng triển khai.} Hướng phát triển tự nhiên là chuyển từ Docker Compose
+single-host sang Kubernetes multi-node để có high availability, autoscaling, rolling update
+và self-healing tốt hơn. Khi đó có thể bổ sung Service Mesh như Istio hoặc Linkerd để quản lý
+mTLS, traffic splitting, retry policy và fault injection ở tầng hạ tầng.
+
+\textbf{Hoàn thiện CI/CD và vận hành production.} Pipeline hiện đã đáp ứng build/push image
+và deploy EC2 ở mức production-like. Giai đoạn tiếp theo nên bổ sung automated test gate,
+security scanning bằng Trivy/Snyk, quản lý secret chuyên dụng, deployment đa môi trường,
+Alertmanager/Grafana Alerting và log aggregation tập trung bằng ELK hoặc Loki.
+
+\textbf{Hoàn thiện frontend và nghiệp vụ quản trị.} Storefront và Admin Panel đã đủ cho demo
+DATN, nhưng để tiến gần sản phẩm thương mại cần bổ sung object storage cho upload ảnh/file,
+workflow kiểm duyệt review, ban/unban user qua Keycloak Admin API, dashboard analytics chuyên
+dụng, tối ưu mobile UX và các nghiệp vụ sau bán như đổi trả, hoàn tiền, vận chuyển.
+
+\textbf{Nâng cao hợp đồng tích hợp và chất lượng kiểm thử.} Module \texttt{common} đang đóng
+vai trò shared kernel cho DTO/event schema, phù hợp monorepo đồ án nhưng có thể tạo coupling
+khi hệ thống mở rộng. Hướng phát triển là bổ sung schema registry hoặc contract testing cho
+Kafka/REST API, thiết lập ngưỡng coverage với JaCoCo, thêm mutation test cho nghiệp vụ quan
+trọng và kiểm thử security theo OWASP Top 10.
+
+\textbf{Tối ưu hiệu năng và dữ liệu.} Với quy mô lớn hơn, hệ thống có thể tách PostgreSQL
+thành cluster hoặc managed database, dùng read replica cho các read-heavy service, Redis
+Cluster cho cache/flash-sale, storage bền vững cho Zipkin, và analytics/read model riêng cho
+báo cáo doanh thu. Các hướng như Event Sourcing hoặc gRPC nội bộ chỉ nên cân nhắc khi nhu cầu
+audit hoặc latency thực sự vượt quá khả năng của thiết kế hiện tại.
+
+\end{document}

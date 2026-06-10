@@ -1,0 +1,541 @@
+% !TEX root = ../DoAn.tex
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+Chương này trình bày các khái niệm lý thuyết và mẫu thiết kế kiến trúc làm nền tảng cho
+các quyết định thiết kế của hệ thống. Các nội dung được sắp xếp theo trình tự từ tổng quan
+đến chi tiết: bắt đầu với kiến trúc microservices và phương pháp phân rã hệ thống, tiếp đến
+các mô hình giao tiếp và xử lý giao dịch phân tán, sau cùng là các cơ chế đảm bảo độ tin
+cậy, bảo mật và khả năng quan sát. Phần áp dụng các lý thuyết này vào công nghệ cụ thể sẽ
+được trình bày ở Chương~\ref{chapter:Methodology}.
+
+% =======================================================================
+\section{Kiến trúc Microservices}
+\label{section:2.1}
+
+\subsection{Định nghĩa và đặc trưng cốt lõi}
+
+Kiến trúc microservices là một phong cách kiến trúc phần mềm, trong đó ứng dụng được xây
+dựng như một tập hợp các dịch vụ nhỏ, độc lập, mỗi dịch vụ chạy trong tiến trình riêng và
+giao tiếp với nhau thông qua các giao thức nhẹ, điển hình là HTTP/REST hoặc message queue.
+Khác với kiến trúc Monolith truyền thống --- nơi toàn bộ ứng dụng được đóng gói thành một
+khối thống nhất, microservices phân rã hệ thống theo ranh giới nghiệp vụ, cho phép mỗi
+dịch vụ được phát triển, triển khai và mở rộng một cách độc lập.
+
+Một microservice được thiết kế đúng chuẩn cần thỏa mãn năm đặc trưng cốt lõi. Thứ nhất,
+dịch vụ phải được mô hình hóa xung quanh một miền nghiệp vụ cụ thể, ranh giới của dịch vụ
+được xác định bởi nghiệp vụ chứ không phải bởi tầng kỹ thuật. Thứ hai, mỗi dịch vụ sở hữu
+cơ sở dữ liệu riêng và không chia sẻ trực tiếp dữ liệu với dịch vụ khác --- mọi truy cập
+dữ liệu chéo phải thông qua API hoặc sự kiện được công bố công khai. Thứ ba, mỗi dịch vụ
+có thể được triển khai độc lập mà không ảnh hưởng đến hoạt động của các dịch vụ còn lại.
+Thứ tư, hệ thống được phân quyền --- không tồn tại điểm kiểm soát tập trung duy nhất, logic
+nghiệp vụ và dữ liệu được phân tán trên nhiều dịch vụ. Thứ năm, tổ chức nhóm phát triển
+cần phản ánh cấu trúc hệ thống, trong đó mỗi nhóm sở hữu và chịu trách nhiệm với một hoặc
+một vài dịch vụ.
+
+\subsection{So sánh với Monolith và SOA}
+
+Để hiểu rõ vị trí của microservices trong phổ kiến trúc phần mềm, Bảng~\ref{table:arch-comparison}
+so sánh ba mô hình kiến trúc chính trên các tiêu chí thiết kế quan trọng.
+
+\begin{table}[H]
+\centering
+\caption{So sánh ba mô hình kiến trúc phần mềm}
+\label{table:arch-comparison}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{2.5cm}|Y|Y|Y|}
+\hline
+\textbf{Tiêu chí}  & \textbf{Monolith}       & \textbf{SOA}              & \textbf{Microservices}          \\ \hline
+Cơ sở dữ liệu      & Dùng chung             & Thường dùng chung         & Cơ sở dữ liệu riêng             \\ \hline
+Giao tiếp          & Lời gọi nội bộ         & Enterprise Service Bus    & REST / Message Queue            \\ \hline
+Triển khai         & Toàn bộ ứng dụng       & Từng dịch vụ              & Độc lập từng dịch vụ            \\ \hline
+Mở rộng            & Theo chiều dọc         & Theo dịch vụ              & Theo chiều ngang, từng dịch vụ  \\ \hline
+Cách ly sự cố      & Không có               & Một phần                  & Tốt (circuit breaker, bulkhead) \\ \hline
+Độ phức tạp        & Thấp ban đầu           & Cao (phức tạp ESB)        & Cao (hệ thống phân tán)         \\ \hline
+Phù hợp khi        & Nhóm nhỏ, sản phẩm MVP & Doanh nghiệp lớn, kế thừa & Nhóm lớn, cần mở rộng độc lập  \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+Kiến trúc Monolith phù hợp với giai đoạn đầu của sản phẩm khi quy mô nhỏ và tốc độ phát
+triển được ưu tiên. Tuy nhiên, khi hệ thống phát triển, Monolith bộc lộ các hạn chế về khả
+năng mở rộng chọn lọc, tốc độ triển khai và cách ly sự cố. SOA ra đời nhằm giải quyết một
+phần các hạn chế này thông qua việc tách hệ thống thành các dịch vụ, nhưng phụ thuộc nặng
+vào Enterprise Service Bus (ESB) --- một thành phần trung tâm dễ trở thành điểm nghẽn và
+điểm lỗi đơn. Microservices khắc phục nhược điểm của SOA bằng cách loại bỏ ESB, chuyển trí
+thông minh từ đường ống truyền dẫn sang các điểm đầu cuối, đồng thời trao cho mỗi dịch vụ
+toàn quyền sở hữu dữ liệu của mình.
+
+\subsection{Tám ngộ nhận trong tính toán phân tán}
+
+Khi chuyển từ Monolith sang microservices, hệ thống trở thành một hệ phân tán và lập tức
+phải đối mặt với tám ngộ nhận nguy hiểm đã được tổng kết từ thực tiễn công nghiệp: (1)~mạng
+luôn đáng tin cậy; (2)~độ trễ bằng không; (3)~băng thông vô hạn; (4)~mạng an toàn tuyệt
+đối; (5)~topology mạng không thay đổi; (6)~chỉ có một quản trị viên duy nhất; (7)~chi phí
+truyền tải bằng không; (8)~mạng đồng nhất. Mỗi ngộ nhận này đặt ra một yêu cầu thiết kế cụ
+thể cho hệ thống microservices: cần cơ chế thử lại và ngắt mạch để đối phó với mạng không
+đáng tin cậy; cần khám phá dịch vụ động để thích ứng với topology thay đổi; cần quản lý cấu
+hình tập trung và hệ thống quan sát để vận hành hiệu quả môi trường đa dịch vụ.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Sơ đồ minh họa tám ngộ nhận trong tính toán phân tán và các yêu cầu thiết kế tương ứng}
+%     \label{fig:fallacies}
+% \end{figure}
+
+% =======================================================================
+\section{Domain-Driven Design và phân rã hệ thống}
+\label{section:2.2}
+
+Domain-Driven Design (DDD) là phương pháp thiết kế phần mềm lấy lĩnh vực nghiệp vụ làm
+trung tâm, đặc biệt phù hợp cho việc xác định ranh giới giữa các microservice trong một hệ
+thống phức tạp. DDD cung cấp một bộ công cụ khái niệm giúp đội ngũ phát triển và chuyên
+gia nghiệp vụ cùng xây dựng một mô hình chung, nhất quán về hệ thống.
+
+Khái niệm trung tâm của DDD là \textbf{Bounded Context} --- một ranh giới tường minh bên
+trong đó một mô hình nghiệp vụ cụ thể được định nghĩa và áp dụng một cách nhất quán. Trong
+mỗi Bounded Context, mọi thuật ngữ đều có một ý nghĩa duy nhất, rõ ràng, được thống nhất
+giữa đội ngũ kỹ thuật và đội ngũ nghiệp vụ thông qua \textbf{Ubiquitous Language} (ngôn ngữ
+chung). Ví dụ, khái niệm "Đơn hàng" (Order) trong ngữ cảnh đặt hàng mang ý nghĩa về thông
+tin khách hàng, danh sách sản phẩm và tổng giá trị; trong khi đó, "Đơn hàng" trong ngữ cảnh
+kho hàng lại mang ý nghĩa về danh sách mặt hàng cần picking, packing và shipping. Hai cách
+hiểu này thuộc về hai Bounded Context khác nhau và do đó nên được triển khai trong hai
+microservice riêng biệt.
+
+DDD cũng định nghĩa \textbf{Aggregate} là một nhóm các thực thể (entity) và đối tượng giá
+trị (value object) có liên quan chặt chẽ với nhau, được xử lý như một đơn vị nhất quán duy
+nhất. Mỗi Aggregate có một \textbf{Aggregate Root} --- thực thể gốc đóng vai trò là điểm
+truy cập duy nhất từ bên ngoài vào Aggregate. Mọi thao tác thay đổi trạng thái bên trong
+Aggregate đều phải đi qua Aggregate Root, đảm bảo các ràng buộc nhất quán (invariant) không
+bị vi phạm. Trong thiết kế microservices, ranh giới của một Aggregate thường cũng chính là
+ranh giới của một giao dịch cơ sở dữ liệu --- một transaction chỉ nên thao tác trên một
+Aggregate duy nhất.
+
+\textbf{Context Map} là biểu đồ thể hiện mối quan hệ giữa các Bounded Context trong toàn hệ
+thống, bao gồm các mẫu quan hệ như: Shared Kernel (chia sẻ một phần mô hình), Customer-Supplier
+(một bên cung cấp, một bên tiêu thụ), Conformist (một bên tuân theo mô hình của bên kia),
+Anti-corruption Layer (lớp chống nhiễu, bảo vệ mô hình nội bộ khỏi ảnh hưởng từ bên ngoài)
+và Open Host Service (dịch vụ công khai cho nhiều đối tượng sử dụng). Context Map là công
+cụ quan trọng giúp hình dung toàn bộ bức tranh tích hợp giữa các dịch vụ.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Mô hình minh họa Bounded Context, Aggregate và Context Map}
+%     \label{fig:ddd-concepts}
+% \end{figure}
+
+% =======================================================================
+\section{Các mô hình giao tiếp trong Microservices}
+\label{section:2.3}
+
+\subsection{Giao tiếp đồng bộ và bất đồng bộ}
+
+Trong hệ thống microservices, giao tiếp giữa các dịch vụ được phân thành hai mô hình chính
+với những đặc điểm và đánh đổi khác biệt. Việc lựa chọn mô hình giao tiếp phù hợp cho từng
+tương tác cụ thể là một trong những quyết định thiết kế quan trọng nhất.
+
+\begin{table}[H]
+\centering
+\caption{So sánh hai mô hình giao tiếp trong microservices}
+\label{table:sync-async}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{2.8cm}|Y|Y|}
+\hline
+\textbf{Tiêu chí}      & \textbf{Đồng bộ (REST/gRPC)}                          & \textbf{Bất đồng bộ (Message Queue)}                 \\ \hline
+Tính kết dính          & Chặt về mặt thời gian --- bên gọi phải chờ phản hồi   & Lỏng --- bên gửi không cần biết bên nhận              \\ \hline
+Xử lý lỗi              & Bên gọi bị ảnh hưởng trực tiếp nếu bên được gọi lỗi   & Bên gửi không bị ảnh hưởng trực tiếp                  \\ \hline
+Độ trễ                 & Thấp cho từng yêu cầu đơn lẻ                           & Có thêm độ trễ do đi qua trung gian message queue     \\ \hline
+Tình huống sử dụng     & Truy vấn cần kết quả ngay (kiểm tra giá, tồn kho)     & Tác động phụ không cần kết quả ngay (gửi email, index) \\ \hline
+Khả năng mở rộng       & Bị giới hạn bởi bên được gọi                          & Có thể mở rộng độc lập cả bên gửi và bên nhận         \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+Giao tiếp đồng bộ phù hợp với các tình huống client cần phản hồi ngay lập tức để tiếp tục
+xử lý, ví dụ như kiểm tra tính hợp lệ của sản phẩm trước khi thêm vào giỏ hàng, hoặc xác
+minh số dư voucher trước khi áp dụng. Tuy nhiên, giao tiếp đồng bộ tạo ra sự phụ thuộc về
+mặt thời gian giữa các dịch vụ --- nếu dịch vụ được gọi gặp sự cố hoặc chậm, dịch vụ gọi
+cũng bị ảnh hưởng theo hiệu ứng dây chuyền.
+
+Giao tiếp bất đồng bộ thông qua message queue giải quyết vấn đề này bằng cách tách rời bên
+gửi và bên nhận về mặt thời gian. Bên gửi công bố sự kiện lên message broker và tiếp tục
+xử lý mà không cần chờ phản hồi; bên nhận tiêu thụ sự kiện khi có thể. Mô hình này đặc
+biệt phù hợp cho các tác động phụ như gửi email xác nhận đơn hàng, cập nhật chỉ mục tìm
+kiếm, hoặc đồng bộ dữ liệu giữa các dịch vụ.
+
+\subsection{Mức độ đảm bảo phân phối thông điệp}
+
+Trong giao tiếp bất đồng bộ, mức độ đảm bảo phân phối thông điệp là một yếu tố thiết kế
+quan trọng, được phân thành ba cấp độ. \textbf{At-most-once} nghĩa là thông điệp có thể bị
+mất nhưng không bao giờ bị trùng lặp --- phù hợp với các tác vụ không quan trọng như cập
+nhật số liệu thống kê. \textbf{At-least-once} đảm bảo thông điệp luôn được xử lý ít nhất
+một lần, nhưng có thể bị trùng lặp trong trường hợp có sự cố mạng hoặc broker --- đây là
+mức đảm bảo phổ biến nhất. \textbf{Exactly-once} là mức lý tưởng, đảm bảo mỗi thông điệp
+được xử lý đúng một lần duy nhất. Trong thực tế, exactly-once thường không được cung cấp
+bởi bản thân message broker mà được hiện thực ở tầng ứng dụng bằng cách kết hợp cơ chế
+at-least-once delivery với Idempotent Consumer ở phía nhận.
+
+% =======================================================================
+\section{Giao dịch phân tán và tính nhất quán dữ liệu}
+\label{section:2.4}
+
+\subsection{Định lý CAP và nguyên lý PACELC}
+
+Trong môi trường cơ sở dữ liệu phân tán, Định lý CAP phát biểu rằng một hệ thống không thể
+đồng thời đảm bảo cả ba thuộc tính: Tính nhất quán (Consistency) --- mọi thao tác đọc đều
+trả về kết quả của thao tác ghi gần nhất; Tính khả dụng (Availability) --- mọi yêu cầu đều
+nhận được phản hồi (thành công hoặc thất bại); và Khả năng chịu phân mảnh (Partition
+Tolerance) --- hệ thống tiếp tục hoạt động khi mạng bị phân mảnh. Vì phân mảnh mạng là
+điều không thể tránh khỏi trong thực tế, mọi hệ thống phân tán buộc phải chọn giữa CP (ưu
+tiên nhất quán, hy sinh khả dụng khi có phân mảnh) và AP (ưu tiên khả dụng, chấp nhận nhất
+quán cuối cùng). Hệ thống thương mại điện tử thường lựa chọn mô hình AP với eventual
+consistency --- dữ liệu có thể tạm thời không nhất quán giữa các bản sao, nhưng sẽ hội tụ
+về cùng một giá trị sau một khoảng thời gian nhất định.
+
+Nguyên lý PACELC mở rộng CAP bằng cách chỉ ra rằng ngay cả khi không có phân mảnh mạng,
+hệ thống vẫn phải đối mặt với sự đánh đổi giữa Độ trễ (Latency) và Tính nhất quán
+(Consistency). Điều này có ý nghĩa thực tiễn quan trọng: trong điều kiện vận hành bình
+thường, nhà thiết kế vẫn phải quyết định ưu tiên tốc độ phản hồi hay độ chính xác tuyệt
+đối của dữ liệu.
+
+\subsection{Saga Pattern}
+
+Trong kiến trúc microservices với nguyên tắc mỗi dịch vụ sở hữu cơ sở dữ liệu riêng, không
+thể sử dụng giao dịch ACID truyền thống để đảm bảo tính nhất quán xuyên suốt nhiều dịch vụ.
+Saga Pattern giải quyết bài toán này bằng cách phân rã một giao dịch phân tán lớn thành một
+chuỗi các giao dịch cục bộ tuần tự $T_1, T_2, \ldots, T_n$, mỗi giao dịch được thực thi
+trong phạm vi một dịch vụ duy nhất và có thể commit hoặc rollback độc lập. Điểm mấu chốt
+của Saga là cơ chế bù trừ (compensation): nếu một giao dịch $T_i$ trong chuỗi thất bại,
+hệ thống sẽ thực thi tuần tự các giao dịch bù trừ $C_{i-1}, \ldots, C_1$ theo thứ tự
+ngược để hoàn tác các thay đổi đã được commit trước đó, đưa hệ thống về trạng thái nhất
+quán.
+
+Saga có hai biến thể triển khai với những đặc điểm khác biệt rõ rệt:
+
+\begin{table}[H]
+\centering
+\caption{So sánh Saga Choreography và Saga Orchestration}
+\label{table:saga-comparison}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{2.8cm}|Y|Y|}
+\hline
+\textbf{Đặc điểm}      & \textbf{Choreography}                                  & \textbf{Orchestration}                                \\ \hline
+Cơ chế                 & Mỗi dịch vụ tự quyết định hành động dựa trên sự kiện   & Bộ điều phối trung tâm ra lệnh tuần tự                \\ \hline
+Tính kết dính          & Lỏng --- các dịch vụ không biết về nhau                & Chặt hơn --- bộ điều phối nắm toàn bộ luồng           \\ \hline
+Khả năng theo dõi      & Khó --- luồng xử lý phân tán khắp các dịch vụ          & Dễ --- trạng thái tập trung tại bộ điều phối           \\ \hline
+Xử lý bù trừ           & Phức tạp --- khó xác định ai kích hoạt bù trừ          & Bộ điều phối tự xử lý bù trừ                           \\ \hline
+Thêm bước mới          & Cần sửa đổi nhiều dịch vụ                              & Chỉ cần sửa đổi bộ điều phối                           \\ \hline
+Phù hợp khi            & Luồng đơn giản, ít bước                                & Luồng phức tạp, nhiều bước, cần kiểm soát tập trung   \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+Trong Choreography, mỗi dịch vụ tự lắng nghe sự kiện từ dịch vụ trước đó và quyết định hành
+động tiếp theo --- giống như một vũ công tự ứng biến theo nhạc. Trong Orchestration, một bộ
+điều phối trung tâm (orchestrator) chịu trách nhiệm điều phối toàn bộ luồng, gửi lệnh tuần
+tự đến từng dịch vụ và xử lý kết quả trả về --- giống như một nhạc trưởng chỉ huy dàn nhạc.
+Đối với các luồng nghiệp vụ phức tạp, nhiều bước và yêu cầu khả năng theo dõi, kiểm soát
+tập trung như luồng đặt hàng trong thương mại điện tử, Orchestration thường là lựa chọn
+phù hợp hơn.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/saga-orchestrator.png}
+    \caption{Saga Orchestration Pattern}
+    \label{fig:saga-orchestration}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/saga-choreography.png}
+    \caption{Saga Choreography Pattern}
+    \label{fig:saga-choreography}
+\end{figure}
+
+\subsection{Transactional Outbox Pattern}
+
+Một trong những thách thức kỹ thuật quan trọng nhất khi kết hợp cơ sở dữ liệu quan hệ với
+message broker là bài toán dual-write: làm thế nào để đảm bảo thao tác ghi dữ liệu nghiệp
+vụ vào cơ sở dữ liệu và thao tác phát hành sự kiện lên message broker là nguyên tử ---
+cả hai cùng thành công hoặc cùng thất bại. Trong cách tiếp cận thông thường, nếu dịch vụ
+ghi dữ liệu thành công nhưng gặp sự cố trước khi kịp phát hành sự kiện, các dịch vụ khác
+sẽ không bao giờ nhận được thông báo về thay đổi, dẫn đến mất đồng bộ dữ liệu.
+
+Transactional Outbox Pattern giải quyết bài toán này bằng một ý tưởng đơn giản nhưng hiệu
+quả: thay vì phát hành sự kiện trực tiếp lên message broker, dịch vụ ghi bản ghi sự kiện
+vào một bảng \texttt{outbox\_events} trong cùng một giao dịch cơ sở dữ liệu với dữ liệu
+nghiệp vụ. Vì cả hai thao tác ghi đều nằm trong cùng một giao dịch ACID, chúng được đảm
+bảo là nguyên tử --- hoặc cùng thành công, hoặc cùng thất bại. Một tiến trình nền độc lập
+(Outbox Poller) định kỳ quét bảng outbox, đọc các sự kiện chưa được phát hành và gửi chúng
+lên message broker. Sau khi phát hành thành công, bản ghi được đánh dấu là đã gửi.
+
+Cơ chế này đảm bảo at-least-once delivery: nếu dịch vụ gặp sự cố trước khi Outbox Poller
+kịp phát hành sự kiện, sau khi khởi động lại, Poller sẽ quét lại bảng outbox và phát hành
+các sự kiện còn tồn đọng. Trong trường hợp Poller phát hành thành công nhưng gặp sự cố
+trước khi kịp đánh dấu đã gửi, sự kiện có thể bị phát hành trùng lặp --- và đây chính là
+lý do cần đến Idempotent Consumer ở phía nhận.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/outbox-pattern.png}
+    \caption{Luồng hoạt động của Transactional Outbox Pattern}
+    \label{fig:outbox-pattern}
+\end{figure}
+
+\subsection{Idempotent Consumer}
+
+Với cơ chế at-least-once delivery, message broker có thể phân phối cùng một thông điệp nhiều
+lần cho consumer --- điều này xảy ra khi consumer xử lý thông điệp thành công nhưng không
+kịp gửi tín hiệu xác nhận (acknowledgment) về broker trước khi gặp sự cố, hoặc khi Outbox
+Poller phát hành trùng lặp. Idempotent Consumer là mẫu thiết kế giải quyết vấn đề này: đảm
+bảo rằng việc xử lý cùng một thông điệp nhiều lần không tạo ra tác động phụ khác biệt so
+với việc chỉ xử lý một lần.
+
+Cơ chế triển khai phổ biến là sử dụng bảng \texttt{processed\_events} trong cơ sở dữ liệu
+của consumer. Trước khi xử lý một thông điệp, consumer kiểm tra xem mã định danh của thông
+điệp (\texttt{event\_id}) đã tồn tại trong bảng này hay chưa. Nếu đã tồn tại, thông điệp bị
+bỏ qua. Nếu chưa, consumer thực thi nghiệp vụ và ghi \texttt{event\_id} vào bảng
+\texttt{processed\_events} trong cùng một giao dịch, đảm bảo tính nguyên tử giữa việc xử lý
+nghiệp vụ và việc ghi nhận đã xử lý. Sự kết hợp giữa Transactional Outbox ở phía producer
+và Idempotent Consumer ở phía consumer tạo ra hiệu ứng exactly-once processing ở tầng ứng
+dụng, ngay cả khi hạ tầng bên dưới chỉ đảm bảo at-least-once.
+
+\subsection{CQRS --- Phân tách trách nhiệm Lệnh và Truy vấn}
+
+CQRS (Command Query Responsibility Segregation) là mẫu thiết kế tách biệt hoàn toàn mô hình
+ghi (Command) và mô hình đọc (Query) của hệ thống. Mô hình ghi được tối ưu cho tính nhất
+quán và toàn vẹn dữ liệu, thường sử dụng cơ sở dữ liệu quan hệ với các ràng buộc chặt chẽ.
+Mô hình đọc được tối ưu cho hiệu năng truy vấn, có thể được phi chuẩn hóa (denormalize)
+hoặc lưu trữ trên một loại cơ sở dữ liệu hoàn toàn khác, phù hợp hơn với nhu cầu tìm kiếm
+và hiển thị.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/CQRS.png}
+    \caption{Sơ đồ kiến trúc CQRS với mô hình ghi và mô hình đọc riêng biệt}
+    \label{fig:CQRS}
+\end{figure}
+
+Hai mô hình được đồng bộ thông qua luồng sự kiện: khi có thay đổi ở phía ghi, một sự kiện
+được phát hành và phía đọc cập nhật mô hình của mình một cách bất đồng bộ. Điều này đồng
+nghĩa với việc chấp nhận eventual consistency --- dữ liệu phía đọc có thể tạm thời chưa
+phản ánh thay đổi mới nhất, nhưng sẽ hội tụ trong thời gian ngắn. Trong phạm vi hẹp hơn,
+CQRS-lite áp dụng nguyên tắc này cho một chức năng cụ thể thay vì toàn bộ hệ thống --- ví
+dụ, sử dụng Elasticsearch làm mô hình đọc riêng cho chức năng tìm kiếm toàn văn, trong
+khi các chức năng khác vẫn dùng chung mô hình đọc-ghi truyền thống.
+
+% =======================================================================
+\section{Các mẫu thiết kế đảm bảo độ tin cậy}
+\label{section:2.5}
+
+\subsection{Circuit Breaker}
+
+Trong kiến trúc microservices, một dịch vụ thường phụ thuộc vào nhiều dịch vụ khác để hoàn
+thành chức năng của mình. Khi một dịch vụ phụ thuộc gặp sự cố hoặc phản hồi chậm, nếu không
+có cơ chế bảo vệ, dịch vụ gọi sẽ tiếp tục gửi yêu cầu và chờ đợi trong vô vọng, dẫn đến cạn
+kiệt tài nguyên (thread pool, connection pool) và lan truyền sự cố sang các dịch vụ khác ---
+hiện tượng này được gọi là cascading failure (sự cố dây chuyền).
+
+Circuit Breaker Pattern hoạt động tương tự như cầu dao điện trong mạch điện: nó giám sát tần
+suất lỗi của các lời gọi đến dịch vụ phụ thuộc và tự động "ngắt mạch" khi tỷ lệ lỗi vượt
+quá ngưỡng cho phép. Pattern vận hành qua ba trạng thái. Ở trạng thái \textbf{CLOSED}, mọi
+yêu cầu được chuyển tiếp bình thường và bộ đếm lỗi được duy trì. Khi tỷ lệ lỗi vượt ngưỡng
+cấu hình, mạch chuyển sang trạng thái \textbf{OPEN} --- mọi yêu cầu bị từ chối ngay lập tức
+mà không gọi đến dịch vụ phụ thuộc, thay vào đó trả về kết quả dự phòng (fallback). Sau một
+khoảng thời gian chờ nhất định, mạch chuyển sang trạng thái \textbf{HALF\_OPEN}: một số
+lượng giới hạn yêu cầu được phép gọi thực tế đến dịch vụ phụ thuộc để kiểm tra. Nếu các
+yêu cầu này thành công, mạch trở về CLOSED; nếu thất bại, mạch quay lại OPEN và tiếp tục
+chờ.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/circuit-breaker.png}
+    \caption{Sơ đồ trạng thái của Circuit Breaker Pattern}
+    \label{fig:circuit-breaker}
+\end{figure}
+
+\subsection{Rate Limiting}
+
+Rate Limiting là kỹ thuật giới hạn số lượng yêu cầu mà một client có thể gửi đến hệ thống
+trong một khoảng thời gian nhất định. Trong bối cảnh thương mại điện tử, rate limiting phục
+vụ ba mục đích chính: bảo vệ hệ thống khỏi các cuộc tấn công từ chối dịch vụ (DoS/DDoS);
+ngăn chặn hành vi lạm dụng như bot đặt hàng tự động, quét giá sản phẩm; và đảm bảo công
+bằng giữa những người dùng trong các sự kiện giới hạn như flash sale.
+
+Thuật toán Token Bucket là một trong những cơ chế rate limiting phổ biến và linh hoạt nhất.
+Mỗi client được gán một "thùng" (bucket) có sức chứa tối đa $B$ token. Token được thêm vào
+thùng với tốc độ không đổi $r$ token mỗi giây, cho đến khi thùng đầy. Mỗi yêu cầu đến tiêu
+thụ một token từ thùng; nếu thùng rỗng, yêu cầu bị từ chối. Cơ chế này cho phép xử lý các
+đợt bùng nổ ngắn hạn (burst) --- client có thể gửi nhanh $B$ yêu cầu liên tiếp miễn là đã
+tích lũy đủ token, nhưng không thể duy trì tốc độ cao hơn $r$ trong dài hạn. Điều này đặc
+biệt phù hợp với các API thương mại điện tử, nơi người dùng thường thao tác nhanh trong
+thời gian ngắn rồi nghỉ.
+
+% =======================================================================
+\section{Bảo mật trong hệ thống phân tán}
+\label{section:2.6}
+
+\subsection{OAuth 2.0 --- Khung ủy quyền tiêu chuẩn}
+
+OAuth 2.0 là một khung ủy quyền (authorization framework) được tiêu chuẩn hóa, cho phép một
+ứng dụng bên thứ ba (Client) truy cập vào tài nguyên được bảo vệ trên một máy chủ tài nguyên
+(Resource Server) thay mặt cho người dùng (Resource Owner), mà không cần Client biết thông
+tin xác thực của người dùng. Mô hình này hoạt động thông qua bốn vai trò: Resource Owner
+(người dùng sở hữu dữ liệu), Client (ứng dụng muốn truy cập), Authorization Server (máy
+chủ cấp token ủy quyền) và Resource Server (máy chủ lưu trữ tài nguyên được bảo vệ).
+
+Luồng hoạt động cơ bản: Client yêu cầu ủy quyền từ Resource Owner, nhận được một Grant
+(mã ủy quyền). Client sau đó đổi Grant này lấy Access Token từ Authorization Server.
+Access Token được gửi kèm trong mỗi yêu cầu đến Resource Server để chứng minh quyền truy
+cập. Các grant type chính bao gồm: Authorization Code (dành cho ứng dụng web có backend),
+Client Credentials (dành cho giao tiếp máy-với-máy, không có người dùng), Authorization
+Code với PKCE (dành cho ứng dụng di động và Single Page Application).
+
+\subsection{OpenID Connect --- Lớp xác thực định danh}
+
+OpenID Connect (OIDC) được xây dựng như một lớp định danh trên nền OAuth 2.0, bổ sung khả
+năng xác thực người dùng (authentication) --- điều mà bản thân OAuth 2.0 không giải quyết.
+Trong khi OAuth 2.0 trả lời câu hỏi "ứng dụng được phép làm gì?" (ủy quyền), OIDC bổ sung
+câu hỏi "người dùng là ai?" (xác thực). OIDC bổ sung một loại token mới gọi là ID Token
+--- một JWT chứa các thông tin định danh của người dùng như mã định danh, địa chỉ email,
+tên hiển thị và các vai trò.
+
+Sự phân biệt giữa Access Token và ID Token mang ý nghĩa thiết kế quan trọng: Access Token
+được gửi đến Resource Server để ủy quyền truy cập API; ID Token được gửi đến Client để
+xác định danh tính người dùng và thiết lập phiên làm việc. Trong thực tế, một ứng dụng
+web thường nhận cả hai loại token: Access Token để gọi API backend, ID Token để hiển thị
+thông tin người dùng trên giao diện.
+
+\subsection{JSON Web Token (JWT)}
+
+JWT là một tiêu chuẩn mở định nghĩa cách thức truyền thông tin an toàn giữa các bên dưới
+dạng một đối tượng JSON được ký số. JWT bao gồm ba phần, được mã hóa base64url và phân tách
+bởi dấu chấm: Header chứa thông tin về thuật toán ký; Payload chứa các claims --- những
+khẳng định về thực thể (người dùng, ứng dụng) và các siêu dữ liệu như thời điểm phát hành,
+thời điểm hết hạn; Signature là chữ ký số được tạo ra bằng cách ký tổ hợp Header và Payload
+với một khóa bí mật hoặc khóa riêng.
+
+JWT cho phép xác thực phi trạng thái (stateless authentication): server không cần duy trì
+session, chỉ cần xác minh chữ ký của token là có thể tin tưởng vào nội dung bên trong. Hai
+chế độ ký chính được sử dụng: ký đối xứng (HS256) --- cùng một khóa bí mật được dùng để
+ký và xác minh, phù hợp với hệ thống đơn dịch vụ nhưng không phù hợp với môi trường đa
+dịch vụ vì tất cả dịch vụ phải chia sẻ cùng một khóa; ký bất đối xứng (RS256) --- khóa
+riêng để ký, khóa công khai để xác minh, cho phép mỗi dịch vụ xác minh token độc lập mà
+không cần biết khóa riêng, rất phù hợp với kiến trúc microservices.
+
+\subsection{Trusted Subsystem Pattern}
+
+Trong kiến trúc microservices, có hai cách tiếp cận để các dịch vụ backend xác định danh
+tính người dùng từ một request. Cách thứ nhất: mỗi dịch vụ tự xác minh JWT với
+Authorization Server --- cách này tiêu tốn tài nguyên do mỗi request phải thực hiện thêm
+một lời gọi mạng, đồng thời tạo ra sự phụ thuộc mạnh giữa tất cả dịch vụ và Authorization
+Server. Cách thứ hai --- Trusted Subsystem Pattern: chỉ có API Gateway thực hiện việc xác
+minh JWT, sau đó chuyển tiếp thông tin định danh đã được xác thực (mã người dùng, vai trò,
+email) qua các HTTP header tin cậy như \texttt{X-User-Id}, \texttt{X-User-Roles} và
+\texttt{X-User-Email} đến các dịch vụ backend. Backend hoàn toàn tin tưởng các header này
+mà không cần xác minh lại JWT.
+
+Pattern này hoạt động dựa trên một điều kiện tiên quyết quan trọng: các dịch vụ backend
+phải được bảo vệ ở tầng mạng, đảm bảo rằng chỉ có API Gateway mới có thể gọi trực tiếp
+vào các endpoint nội bộ của backend. Trong môi trường Docker Compose, điều kiện này được
+đảm bảo thông qua việc chỉ expose cổng của Gateway ra bên ngoài, trong khi tất cả các
+dịch vụ backend chỉ lắng nghe trên mạng nội bộ của Docker.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/keycloak.png}
+%     \caption{Luồng xác thực theo Trusted Subsystem Pattern với Keycloak và API Gateway}
+%     \label{fig:trusted-subsystem}
+% \end{figure}
+
+% =======================================================================
+\section{API Gateway và Service Discovery}
+\label{section:2.7}
+
+\subsection{API Gateway Pattern}
+
+Trong kiến trúc microservices, mỗi dịch vụ có địa chỉ mạng và API riêng. Nếu client phải
+biết và giao tiếp trực tiếp với từng dịch vụ, độ phức tạp phía client sẽ tăng lên đáng kể,
+đặc biệt khi số lượng dịch vụ lớn và địa chỉ thay đổi liên tục trong môi trường container.
+Hơn nữa, các vấn đề cross-cutting như xác thực, phân quyền, rate limiting, CORS và biến
+đổi request/response sẽ phải được xử lý lặp lại ở mỗi dịch vụ hoặc đẩy về phía client.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/api-gateway.png}
+    \caption{Kiến trúc ứng dụng sử dụng API Gateway}
+    \label{fig:api-gateway}
+\end{figure}
+
+API Gateway Pattern giải quyết những vấn đề này bằng cách cung cấp một điểm vào duy nhất
+cho tất cả client. Gateway đảm nhiệm tập trung các trách nhiệm chung: định tuyến yêu cầu
+đến đúng dịch vụ đích dựa trên đường dẫn, header hoặc tham số; xác thực và phân quyền tại
+một điểm duy nhất; áp dụng rate limiting để bảo vệ hệ thống; xử lý CORS cho các yêu cầu
+từ trình duyệt; và thực hiện biến đổi request/response khi cần thiết (thêm header, chuyển
+đổi định dạng). Mô hình này giúp giảm đáng kể độ phức tạp phía client, tạo một điểm kiểm
+soát bảo mật duy nhất và cho phép thay đổi kiến trúc nội bộ mà không ảnh hưởng đến client.
+
+\subsection{Service Discovery}
+
+Trong môi trường container động như Docker, địa chỉ IP và cổng của các dịch vụ thay đổi mỗi
+khi container được khởi động lại hoặc scale. Việc hardcode địa chỉ trong cấu hình là không
+khả thi. Service Discovery là cơ chế giải quyết vấn đề này: mỗi dịch vụ tự động đăng ký địa
+chỉ hiện tại của mình lên một registry trung tâm (service registry) khi khởi động, và hủy
+đăng ký khi dừng. Các dịch vụ khác --- bao gồm API Gateway --- truy vấn registry để lấy địa
+chỉ thực tế của dịch vụ cần gọi.
+
+
+Có hai mô hình Service Discovery chính. Client-side Discovery: client tự truy vấn registry
+và tự quyết định dịch vụ đích, phù hợp khi client có đủ thông tin để đưa ra quyết định.
+Server-side Discovery: client gửi yêu cầu đến một load balancer, load balancer truy vấn
+registry và chuyển tiếp yêu cầu đến một instance phù hợp --- mô hình này che giấu hoàn
+toàn chi tiết discovery khỏi client. Trong hệ sinh thái Spring Cloud, Netflix Eureka đóng
+vai trò service registry, hỗ trợ cả hai mô hình và tích hợp chặt chẽ với Spring Cloud
+Gateway cho server-side discovery.
+
+% =======================================================================
+\section{Khả năng quan sát trong hệ thống phân tán}
+\label{section:2.8}
+
+Trong hệ thống microservices, một request từ client có thể đi qua hàng chục dịch vụ khác
+nhau trước khi hoàn thành. Khi xảy ra sự cố --- một request bị chậm, thất bại hoặc trả về
+kết quả không mong đợi --- việc xác định nguyên nhân gốc rễ trở nên cực kỳ khó khăn nếu
+chỉ dựa vào log của từng dịch vụ riêng lẻ. Khả năng quan sát (observability) là thuộc tính
+cho phép hiểu được trạng thái nội tại của hệ thống thông qua các tín hiệu đầu ra bên ngoài
+mà không cần biết trước câu hỏi cụ thể cần trả lời.
+
+Observability trong hệ thống phân tán được xây dựng trên ba trụ cột bổ sung và hỗ trợ lẫn
+nhau:
+
+\textbf{Metrics (Số liệu)} là các giá trị số được thu thập định kỳ theo thời gian, phản ánh
+tình trạng tổng thể của hệ thống: tỷ lệ yêu cầu (request rate), độ trễ (latency percentile),
+tỷ lệ lỗi (error rate), mức sử dụng CPU và bộ nhớ, số lượng kết nối cơ sở dữ liệu, độ trễ
+của message consumer (consumer lag). Metrics rất hiệu quả cho việc giám sát chủ động, thiết
+lập cảnh báo và lập kế hoạch năng lực, nhưng không cung cấp thông tin chi tiết về nguyên
+nhân của từng sự cố riêng lẻ.
+
+\textbf{Distributed Tracing (Truy vết phân tán)} theo dõi hành trình hoàn chỉnh của một
+request khi nó đi qua nhiều dịch vụ. Mỗi request được gán một mã định danh duy nhất toàn
+cục (Trace ID), và mỗi đoạn xử lý trong một dịch vụ được ghi nhận như một Span với mã
+định danh riêng, thời gian bắt đầu, thời gian kết thúc và các thẻ mô tả (tags). Tập hợp
+tất cả Span của một Trace cho phép tái tạo chính xác đường đi của request qua hệ thống,
+xác định dịch vụ nào đang gây ra độ trễ và điểm nào trong luồng xử lý bị lỗi. Chuẩn W3C
+Trace Context đảm bảo khả năng tương tác giữa các thư viện tracing khác nhau.
+
+\textbf{Structured Logging (Ghi nhật ký có cấu trúc)} ghi lại các sự kiện trong quá trình
+xử lý dưới dạng có cấu trúc (thường là JSON) thay vì văn bản thuần túy. Mỗi dòng log chứa
+các trường được đánh dấu rõ ràng: thời gian, tên dịch vụ, mức độ nghiêm trọng, Trace ID,
+Span ID và nội dung thông điệp. Khi kết hợp với Trace ID từ Distributed Tracing, structured
+logging cho phép lọc và tổng hợp toàn bộ log của một request duy nhất xuyên suốt tất cả
+dịch vụ, tạo ra bức tranh hoàn chỉnh về những gì đã xảy ra trong suốt vòng đời của request.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Mô hình ba trụ cột của Observability trong hệ thống microservices}
+%     \label{fig:observability}
+% \end{figure}
+
+\end{document}

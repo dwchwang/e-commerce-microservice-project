@@ -1,0 +1,489 @@
+% !TEX root = ../DoAn.tex
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+Chương này trình bày quá trình hiện thực hóa thiết kế đã phân tích ở Chương~\ref{chapter:Experiment}.
+Do báo cáo được giới hạn trong năm chương, nội dung cài đặt, triển khai, kiểm thử và đánh giá
+được tổ chức chung trong một chương. Cách tổ chức này giúp thể hiện mạch đầy đủ từ thiết kế
+đến hệ thống chạy được, đồng thời vẫn tách rõ phần hiện thực và phần kiểm chứng bằng các mục
+riêng biệt.
+
+% =======================================================================
+\section{Môi trường phát triển và cấu trúc dự án}
+\label{section:5.1}
+
+Hệ thống được phát triển theo mô hình monorepo để thuận tiện cho việc quản lý dependency,
+build, kiểm thử và chạy toàn bộ stack trong phạm vi đồ án. Backend sử dụng Java 21, Spring
+Boot 3.5.13, Spring Cloud 2025.0.0 và Maven Wrapper. Frontend sử dụng Next.js App Router,
+TypeScript và Server Actions. Toàn bộ môi trường runtime được chuẩn hóa bằng Docker Compose.
+
+\begin{table}[H]
+\centering
+\caption{Môi trường và công cụ phát triển}
+\label{table:dev-env}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{3cm}|L{4.1cm}|Y|}
+\hline
+\textbf{Nhóm} & \textbf{Công cụ/Phiên bản} & \textbf{Vai trò trong đồ án} \\ \hline
+Ngôn ngữ backend & Java 21 & Phát triển 13 business service và 3 infrastructure service \\ \hline
+Framework backend & Spring Boot 3.5.13, Spring Cloud 2025.0.0 & REST API, Gateway, Eureka, Config, OpenFeign, Kafka, Security, Actuator \\ \hline
+Build backend & Maven Wrapper & Build multi-module, quản lý dependency và plugin tập trung \\ \hline
+Frontend & Next.js App Router, TypeScript & Storefront, Admin Panel, BFF/proxy, Server Actions \\ \hline
+Container & Docker Compose & Khởi động local stack và production-like stack trên EC2 \\ \hline
+Kiểm thử & JUnit 5, Testcontainers, k6, Bash script & Unit, integration, smoke, performance và resilience test \\ \hline
+Triển khai & AWS EC2, Caddy, GitHub Actions, GHCR & Production-like single-host deployment và build/push image \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+Về cấu trúc mã nguồn, repository gồm module \path|common|, 13 business service
+như \path|identity|, \path|user|, \path|product|, \path|inventory|, \path|cart|,
+\path|order|, \path|payment|, \path|voucher|, \path|notification|, \path|review|,
+\path|search|, \path|content| và \path|flash-sale|; ba service hạ tầng
+\path|api-gateway|, \path|discovery-server|, \path|config-server|; và thư mục
+\path|frontend|. Mỗi service backend có Dockerfile, cấu hình riêng và nếu có trạng thái
+thì có Flyway migration quản lý schema.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Cấu trúc thư mục dự án và các module chính}
+%     \label{fig:project-structure}
+% \end{figure}
+
+% =======================================================================
+\section{Cài đặt các thành phần backend cốt lõi}
+\label{section:5.2}
+
+\subsection{Spring Cloud layer}
+
+Ba service hạ tầng tạo thành lớp điều phối cho toàn bộ backend. \texttt{api-gateway} là điểm
+vào duy nhất cho client, chịu trách nhiệm định tuyến, xác thực JWT, gắn trusted headers và
+rate limiting. \texttt{discovery-server} sử dụng Eureka để các service đăng ký và phát hiện
+lẫn nhau theo tên logic thay vì hard-code địa chỉ. \texttt{config-server} cung cấp cấu hình
+tập trung từ classpath, giúp các service lấy cấu hình theo profile khi khởi động.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Spring Cloud layer: Gateway, Discovery Server và Config Server}
+%     \label{fig:spring-cloud-layer}
+% \end{figure}
+
+\subsection{Database per Service và Flyway}
+
+Các service stateful sở hữu database logic riêng trên PostgreSQL. Cách tổ chức này đảm bảo
+nguyên tắc Database per Service: service khác không đọc/ghi trực tiếp vào database không
+thuộc quyền sở hữu của mình. Schema được quản lý bằng Flyway migration và Hibernate chạy với
+chế độ validate, nhờ đó sai lệch giữa entity và schema được phát hiện sớm khi service khởi
+động.
+
+\begin{table}[H]
+\centering
+\caption{Map service với lớp lưu trữ chính}
+\label{table:service-storage-map}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{3.1cm}|L{3cm}|Y|}
+\hline
+\textbf{Service} & \textbf{Lưu trữ chính} & \textbf{Ghi chú} \\ \hline
+identity-service & Keycloak & Tạo user trong realm, phát sự kiện đăng ký \\ \hline
+user-service & PostgreSQL & Hồ sơ người dùng, địa chỉ, dữ liệu admin user \\ \hline
+product-service & PostgreSQL, Redis & Catalog, category, brand, cache product list/detail \\ \hline
+inventory-service & PostgreSQL & Tồn kho, reserved quantity, stock movement \\ \hline
+cart-service & Redis & Giỏ hàng user/guest với TTL \\ \hline
+order-service & PostgreSQL, Kafka & Order, order item, outbox, processed events \\ \hline
+payment-service & PostgreSQL, Kafka & Payment, payment outbox, processed events \\ \hline
+search-service & Elasticsearch & Read model phục vụ full-text search \\ \hline
+flash-sale-service & PostgreSQL, Redis, Kafka & Campaign, Redis Lua reservation, reconciliation \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+\subsection{Saga Orchestration, Outbox và Idempotent Consumer}
+
+Luồng đặt hàng là phần thể hiện rõ nhất các mẫu thiết kế phân tán. \texttt{order-service}
+đóng vai trò orchestrator: tạo đơn, đặt chỗ voucher, phát sự kiện \texttt{order-created},
+nhận kết quả từ inventory/payment và quyết định xác nhận hoặc hủy đơn. Để tránh lỗi dual-write,
+\texttt{order-service} ghi sự kiện vào bảng \texttt{outbox} trong cùng transaction với dữ liệu
+đơn hàng. \texttt{OutboxPoller} quét 1 giây/lần, lấy batch chưa xử lý bằng
+\texttt{FOR UPDATE SKIP LOCKED}, gửi Kafka và đánh dấu \texttt{processed=true}.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Snippet hoặc sơ đồ OutboxPoller đọc bảng outbox và phát Kafka}
+%     \label{fig:outbox-poller}
+% \end{figure}
+
+Ở phía consumer, các service như order, inventory và payment sử dụng bảng
+\texttt{processed\_events} để lưu \texttt{eventId} đã xử lý. Nếu Kafka gửi lại cùng một event,
+consumer bỏ qua thay vì thực thi nghiệp vụ lần hai. Cách làm này chấp nhận at-least-once
+delivery ở tầng message broker nhưng đạt hiệu ứng exactly-once processing ở tầng ứng dụng.
+
+\subsection{Thanh toán VNPAY}
+
+\texttt{payment-service} tích hợp VNPAY sandbox theo ba bước chính. Khi người dùng chọn thanh
+toán online, service tạo payment ở trạng thái \texttt{PENDING}, sinh URL thanh toán và ký tham
+số bằng HMAC-SHA512. Khi VNPAY gọi IPN hoặc người dùng quay lại Return URL, service xác minh
+chữ ký, kiểm tra số tiền, cập nhật trạng thái payment và ghi sự kiện vào
+\path|payment_outbox|. \path|PaymentEventOutboxPoller| phát sự kiện
+\path|payment-success| hoặc \path|payment-failed| để \path|order-service| hoàn tất Saga.
+Nếu payment quá hạn, \path|PaymentTimeoutScheduler| chuyển trạng thái sang \path|TIMEOUT|.
+
+\subsection{Flash sale high-concurrency}
+
+\path|flash-sale-service| xử lý mua flash sale bằng Redis Lua script để thao tác kiểm tra
+buyer set, kiểm tra stock và giảm slot trong một lệnh nguyên tử. Redis key chính có dạng
+\path|flash-sale:{campaignId}:stock| và \path|flash-sale:{campaignId}:buyers|, được
+đặt TTL theo thời điểm kết thúc chiến dịch. Sau khi giữ slot thành công, service phát event
+\path|flash-sale-order-requested|; nếu tạo đơn thất bại, compensation script hoàn lại slot
+và xóa buyer khỏi set.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Redis Lua reservation và compensation cho flash sale}
+%     \label{fig:redis-lua-code}
+% \end{figure}
+
+Hai scheduler hỗ trợ flash-sale vận hành ổn định. \path|CampaignScheduler| chạy 5 giây/lần,
+dùng Redis distributed lock để chỉ một instance kích hoạt chiến dịch đến hạn, khôi phục Redis
+stock key bị mất và kết thúc campaign hết hạn. \path|ReconciliationScheduler| chạy 300 giây/lần,
+đối chiếu \path|soldCount| trong flash-sale-service với số order flash-sale thực tế ở
+order-service, từ đó phát hiện và bù slot mồ côi khi cần.
+
+% =======================================================================
+\section{Cài đặt bảo mật và phân quyền}
+\label{section:5.3}
+
+Bảo mật được thực thi tập trung tại API Gateway. Client gửi access token dạng
+\path|Authorization: Bearer <token>| tới Gateway; Gateway xác minh chữ ký RS256 qua JWKS
+của Keycloak, kiểm tra thời hạn token, trích xuất userId/email/roles rồi gắn vào ba trusted
+headers: \path|X-User-Id|, \path|X-User-Email|, \path|X-User-Roles|. Backend service
+chỉ tin headers do Gateway đưa vào trong mạng nội bộ Docker, không mở cổng trực tiếp ra ngoài.
+
+\begin{table}[H]
+\centering
+\caption{Chính sách phân quyền tại API Gateway}
+\label{table:gateway-auth-policy}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{4.2cm}|L{2.8cm}|Y|}
+\hline
+\textbf{Nhóm endpoint} & \textbf{Quyền yêu cầu} & \textbf{Ghi chú} \\ \hline
+\path|GET /api/products/**|, \path|GET /api/search/**|, \path|GET /api/content/**| & Public & Cho phép người dùng duyệt catalog, search và nội dung CMS \\ \hline
+\path|/api/cart/**| & Public hoặc token & Hỗ trợ guest cart bằng session id và user cart bằng token \\ \hline
+\path|POST /api/orders|, user profile, review create & Authenticated & Yêu cầu token hợp lệ và trusted headers \\ \hline
+\path|/api/orders/admin/**|, \path|/api/users/admin/**|, \path|/api/inventory/admin/**|, \path|/api/reviews/admin/**| & \path|ROLE_ADMIN| & Endpoint quản trị bổ sung trong Phase 14 \\ \hline
+Product/voucher/flash-sale/content mutations & \path|ROLE_ADMIN| & POST/PUT/DELETE được bảo vệ theo method và path \\ \hline
+\path|POST /api/payments/vnpay/ipn| & Public có HMAC & Public vì do VNPAY gọi, nhưng bắt buộc xác minh chữ ký \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+Ngoài xác thực và RBAC, Gateway áp dụng Redis token bucket rate limiter cho các endpoint nhạy
+cảm. Luồng đặt hàng được giới hạn 10 request/giây, burst 20; luồng mua flash sale được giới
+hạn 3 request/giây, burst 5. Rate limiter không thay thế kiểm soát nghiệp vụ nhưng giúp giảm
+tải và hạn chế automation trong các luồng có rủi ro cao.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Security flow: Client, Gateway, Keycloak và backend service}
+%     \label{fig:security-flow-ch5}
+% \end{figure}
+
+% =======================================================================
+\section{Cài đặt frontend Storefront và Admin Panel}
+\label{section:5.4}
+
+Frontend được xây dựng trong thư mục \path|frontend/| bằng Next.js App Router. Ứng dụng có
+hai khu vực chính: storefront cho khách hàng và Admin Panel cho quản trị viên. Storefront hỗ
+trợ duyệt sản phẩm, xem chi tiết, tìm kiếm, giỏ hàng, checkout, xem đơn hàng, thanh toán VNPAY
+và các màn hình flash-sale, content, review phục vụ demo. Admin Panel nằm dưới route
+\path|/admin/*|, dùng chung codebase và container với storefront.
+
+\begin{table}[H]
+\centering
+\caption{Các module chính của Admin Panel}
+\label{table:admin-modules}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{2.8cm}|L{3.2cm}|Y|}
+\hline
+\textbf{Module} & \textbf{Route frontend} & \textbf{Endpoint backend chính} \\ \hline
+Dashboard & \path|/admin/dashboard| & \path|/api/orders/admin/analytics/*|, \path|/api/inventory/low-stock| \\ \hline
+Products & \path|/admin/products| & \path|/api/products| \\ \hline
+Inventory & \path|/admin/inventory| & \path|/api/inventory/admin|, \path|/api/inventory/stock-in|, \path|/api/inventory/stock-out| \\ \hline
+Orders & \path|/admin/orders| & \path|/api/orders/admin| \\ \hline
+Users & \path|/admin/users| & \path|/api/users/admin| \\ \hline
+Vouchers & \path|/admin/vouchers| & \path|/api/vouchers| \\ \hline
+Flash sales & \path|/admin/flash-sales| & \path|/api/flash-sales| \\ \hline
+Content/Reviews & \path|/admin/content/*|, \path|/admin/reviews| & \path|/api/content/*|, \path|/api/reviews/admin| \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+Các mutation trong Admin Panel được thực hiện bằng Server Actions. Action gọi \texttt{adminFetch}
+hoặc \texttt{adminMutate}, phía server đọc access token từ httpOnly cookie và gọi API Gateway.
+Sau khi mutation thành công, action \texttt{revalidatePath} để làm mới dữ liệu và redirect về
+trang danh sách. Thiết kế này giúp token không xuất hiện trong JavaScript phía trình duyệt,
+đồng thời vẫn tận dụng được cơ chế caching/revalidation của Next.js.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Storefront: trang chủ, danh sách sản phẩm, giỏ hàng và checkout}
+%     \label{fig:storefront-screens}
+% \end{figure}
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Admin Panel: dashboard, products, inventory, orders và flash-sales}
+%     \label{fig:admin-panel-screens}
+% \end{figure}
+
+Giới hạn của frontend trong phạm vi đồ án được ghi nhận rõ: ảnh sản phẩm/banner nhập bằng URL
+thay vì upload file thật; review-service mới hỗ trợ list/delete, chưa có workflow approve/reject
+đầy đủ; chức năng ban/unban user chưa tích hợp Keycloak Admin API; dashboard analytics tổng hợp
+trực tiếp từ order-service, phù hợp demo nhưng chưa phải kiến trúc analytics quy mô lớn.
+
+% =======================================================================
+\section{Docker Compose và vận hành local}
+\label{section:5.5}
+
+Môi trường local dùng \path|docker-compose.yml| để khởi động toàn bộ backend và hạ tầng.
+Các container được đặt chung network \path|ecommerce-network|; các stateful service dùng
+Docker volume để giữ dữ liệu giữa các lần restart. Healthcheck được khai báo cho PostgreSQL,
+Redis, Kafka, Elasticsearch, Keycloak, Eureka và các service Spring Boot. Nhờ đó Compose khởi
+động theo thứ tự hợp lý thay vì chỉ dựa vào thứ tự khai báo.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Deployment diagram Docker Compose local}
+%     \label{fig:docker-compose-local}
+% \end{figure}
+
+Các endpoint vận hành local quan trọng gồm API Gateway \path|http://localhost:8080|, Eureka
+\path|http://localhost:8761|, Keycloak \path|http://localhost:8180|, Prometheus
+\path|http://localhost:9090|, Zipkin \path|http://localhost:9411|, Mailpit
+\path|http://localhost:8025| và Elasticsearch \path|http://localhost:9200|. Grafana mặc
+định dùng cổng \path|3000| trong local backend stack; khi chạy frontend cùng lúc cần remap
+hoặc dùng cấu hình production nơi Grafana được đưa sang cổng \path|3001|.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Eureka dashboard sau khi các service đăng ký thành công}
+%     \label{fig:eureka-dashboard}
+% \end{figure}
+
+% =======================================================================
+\section{Triển khai production-like trên AWS EC2}
+\label{section:5.6}
+
+Môi trường triển khai thực nghiệm sử dụng một máy ảo AWS EC2 single-host tại khu vực
+ap-southeast-1. Đây không phải kiến trúc high availability, nhưng phù hợp với phạm vi DATN:
+đủ để chứng minh hệ thống có thể build image, chạy container, cấu hình reverse proxy/HTTPS,
+giám sát runtime và thực hiện các bài kiểm thử hiệu năng/resilience trên môi trường gần thực tế.
+
+\begin{table}[H]
+\centering
+\caption{Thành phần triển khai production-like}
+\label{table:aws-resources}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{3.5cm}|Y|}
+\hline
+\textbf{Thành phần} & \textbf{Vai trò} \\ \hline
+AWS EC2 & Máy chủ single-host chạy Docker Compose production stack \\ \hline
+Docker Compose production override & Dùng GHCR image, cấu hình memory limit/reservation, remap Grafana 3001 \\ \hline
+Caddy & Reverse proxy, HTTPS tự động qua Let's Encrypt và \texttt{nip.io} \\ \hline
+GitHub Actions & Build/push backend và frontend image lên GHCR, hỗ trợ deploy lên EC2 \\ \hline
+GHCR & Registry lưu Docker image theo service \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+File \path|docker-compose.prod.yml| không build image trực tiếp trên EC2 mà tham chiếu image
+theo dạng \path|ghcr.io/{owner}/{service}:{tag}|. Cách này giảm thời gian deploy trên
+máy chủ, tách build khỏi runtime và giúp cùng một image có thể được kéo lại khi cần rollback.
+Production override cũng đặt \path|mem_limit| và \path|mem_reservation| cho từng container,
+giúp stack ổn định hơn trong giới hạn tài nguyên của EC2. Caddy định tuyến các subdomain
+\path|app.*|, \path|api.*|, \path|keycloak.*| và \path|grafana.*|; Grafana dùng host
+port \path|3001| để không xung đột với frontend.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Deployment diagram AWS EC2 production-like stack}
+%     \label{fig:aws-deployment}
+% \end{figure}
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{GitHub Actions build/push image lên GHCR thành công}
+%     \label{fig:github-actions}
+% \end{figure}
+
+% =======================================================================
+\section{Chiến lược kiểm thử}
+\label{section:5.7}
+
+Kiểm thử được tổ chức theo nhiều tầng. Tầng thấp nhất là unit test và integration test cho
+logic nghiệp vụ quan trọng. Tầng tiếp theo là backend readiness smoke test, chạy theo các
+suite tách nhỏ để tránh quá tải tài nguyên và giúp khoanh vùng lỗi nhanh. Tầng cao hơn là
+kiểm thử hiệu năng bằng k6 trên môi trường AWS EC2 và kiểm thử resilience bằng cách chủ động
+dừng service/hạ tầng rồi quan sát khả năng tự phục hồi.
+
+\begin{table}[H]
+\centering
+\caption{Kết quả backend readiness smoke test}
+\label{table:backend-readiness}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{3cm}|L{3.1cm}|Y|}
+\hline
+\textbf{Suite} & \textbf{Kết quả} & \textbf{Artifact} \\ \hline
+Maven & PASS, 5 pass, 0 fail & \path|01-maven-PASS.md| \\ \hline
+Infra & PASS, 27 pass, 0 fail & \path|02-infra-PASS.md| \\ \hline
+Auth/user & PASS, 30 pass, 0 fail & \path|03-auth-user-PASS-after-fix.md| \\ \hline
+Catalog/search & PASS, 49 pass, 0 fail & \path|04-catalog-search-PASS.md| \\ \hline
+Cart/voucher & PASS, 57 pass, 0 fail & \path|05-cart-voucher-PASS-after-fix.md| \\ \hline
+Order COD/review & PASS, 67 pass, 0 fail & \path|06-order-cod-review-PASS.md| \\ \hline
+VNPAY & PASS, 55 pass, 0 fail & \path|07-vnpay-PASS.md| \\ \hline
+Flash-sale & PASS, 62 pass, 0 fail & \path|08-flash-sale-PASS-after-fix.md| \\ \hline
+Security & PASS, 76 pass, 0 fail, 1 warn & \path|09-security-PASS-trimmed-memory.md| \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+Kết quả tổng hợp cho thấy 9/9 split suites đạt. Các lỗi phát hiện trong quá trình chuẩn bị
+kiểm thử, như healthcheck bị 401, guest cart session id bị reject, lỗi serializer cache sản
+phẩm và cấu hình Metaspace cho flash-sale test, đã được sửa trước khi ghi nhận kết quả final.
+
+% =======================================================================
+\section{Kết quả kiểm thử hiệu năng}
+\label{section:5.8}
+
+Các bài kiểm thử hiệu năng được thực hiện trên môi trường AWS EC2 chạy Docker Compose
+production-like stack. Load generator là máy cá nhân chạy k6. Dataset thực nghiệm gồm 100 sản
+phẩm, 500 user/token và một flash-sale campaign có 100 slot. Nguyên tắc đưa số liệu vào báo
+cáo là mọi metric phải đối chiếu được với raw artifact trong thư mục \texttt{.test/results}.
+
+\begin{table}[H]
+\centering
+\caption{Tổng hợp kết quả kiểm thử hiệu năng bằng k6}
+\label{table:perf-results}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{3.1cm}|L{2cm}|L{1.5cm}|L{2.2cm}|L{2.2cm}|Y|}
+\hline
+\textbf{Kịch bản} & \textbf{Thời lượng} & \textbf{Max VU} & \textbf{Requests} & \textbf{p95} & \textbf{Lỗi} \\ \hline
+Catalog soak & 34m03s & 200 & 220,956 & 61.68 ms & 0.00\% \\ \hline
+Checkout stress & 7m00s & 50 & 13,734 & 160.92 ms & 0.00\% \\ \hline
+Flash-sale spike & 1m30s & 500 & 78,448 & 1.04 s overall & 0 duplicate buyer \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+\textbf{Catalog soak} mô phỏng người dùng duyệt danh sách sản phẩm trong 34 phút 03 giây với
+tải tối đa 200 VU. Kịch bản tạo 55,239 iterations và 220,956 HTTP requests, p95 đạt 61.68 ms,
+p99 đạt 85.48 ms, error rate 0.00\%. Kết quả này cho thấy read path catalog/search/cache đáp
+ứng tốt trên single-host trong phạm vi dataset đồ án.
+
+\textbf{Checkout stress} mô phỏng tạo đơn hàng với tải tối đa 50 VU trong 7 phút. Kịch bản
+ghi nhận 6,817 iterations, 13,734 HTTP requests, order success check 100.00\%, HTTP failure
+rate 0.00\% và p95 latency 160.92 ms. Đây là luồng nặng hơn catalog vì đi qua product,
+inventory, voucher, order, Kafka và notification, nhưng vẫn duy trì độ trễ phù hợp với mục
+tiêu thực nghiệm.
+
+\textbf{Flash-sale spike} mô phỏng 500 VU trong 90 giây tranh mua 100 slot. Kết quả có đúng
+100 purchase thành công trên 100 slot, \texttt{soldCount} của campaign bằng 100, số đơn
+confirmed cho campaign bằng 100 và không có duplicate buyer. Bài test ghi nhận 36,134 phản
+hồi sold-out; p95 tổng thể là 1.04 giây, còn p95 của nhóm expected responses là 335.55 ms.
+Điều này chứng minh trong kịch bản thực nghiệm đã chạy, Redis Lua atomic reservation kết hợp
+buyer set, compensation và reconciliation không gây over-sell.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Kết quả k6 catalog, checkout và flash-sale spike}
+%     \label{fig:perf-results}
+% \end{figure}
+
+% =======================================================================
+\section{Kết quả kiểm thử khả năng chịu lỗi}
+\label{section:5.9}
+
+Để đánh giá resilience, bốn kịch bản được thực hiện bằng cách chủ động gây lỗi vào service
+hoặc hạ tầng. Mục tiêu không phải chứng minh hệ thống có high availability hoàn chỉnh, mà là
+kiểm chứng các cơ chế đã thiết kế: circuit breaker/fallback, outbox replay, graceful
+degradation và Saga compensation.
+
+\begin{table}[H]
+\centering
+\caption{Tổng hợp kết quả kiểm thử khả năng chịu lỗi}
+\label{table:chaos-results}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{3.2cm}|Y|L{2.1cm}|}
+\hline
+\textbf{Kịch bản} & \textbf{Kết quả chính} & \textbf{Trạng thái} \\ \hline
+Kill order-service & Trong 30 giây downtime, order-created đạt 47.15\%, HTTP failure 25.94\%; sau restart gateway/order health trả 200 & Completed \\ \hline
+Kill Kafka & Khi Kafka down, order vẫn được tạo, outbox row ở trạng thái pending; sau Kafka restart, event được process và order kết thúc \texttt{CONFIRMED} & PASS \\ \hline
+Kill Redis & Product list vẫn trả 200 trong Redis outage; cart phụ thuộc Redis degrade 500 trong outage và recover 200 sau restart & PASS \\ \hline
+Inventory failure compensation & Order \path|4170422f-fc2d-49f8-aa5f-c7cd1d79266a| chuyển \path|CANCELLED|, inventory còn \path|quantity=0|, \path|reserved_quantity=0| & PASS \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+Kịch bản Kill Kafka là bằng chứng trực tiếp cho Transactional Outbox: service nghiệp vụ vẫn
+ghi được dữ liệu và ghi event pending vào database khi broker không khả dụng; sau khi broker
+khởi động lại, poller phát lại event và Saga tiếp tục đến trạng thái cuối. Kịch bản Kill Redis
+cho thấy hệ thống có phân biệt read path có fallback (product list) với chức năng phụ thuộc
+trực tiếp Redis (cart/rate-limit/flash-sale). Cách ghi nhận này trung thực với bản chất hệ
+thống: một số luồng có graceful degradation, một số luồng phải fail fast để tránh sai dữ liệu.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
+%     \caption{Bằng chứng resilience: Kafka outbox replay và Redis recovery}
+%     \label{fig:resilience-evidence}
+% \end{figure}
+
+% =======================================================================
+\section{Đánh giá tổng thể}
+\label{section:5.10}
+
+\subsection{Đối chiếu với mục tiêu đề tài}
+
+\begin{table}[H]
+\centering
+\caption{Đối chiếu kết quả với mục tiêu ban đầu}
+\label{table:objectives-eval}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{3.5cm}|Y|L{2cm}|}
+\hline
+\textbf{Mục tiêu} & \textbf{Kết quả đạt được} & \textbf{Đánh giá} \\ \hline
+Phân rã hệ thống theo microservices & 13 business service, 3 Spring Cloud service, database/cache/search tách theo ownership & Đạt \\ \hline
+Áp dụng distributed patterns & Saga Orchestration, Transactional Outbox, Idempotent Consumer, CQRS-lite, scheduler/reconciliation & Đạt \\ \hline
+Bảo mật tập trung & Keycloak, JWT validation tại Gateway, trusted headers, RBAC, rate limiter & Đạt \\ \hline
+Thanh toán trực tuyến & VNPAY sandbox, HMAC-SHA512, Return URL, IPN, timeout scheduler & Đạt \\ \hline
+Flash sale chống over-sell & Redis Lua, buyer set, compensation, reconciliation; spike test 500 VU xác nhận 100/100 slot và 0 duplicate buyer & Đạt \\ \hline
+Triển khai và quan sát & Docker Compose local/AWS EC2, Caddy HTTPS, GitHub Actions/GHCR, Prometheus/Grafana/Zipkin & Đạt trong phạm vi DATN \\ \hline
+Giao diện demo hệ thống hoàn chỉnh & Next.js storefront và Admin Panel với các module quản trị chính & Đạt mức demo DATN \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
+
+\subsection{Hạn chế}
+
+Hệ thống đã đạt mục tiêu của đồ án nhưng vẫn có các giới hạn cần ghi nhận. Thứ nhất, môi
+trường triển khai là single-host EC2 nên chưa có high availability; nếu EC2 gặp sự cố, toàn
+bộ hệ thống bị ảnh hưởng. Thứ hai, CI/CD hiện đáp ứng build/push/deploy cơ bản, chưa có
+canary/blue-green deployment, security scan bắt buộc hay quản lý secret chuyên dụng. Thứ ba,
+frontend/Admin Panel phục vụ tốt demo DATN nhưng chưa phải sản phẩm thương mại hoàn chỉnh:
+chưa có upload file qua object storage, workflow kiểm duyệt review đầy đủ, ban/unban user qua
+Keycloak và analytics service riêng. Thứ tư, event schema đang dùng module \texttt{common},
+phù hợp monorepo đồ án nhưng production lớn nên cân nhắc schema registry hoặc contract testing.
+Thứ năm, hệ thống có metrics/tracing nhưng chưa có log aggregation và alerting production-grade.
+
+\end{document}
