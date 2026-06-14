@@ -13,26 +13,26 @@ Gia tri thuc te doc tu `aws/config.env` tren laptop:
 | Ten | Gia tri |
 |---|---|
 | AWS region | `ap-southeast-1` |
-| EC2 instance id | `${INSTANCE_ID}` |
-| Elastic IP | `${ELASTIC_IP}` |
-| Elastic IP dashed | `${ELASTIC_IP_DASHED}` |
-| SSH key | `${SSH_KEY_PATH}` |
-| GitHub owner | `${GITHUB_OWNER}` hoac GitHub repo owner |
+| EC2 instance id | `i-0354fba0757054b34` |
+| Elastic IP | `13.213.118.96` |
+| Elastic IP dashed | `13-213-118-96` |
+| SSH key | `/Users/dwchwang/.ssh/ecommerce-thesis-key-v2.pem` |
+| GitHub owner | `dwchwang` hoac GitHub repo owner |
 
 URL production nen mo bang browser:
 
 | Thanh phan | URL |
 |---|---|
-| Storefront + Admin Next.js | `https://app.${ELASTIC_IP_DASHED}.nip.io` |
-| Admin panel | `https://app.${ELASTIC_IP_DASHED}.nip.io/admin` |
-| API Gateway | `https://api.${ELASTIC_IP_DASHED}.nip.io` |
-| Swagger UI | `https://api.${ELASTIC_IP_DASHED}.nip.io/swagger-ui.html` |
-| API health | `https://api.${ELASTIC_IP_DASHED}.nip.io/actuator/health` |
-| Keycloak | `https://auth.${ELASTIC_IP_DASHED}.nip.io` |
-| Grafana | `https://grafana.${ELASTIC_IP_DASHED}.nip.io` |
-| Eureka | `http://${ELASTIC_IP}:8761` |
-| Config Server | `http://${ELASTIC_IP}:8888` |
-| Prometheus | `http://${ELASTIC_IP}:9090` |
+| Storefront + Admin Next.js | `https://app.13-213-118-96.nip.io` |
+| Admin panel | `https://app.13-213-118-96.nip.io/admin` |
+| API Gateway | `https://api.13-213-118-96.nip.io` |
+| Swagger UI | `https://api.13-213-118-96.nip.io/swagger-ui.html` |
+| API health | `https://api.13-213-118-96.nip.io/actuator/health` |
+| Keycloak | `https://auth.13-213-118-96.nip.io` |
+| Grafana | `https://grafana.13-213-118-96.nip.io` |
+| Eureka | `http://13.213.118.96:8761` |
+| Config Server | `http://13.213.118.96:8888` |
+| Prometheus | `http://13.213.118.96:9090` |
 | Zipkin | Khong public; mo qua SSH tunnel o muc 10 |
 
 Credential can tu xem:
@@ -49,16 +49,16 @@ Credential can tu xem:
 Lenh nhanh de set bien moi truong tren laptop:
 
 ```bash
-cd "<PROJECT_ROOT>"
+cd "/Users/dwchwang/Documents/DATN/e-commerce microservice project"
 source aws/config.env
 
-export APP_URL="https://app.${ELASTIC_IP_DASHED}.nip.io"
-export API_URL="https://api.${ELASTIC_IP_DASHED}.nip.io"
-export AUTH_URL="https://auth.${ELASTIC_IP_DASHED}.nip.io"
-export GRAFANA_URL="https://grafana.${ELASTIC_IP_DASHED}.nip.io"
-export EUREKA_URL="http://${ELASTIC_IP}:8761"
-export CONFIG_URL="http://${ELASTIC_IP}:8888"
-export PROM_URL="http://${ELASTIC_IP}:9090"
+export APP_URL="https://app.13-213-118-96.nip.io"
+export API_URL="https://api.13-213-118-96.nip.io"
+export AUTH_URL="https://auth.13-213-118-96.nip.io"
+export GRAFANA_URL="https://grafana.13-213-118-96.nip.io"
+export EUREKA_URL="http://13.213.118.96:8761"
+export CONFIG_URL="http://13.213.118.96:8888"
+export PROM_URL="http://13.213.118.96:9090"
 ```
 
 ---
@@ -73,10 +73,10 @@ Internet
   | HTTPS qua nip.io
   v
 Caddy tren EC2
-  |-- app.${ELASTIC_IP_DASHED}.nip.io      -> frontend container :3000
-  |-- api.${ELASTIC_IP_DASHED}.nip.io      -> api-gateway :8080
-  |-- auth.${ELASTIC_IP_DASHED}.nip.io     -> keycloak host port :8180
-  |-- grafana.${ELASTIC_IP_DASHED}.nip.io  -> grafana host port :3001
+  |-- app.13-213-118-96.nip.io      -> frontend container :3000
+  |-- api.13-213-118-96.nip.io      -> api-gateway :8080
+  |-- auth.13-213-118-96.nip.io     -> keycloak host port :8180
+  |-- grafana.13-213-118-96.nip.io  -> grafana host port :3001
   |
   v
 Docker network ecommerce-network
@@ -123,7 +123,7 @@ Phan nay lam truoc khi vao browser. Neu EC2 dang chay san, chi can vao muc 2.3.
 ### 2.1 Kiem Tra EC2 Tren Laptop
 
 ```bash
-cd "<PROJECT_ROOT>"
+cd "/Users/dwchwang/Documents/DATN/e-commerce microservice project"
 source aws/config.env
 
 aws ec2 describe-instances \
@@ -278,21 +278,21 @@ Mo tung URL nay truoc. Day la cach nhanh nhat de biet he thong da san sang chua.
 
 | Buoc | Mo tren browser | Can thay |
 |---:|---|---|
-| 1 | `https://app.${ELASTIC_IP_DASHED}.nip.io` | Storefront load duoc, khong phai trang 502 |
-| 2 | `https://app.${ELASTIC_IP_DASHED}.nip.io/admin` | Admin route load, neu chua login thi chuyen login/guard |
-| 3 | `https://api.${ELASTIC_IP_DASHED}.nip.io/actuator/health` | JSON co `status: "UP"` |
-| 4 | `https://api.${ELASTIC_IP_DASHED}.nip.io/swagger-ui.html` | Swagger UI hien API docs |
-| 5 | `https://auth.${ELASTIC_IP_DASHED}.nip.io` | Keycloak page load qua HTTPS |
-| 6 | `https://grafana.${ELASTIC_IP_DASHED}.nip.io` | Caddy basic auth/Grafana login |
-| 7 | `http://${ELASTIC_IP}:8761` | Eureka login |
-| 8 | `http://${ELASTIC_IP}:9090/targets` | Prometheus targets |
+| 1 | `https://app.13-213-118-96.nip.io` | Storefront load duoc, khong phai trang 502 |
+| 2 | `https://app.13-213-118-96.nip.io/admin` | Admin route load, neu chua login thi chuyen login/guard |
+| 3 | `https://api.13-213-118-96.nip.io/actuator/health` | JSON co `status: "UP"` |
+| 4 | `https://api.13-213-118-96.nip.io/swagger-ui.html` | Swagger UI hien API docs |
+| 5 | `https://auth.13-213-118-96.nip.io` | Keycloak page load qua HTTPS |
+| 6 | `https://grafana.13-213-118-96.nip.io` | Caddy basic auth/Grafana login |
+| 7 | `http://13.213.118.96:8761` | Eureka login |
+| 8 | `http://13.213.118.96:9090/targets` | Prometheus targets |
 
 Trang thai da kiem tra sau hotfix ngay `2026-06-03`:
 
-- `app.${ELASTIC_IP_DASHED}.nip.io` va `http://${ELASTIC_IP}:3000` da tra ve Next.js frontend.
-- `grafana.${ELASTIC_IP_DASHED}.nip.io` va host port `3001` la Grafana.
-- `api.${ELASTIC_IP_DASHED}.nip.io/swagger-ui.html` redirect sang `/swagger-ui/index.html` va tra `200`.
-- `api.${ELASTIC_IP_DASHED}.nip.io/v3/api-docs` tra `200`.
+- `app.13-213-118-96.nip.io` va `http://13.213.118.96:3000` da tra ve Next.js frontend.
+- `grafana.13-213-118-96.nip.io` va host port `3001` la Grafana.
+- `api.13-213-118-96.nip.io/swagger-ui.html` redirect sang `/swagger-ui/index.html` va tra `200`.
+- `api.13-213-118-96.nip.io/v3/api-docs` tra `200`.
 
 Neu app/api/grafana qua HTTPS bi `502 Bad Gateway`:
 
@@ -329,8 +329,8 @@ Production co 2 cach vao FE:
 
 | Cach vao | URL | Khi nao dung |
 |---|---|---|
-| Duong dung chinh | `https://app.${ELASTIC_IP_DASHED}.nip.io` | Dung khi test/demo that. Di qua Caddy HTTPS port `443`. |
-| Debug truc tiep container FE | `http://${ELASTIC_IP}:3000` | Chi dung de debug khi Caddy/HTTPS loi. Khong dung lam duong demo chinh. |
+| Duong dung chinh | `https://app.13-213-118-96.nip.io` | Dung khi test/demo that. Di qua Caddy HTTPS port `443`. |
+| Debug truc tiep container FE | `http://13.213.118.96:3000` | Chi dung de debug khi Caddy/HTTPS loi. Khong dung lam duong demo chinh. |
 
 Neu hai URL tren hien Grafana login thay vi storefront, production dang bi sai mapping port:
 
@@ -352,7 +352,7 @@ Luot request FE production:
 
 ```text
 Browser
-  -> https://app.${ELASTIC_IP_DASHED}.nip.io
+  -> https://app.13-213-118-96.nip.io
   -> Caddy :443
   -> frontend container :3000
   -> FE BFF routes:
@@ -362,7 +362,7 @@ Browser
        /api/auth/session
        /api/proxy/<backend-path>
   -> API Gateway:
-       https://api.${ELASTIC_IP_DASHED}.nip.io
+       https://api.13-213-118-96.nip.io
 ```
 
 Neu test local dev moi dung:
@@ -371,13 +371,13 @@ Neu test local dev moi dung:
 http://localhost:3000
 ```
 
-Nhung voi guide nay, uu tien production URL `https://app.${ELASTIC_IP_DASHED}.nip.io`.
+Nhung voi guide nay, uu tien production URL `https://app.13-213-118-96.nip.io`.
 
 ### 3A.2 Chuan Bi Browser De Test FE
 
 Nen dung Chrome/Edge va mo DevTools:
 
-1. Mo `https://app.${ELASTIC_IP_DASHED}.nip.io`.
+1. Mo `https://app.13-213-118-96.nip.io`.
 2. Bam `F12` hoac `Cmd+Option+I`.
 3. Vao tab `Network`.
 4. Tick `Preserve log`.
@@ -405,7 +405,7 @@ Chua can login. Mo bang browser va tick pass/fail:
 
 | Route FE | URL | Thao tac | Pass khi |
 |---|---|---|---|
-| Home | `https://app.${ELASTIC_IP_DASHED}.nip.io` | Mo trang chu | Trang load, khong 502/404, khong trang Caddy default |
+| Home | `https://app.13-213-118-96.nip.io` | Mo trang chu | Trang load, khong 502/404, khong trang Caddy default |
 | Products | `/products` | Xem list, doi page/filter neu co | Co danh sach product, UI khong vang loi runtime |
 | Product detail | `/products/<slug>` | Click 1 product tu list | Hien ten, gia, anh/spec/review/stock neu co |
 | Search | `/search` | Nhap keyword va search | Co ket qua hoac empty state dung, Network khong 500 |
@@ -429,8 +429,8 @@ Checklist FE public:
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/login
-https://app.${ELASTIC_IP_DASHED}.nip.io/register
+https://app.13-213-118-96.nip.io/login
+https://app.13-213-118-96.nip.io/register
 ```
 
 Test login:
@@ -462,7 +462,7 @@ Neu login FE loi nhung API auth dung:
 
 - Xem Network `/api/auth/login` response.
 - Kiem tra cookie domain/path/secure.
-- Kiem tra `NEXT_PUBLIC_APP_URL` co dung `https://app.${ELASTIC_IP_DASHED}.nip.io` khong.
+- Kiem tra `NEXT_PUBLIC_APP_URL` co dung `https://app.13-213-118-96.nip.io` khong.
 - Kiem tra Keycloak issuer/callback URL.
 
 ### 3A.5 Test FE Account/User Routes
@@ -547,7 +547,7 @@ Can login admin co role admin.
 Mo route goc:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/admin
+https://app.13-213-118-96.nip.io/admin
 ```
 
 Neu login admin thanh cong, test cac route:
@@ -623,7 +623,7 @@ Neu Network 500:
 
 FE duoc coi la pass khi:
 
-- `https://app.${ELASTIC_IP_DASHED}.nip.io` load qua HTTPS.
+- `https://app.13-213-118-96.nip.io` load qua HTTPS.
 - `/products`, `/search`, `/compare`, `/flash-sales` load dung.
 - User login/logout/register/session chay dung.
 - User add cart, checkout COD, xem order duoc.
@@ -648,7 +648,7 @@ Eureka la diem can show de chung minh microservices dang register that, khong ch
 Mo:
 
 ```text
-http://${ELASTIC_IP}:8761
+http://13.213.118.96:8761
 ```
 
 Login bang:
@@ -739,10 +739,10 @@ Config Server chung minh service khong hardcode toan bo cau hinh trong image.
 Mo cac URL:
 
 ```text
-http://${ELASTIC_IP}:8888/api-gateway/docker
-http://${ELASTIC_IP}:8888/order-service/docker
-http://${ELASTIC_IP}:8888/search-service/docker
-http://${ELASTIC_IP}:8888/flash-sale-service/docker
+http://13.213.118.96:8888/api-gateway/docker
+http://13.213.118.96:8888/order-service/docker
+http://13.213.118.96:8888/search-service/docker
+http://13.213.118.96:8888/flash-sale-service/docker
 ```
 
 Can thay JSON/YAML config tra ve. Neu browser hoi download/plain text cung duoc.
@@ -750,7 +750,7 @@ Can thay JSON/YAML config tra ve. Neu browser hoi download/plain text cung duoc.
 Port `8888` la debug port, khong mo public cho tat ca Internet. Security Group hien chi mo `tcp/8888` cho IP trong `aws/config.env`:
 
 ```text
-MY_HOME_IP=<MY_HOME_IP>
+MY_HOME_IP=14.232.219.67
 ```
 
 Neu doi mang nha/4G va cac URL tren khong vao duoc, cap nhat `MY_HOME_IP` roi mo lai inbound rule:
@@ -800,7 +800,7 @@ Gateway la entrypoint backend cho frontend. Muc nay giup ban thay request di qua
 Mo:
 
 ```text
-https://api.${ELASTIC_IP_DASHED}.nip.io/swagger-ui.html
+https://api.13-213-118-96.nip.io/swagger-ui.html
 ```
 
 Can thay cac nhom API:
@@ -823,15 +823,15 @@ Can thay cac nhom API:
 Browser:
 
 ```text
-https://api.${ELASTIC_IP_DASHED}.nip.io/actuator/health
+https://api.13-213-118-96.nip.io/actuator/health
 ```
 
 CLI tren laptop:
 
 ```bash
-curl -s https://api.${ELASTIC_IP_DASHED}.nip.io/actuator/health
-curl -s 'https://api.${ELASTIC_IP_DASHED}.nip.io/api/products?size=3&page=0' | jq
-curl -s 'https://api.${ELASTIC_IP_DASHED}.nip.io/api/search?keyword=phone&size=3&page=0' | jq
+curl -s https://api.13-213-118-96.nip.io/actuator/health
+curl -s 'https://api.13-213-118-96.nip.io/api/products?size=3&page=0' | jq
+curl -s 'https://api.13-213-118-96.nip.io/api/search?keyword=phone&size=3&page=0' | jq
 ```
 
 Can thay:
@@ -869,7 +869,7 @@ Keycloak quan ly user, role va token issuer. Day la diem can kiem tra khi admin 
 Mo:
 
 ```text
-https://auth.${ELASTIC_IP_DASHED}.nip.io
+https://auth.13-213-118-96.nip.io
 ```
 
 Login admin bang credential trong `.env.prod`:
@@ -889,7 +889,7 @@ Trong Keycloak:
 
 1. Realm settings:
    - Realm la `ecommerce`.
-   - Issuer phai la URL public HTTPS: `https://auth.${ELASTIC_IP_DASHED}.nip.io/realms/ecommerce`.
+   - Issuer phai la URL public HTTPS: `https://auth.13-213-118-96.nip.io/realms/ecommerce`.
 
 2. Clients:
    - Tim client frontend/backend dang dung trong `.env.prod`, thuong la `ecommerce-client`.
@@ -909,11 +909,11 @@ Lam bang tay:
 
 1. Mo storefront, logout.
 2. Login user thuong.
-3. Mo `https://app.${ELASTIC_IP_DASHED}.nip.io/admin`.
+3. Mo `https://app.13-213-118-96.nip.io/admin`.
 4. Ky vong: user thuong bi chan, khong vao duoc dashboard admin.
 5. Logout user thuong.
 6. Login admin.
-7. Mo `https://app.${ELASTIC_IP_DASHED}.nip.io/admin/dashboard`.
+7. Mo `https://app.13-213-118-96.nip.io/admin/dashboard`.
 8. Ky vong: admin vao duoc dashboard.
 
 Neu admin bi chan:
@@ -934,7 +934,7 @@ Muc nay dung browser la chinh. Sau moi luong, co diem soi sau backend de biet se
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/products
+https://app.13-213-118-96.nip.io/products
 ```
 
 Thao tac:
@@ -957,7 +957,7 @@ Backend lien quan:
 Kiem tra sau bang API:
 
 ```bash
-curl -s 'https://api.${ELASTIC_IP_DASHED}.nip.io/api/products?size=5&page=0' | jq '.data.content[] | {id, sku, name, price}'
+curl -s 'https://api.13-213-118-96.nip.io/api/products?size=5&page=0' | jq '.data.content[] | {id, sku, name, price}'
 ```
 
 Neu UI trong:
@@ -971,7 +971,7 @@ Neu UI trong:
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/search
+https://app.13-213-118-96.nip.io/search
 ```
 
 Thao tac:
@@ -992,8 +992,8 @@ Backend lien quan:
 Kiem tra search API:
 
 ```bash
-curl -s 'https://api.${ELASTIC_IP_DASHED}.nip.io/api/search?keyword=phone&size=5&page=0' | jq
-curl -s 'https://api.${ELASTIC_IP_DASHED}.nip.io/api/search/suggestions?keyword=ph' | jq
+curl -s 'https://api.13-213-118-96.nip.io/api/search?keyword=phone&size=5&page=0' | jq
+curl -s 'https://api.13-213-118-96.nip.io/api/search/suggestions?keyword=ph' | jq
 ```
 
 Neu product co trong catalog nhung search khong ra:
@@ -1007,8 +1007,8 @@ Neu product co trong catalog nhung search khong ra:
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/products
-https://app.${ELASTIC_IP_DASHED}.nip.io/compare
+https://app.13-213-118-96.nip.io/products
+https://app.13-213-118-96.nip.io/compare
 ```
 
 Thao tac:
@@ -1027,8 +1027,8 @@ Backend lien quan:
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/products
-https://app.${ELASTIC_IP_DASHED}.nip.io/cart
+https://app.13-213-118-96.nip.io/products
+https://app.13-213-118-96.nip.io/cart
 ```
 
 Thao tac:
@@ -1052,7 +1052,7 @@ Backend lien quan:
 Kiem tra API:
 
 ```bash
-curl -i 'https://api.${ELASTIC_IP_DASHED}.nip.io/api/cart'
+curl -i 'https://api.13-213-118-96.nip.io/api/cart'
 ```
 
 Neu chua login co the can cookie session tu browser nen CLI khong thay y het UI. Khi debug that, dung DevTools Network de xem request `/api/proxy/cart`.
@@ -1062,8 +1062,8 @@ Neu chua login co the can cookie session tu browser nen CLI khong thay y het UI.
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/profile
-https://app.${ELASTIC_IP_DASHED}.nip.io/addresses
+https://app.13-213-118-96.nip.io/profile
+https://app.13-213-118-96.nip.io/addresses
 ```
 
 Thao tac:
@@ -1090,9 +1090,9 @@ Neu address tao xong khong hien:
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/cart
-https://app.${ELASTIC_IP_DASHED}.nip.io/checkout
-https://app.${ELASTIC_IP_DASHED}.nip.io/orders
+https://app.13-213-118-96.nip.io/cart
+https://app.13-213-118-96.nip.io/checkout
+https://app.13-213-118-96.nip.io/orders
 ```
 
 Thao tac:
@@ -1144,7 +1144,7 @@ VNPAY phu thuoc sandbox credential va callback public. Chay bang tay khi can:
 1. Checkout chon VNPAY.
 2. App redirect sang sandbox.
 3. Thanh toan bang the test sandbox.
-4. VNPAY return ve `app.${ELASTIC_IP_DASHED}.nip.io/order/result` hoac URL tu config.
+4. VNPAY return ve `app.13-213-118-96.nip.io/order/result` hoac URL tu config.
 5. Kiem tra order/payment status.
 
 Neu sandbox loi, khong coi la loi core system neu COD flow da pass. Debug:
@@ -1162,8 +1162,8 @@ Dieu kien:
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/orders
-https://app.${ELASTIC_IP_DASHED}.nip.io/products/<slug>
+https://app.13-213-118-96.nip.io/orders
+https://app.13-213-118-96.nip.io/products/<slug>
 ```
 
 Thao tac:
@@ -1189,7 +1189,7 @@ Neu user chua mua ma review duoc la loi logic. Neu da mua ma review khong duoc:
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/content/<slug>
+https://app.13-213-118-96.nip.io/content/<slug>
 ```
 
 Thao tac:
@@ -1215,7 +1215,7 @@ Admin panel nam chung Next.js app, nhung route bat dau bang `/admin` va yeu cau 
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/admin/dashboard
+https://app.13-213-118-96.nip.io/admin/dashboard
 ```
 
 Can thay:
@@ -1242,7 +1242,7 @@ Neu dashboard trong:
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/admin/products
+https://app.13-213-118-96.nip.io/admin/products
 ```
 
 Thao tac:
@@ -1270,7 +1270,7 @@ Neu product tao duoc nhung search khong thay:
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/admin/inventory
+https://app.13-213-118-96.nip.io/admin/inventory
 ```
 
 Thao tac:
@@ -1296,7 +1296,7 @@ Neu checkout bao het hang trong khi admin thay con hang:
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/admin/orders
+https://app.13-213-118-96.nip.io/admin/orders
 ```
 
 Thao tac:
@@ -1322,7 +1322,7 @@ Can chu y:
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/admin/vouchers
+https://app.13-213-118-96.nip.io/admin/vouchers
 ```
 
 Thao tac:
@@ -1347,8 +1347,8 @@ Neu voucher apply loi:
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/admin/flash-sales
-https://app.${ELASTIC_IP_DASHED}.nip.io/flash-sales
+https://app.13-213-118-96.nip.io/admin/flash-sales
+https://app.13-213-118-96.nip.io/flash-sales
 ```
 
 Thao tac:
@@ -1381,8 +1381,8 @@ Neu bam mua bi sold out:
 Mo:
 
 ```text
-https://app.${ELASTIC_IP_DASHED}.nip.io/admin/users
-https://app.${ELASTIC_IP_DASHED}.nip.io/admin/reviews
+https://app.13-213-118-96.nip.io/admin/users
+https://app.13-213-118-96.nip.io/admin/reviews
 ```
 
 Can kiem tra:
@@ -1394,7 +1394,7 @@ Can kiem tra:
 Frontend route trong repo hien co storefront `content/[slug]`. Neu admin content route chua hien tren menu, backend content-service van kiem duoc qua Swagger:
 
 ```text
-https://api.${ELASTIC_IP_DASHED}.nip.io/swagger-ui.html
+https://api.13-213-118-96.nip.io/swagger-ui.html
 ```
 
 Tim cac endpoint:
@@ -1413,7 +1413,7 @@ Tim cac endpoint:
 Mo:
 
 ```text
-https://grafana.${ELASTIC_IP_DASHED}.nip.io
+https://grafana.13-213-118-96.nip.io
 ```
 
 Co the gap 2 lop login:
@@ -1448,7 +1448,7 @@ Neu dashboard trong:
 Mo:
 
 ```text
-http://${ELASTIC_IP}:9090/targets
+http://13.213.118.96:9090/targets
 ```
 
 Can thay targets `UP`:
@@ -1506,7 +1506,7 @@ Trong production override, Zipkin **khong expose public host port**. Co 2 cach x
 Tren laptop, lay IP container Zipkin tren EC2:
 
 ```bash
-cd "<PROJECT_ROOT>"
+cd "/Users/dwchwang/Documents/DATN/e-commerce microservice project"
 source aws/config.env
 
 ssh -i "$SSH_KEY_PATH" ubuntu@$ELASTIC_IP \
@@ -2098,7 +2098,7 @@ Danh sach nay dung de tu tick truoc khi quay/chay live.
 
 | Muc | Dat khi |
 |---|---|
-| EC2 | Instance `${INSTANCE_ID}` dang `running` |
+| EC2 | Instance `i-0354fba0757054b34` dang `running` |
 | Docker | Tat ca container production `Up` |
 | Caddy | `active (running)`, HTTPS app/api/auth/grafana load duoc |
 | FE storefront public | Home/products/product detail/search/compare/flash-sales/content load duoc |

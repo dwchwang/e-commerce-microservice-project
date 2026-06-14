@@ -54,6 +54,9 @@ class OrderServiceImplTest {
     @Mock
     private OutboxService outboxService;
 
+    private final io.micrometer.core.instrument.simple.SimpleMeterRegistry meterRegistry =
+            new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+
     @AfterEach
     void clearTransactionSynchronization() {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -94,7 +97,8 @@ class OrderServiceImplTest {
                 productClient,
                 voucherClient,
                 cartClient,
-                outboxService);
+                outboxService,
+                meterRegistry);
 
         OrderResponse response = service.placeOrder("user-1", "user@example.com", placeOrderRequest(productId));
 
@@ -120,7 +124,8 @@ class OrderServiceImplTest {
                 productClient,
                 voucherClient,
                 cartClient,
-                outboxService);
+                outboxService,
+                meterRegistry);
 
         OrderResponse response = service.createFlashSaleOrder(event);
 
@@ -152,7 +157,8 @@ class OrderServiceImplTest {
                 productClient,
                 voucherClient,
                 cartClient,
-                outboxService);
+                outboxService,
+                meterRegistry);
 
         OrderResponse response = service.createFlashSaleOrder(event);
 

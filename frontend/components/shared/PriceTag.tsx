@@ -18,7 +18,7 @@ export function PriceTag({ price, originalPrice, className, size = "md" }: Price
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <span className={cn("font-bold text-primary", sizeClasses[size])}>
+      <span className={cn("font-semibold tracking-tight text-foreground", sizeClasses[size])}>
         {price.toLocaleString("vi-VN")}₫
       </span>
       {hasDiscount && (

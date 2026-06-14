@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import { resolveProductImage } from "@/lib/product-image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -46,8 +48,14 @@ export function CartDrawer() {
             <div className="flex-1 overflow-y-auto space-y-3 py-4">
               {cart.items.map((item) => (
                 <div key={item.productId} className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-muted rounded shrink-0 flex items-center justify-center">
-                    📦
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-secondary">
+                    <Image
+                      src={resolveProductImage({ id: item.productId, name: item.productName }, item.productImage, 120)}
+                      alt={item.productName}
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{item.productName}</p>

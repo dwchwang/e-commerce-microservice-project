@@ -1,136 +1,102 @@
 {
-  "annotations": {
-    "list": []
-  },
+  "annotations": { "list": [] },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "id": null,
   "links": [],
-  "panels": [
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "reqps"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 0,
-        "y": 0
-      },
-      "id": 1,
-      "targets": [
-        {
-          "expr": "sum by (job) (rate(http_server_requests_seconds_count{job=~\"$job\"}[5m]))",
-          "legendFormat": "{{job}}"
-        }
-      ],
-      "title": "HTTP Request Rate",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 0
-      },
-      "id": 2,
-      "targets": [
-        {
-          "expr": "sum by (job) (rate(http_server_requests_seconds_count{status=~\"5..\",job=~\"$job\"}[5m])) / sum by (job) (rate(http_server_requests_seconds_count{job=~\"$job\"}[5m]))",
-          "legendFormat": "{{job}}"
-        }
-      ],
-      "title": "HTTP 5xx Error Ratio",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 0
-      },
-      "id": 3,
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum by (job, le) (rate(http_server_requests_seconds_bucket{job=~\"$job\"}[5m])))",
-          "legendFormat": "{{job}}"
-        }
-      ],
-      "title": "HTTP p95 Latency",
-      "type": "timeseries"
-    }
-  ],
-  "refresh": "30s",
-  "schemaVersion": 41,
-  "tags": [
-    "spring",
-    "micrometer"
-  ],
   "templating": {
     "list": [
       {
-        "current": {
-          "selected": false,
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "definition": "label_values(up, job)",
-        "hide": 0,
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(up{job!=\"prometheus\"}, job)",
         "includeAll": true,
         "multi": true,
         "name": "job",
+        "label": "Service",
         "options": [],
-        "query": {
-          "query": "label_values(up, job)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 1,
-        "regex": "",
+        "query": { "query": "label_values(up{job!=\"prometheus\"}, job)", "refId": "StandardVariableQuery" },
+        "refresh": 2,
         "sort": 1,
         "type": "query"
       }
     ]
   },
-  "time": {
-    "from": "now-1h",
-    "to": "now"
-  },
+  "panels": [
+    {
+      "type": "row", "title": "KPI", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "id": 100, "collapsed": false, "panels": []
+    },
+    {
+      "type": "stat", "title": "Total Request Rate", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 }, "id": 1,
+      "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 1, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\"}[5m]))" } ]
+    },
+    {
+      "type": "stat", "title": "Error Rate (4xx+5xx)", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 }, "id": 2,
+      "fieldConfig": { "defaults": { "unit": "percent", "decimals": 2, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 2 }, { "color": "red", "value": 8 } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "100 * (sum(rate(http_server_requests_seconds_count{status=~\"[45]..\",job=~\"$job\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$job\"}[5m])), 1)" } ]
+    },
+    {
+      "type": "stat", "title": "p95 Latency", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 }, "id": 3,
+      "fieldConfig": { "defaults": { "unit": "s", "decimals": 3, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 0.5 }, { "color": "red", "value": 1 } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=~\"$job\"}[5m])))" } ]
+    },
+    {
+      "type": "stat", "title": "Requests (5m)", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 }, "id": 4,
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "purple" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(increase(http_server_requests_seconds_count{job=~\"$job\"}[5m]))" } ]
+    },
+
+    { "type": "row", "title": "Throughput & Latency", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 }, "id": 101, "collapsed": false, "panels": [] },
+    {
+      "type": "timeseries", "title": "Request Rate theo service", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 }, "id": 10,
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 25, "showPoints": "never", "stacking": { "mode": "normal", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (job) (rate(http_server_requests_seconds_count{job=~\"$job\"}[5m]))", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "type": "timeseries", "title": "Latency p95 & p99 theo service", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 }, "id": 11,
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 0, "showPoints": "never" } }, "overrides": [ { "matcher": { "id": "byRegexp", "options": ".*p99" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [6, 6] } } ] } ] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.95, sum by (job, le) (rate(http_server_requests_seconds_bucket{job=~\"$job\"}[5m])))", "legendFormat": "{{job}} p95" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum by (job, le) (rate(http_server_requests_seconds_bucket{job=~\"$job\"}[5m])))", "legendFormat": "{{job}} p99" }
+      ]
+    },
+
+    { "type": "row", "title": "Status codes & Errors", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 }, "id": 102, "collapsed": false, "panels": [] },
+    {
+      "type": "timeseries", "title": "Request theo status code", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 }, "id": 20,
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 30, "showPoints": "never", "stacking": { "mode": "normal", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (status) (rate(http_server_requests_seconds_count{job=~\"$job\"}[5m]))", "legendFormat": "HTTP {{status}}" } ]
+    },
+    {
+      "type": "bargauge", "title": "Top 10 endpoint chậm nhất (max latency)", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 }, "id": 21,
+      "fieldConfig": { "defaults": { "unit": "s", "decimals": 3, "color": { "mode": "continuous-GrYlRd" } }, "overrides": [] },
+      "options": { "displayMode": "gradient", "orientation": "horizontal", "showUnfilled": true, "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "topk(10, max by (job, uri) (http_server_requests_seconds_max{job=~\"$job\",uri!~\"/actuator.*\"}))", "legendFormat": "{{job}} {{uri}}", "instant": true } ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": ["ecommerce", "http", "micrometer"],
+  "time": { "from": "now-1h", "to": "now" },
   "timezone": "browser",
-  "title": "Spring Boot Overview",
+  "title": "API / HTTP Performance",
   "uid": "ecommerce-spring-boot-overview",
-  "version": 1
+  "version": 2
 }

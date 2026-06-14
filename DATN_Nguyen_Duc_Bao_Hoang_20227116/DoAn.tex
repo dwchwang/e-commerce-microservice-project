@@ -3,7 +3,7 @@
 \usepackage{scrextend}
 \changefontsizes{13pt}
 \usepackage[utf8]{vietnam}
-\usepackage[top=2cm, bottom=2cm, left=3.5cm, right=2.5cm]{geometry}
+\usepackage[top=2cm, bottom=2cm, left=3.5cm, right=2.5cm, headheight=35pt]{geometry}
 
 \usepackage{graphicx} % Cho phép chèn hỉnh ảnh
 \usepackage{fancybox} % Tạo khung box
@@ -304,14 +304,17 @@
 
 \newpage
 %\pagestyle{fancy} % Áp dụng header và footer
-\chapter{CÀI ĐẶT, TRIỂN KHAI, KIỂM THỬ VÀ ĐÁNH GIÁ}
+\chapter{TRIỂN KHAI VÀ KIỂM THỬ}
 \label{chapter:SolutionAndContribution}
 \subfile{Chuong/5_Giai_phap_dong_gop}
 \newpage
 %\pagestyle{fancy} % Áp dụng header và footer
+\phantomsection
+\addcontentsline{toc}{chapter}{KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN}
 \chapter*{KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN}
-\label{chapter:reference}
-\subfile{Chuong/7_Luu_y_tai_lieu_tham_khao}
+\label{chapter:KetLuan}
+\markboth{KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN}{}
+\subfile{Chuong/6_Ket_luan}
 
 
 % ===================================================

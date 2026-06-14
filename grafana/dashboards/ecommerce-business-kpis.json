@@ -1,0 +1,83 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "templating": { "list": [] },
+  "panels": [
+    { "type": "row", "title": "KPI kinh doanh", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "id": 100, "collapsed": false, "panels": [] },
+    {
+      "type": "stat", "title": "Đơn đặt (5m)", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 }, "id": 1,
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(increase(ecommerce_orders_placed_total[5m]))" } ]
+    },
+    {
+      "type": "stat", "title": "Đơn / phút", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 }, "id": 2,
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 1, "color": { "mode": "fixed", "fixedColor": "purple" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(ecommerce_orders_placed_total[5m])) * 60" } ]
+    },
+    {
+      "type": "stat", "title": "Tỉ lệ thanh toán thành công", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 }, "id": 3,
+      "fieldConfig": { "defaults": { "unit": "percent", "decimals": 1, "min": 0, "max": 100, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "orange", "value": 80 }, { "color": "green", "value": 95 } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "100 * sum(increase(ecommerce_payments_total{result=\"success\"}[1h])) / clamp_min(sum(increase(ecommerce_payments_total[1h])), 1)" } ]
+    },
+    {
+      "type": "stat", "title": "Thanh toán lỗi (5m)", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 }, "id": 4,
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 5 } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(increase(ecommerce_payments_total{result=\"failed\"}[5m]))" } ]
+    },
+
+    { "type": "row", "title": "Đơn hàng", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 }, "id": 101, "collapsed": false, "panels": [] },
+    {
+      "type": "timeseries", "title": "Tốc độ đặt đơn theo phương thức thanh toán", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 }, "id": 10,
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 30, "showPoints": "auto", "stacking": { "mode": "normal", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "sum"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (payment_method) (rate(ecommerce_orders_placed_total[5m])) * 60", "legendFormat": "{{payment_method}}" } ]
+    },
+    {
+      "type": "piechart", "title": "Đơn theo loại (1h)", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 }, "id": 11,
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] }, "pieType": "donut", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (type) (increase(ecommerce_orders_placed_total[1h]))", "legendFormat": "{{type}}", "instant": true } ]
+    },
+
+    { "type": "row", "title": "Thanh toán", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 }, "id": 102, "collapsed": false, "panels": [] },
+    {
+      "type": "timeseries", "title": "Thanh toán theo kết quả (/phút)", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 }, "id": 20,
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 20, "showPoints": "auto" } }, "overrides": [
+        { "matcher": { "id": "byName", "options": "success" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } } ] },
+        { "matcher": { "id": "byName", "options": "failed" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ] }
+      ] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (result) (rate(ecommerce_payments_total[5m])) * 60", "legendFormat": "{{result}}" } ]
+    },
+    {
+      "type": "bargauge", "title": "Thanh toán theo phương thức & kết quả (1h)", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 }, "id": 21,
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "continuous-BlPu" } }, "overrides": [] },
+      "options": { "displayMode": "gradient", "orientation": "horizontal", "showUnfilled": true, "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (method, result) (increase(ecommerce_payments_total[1h]))", "legendFormat": "{{method}} — {{result}}", "instant": true } ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": ["ecommerce", "business", "kpi"],
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "E-commerce Business KPIs",
+  "uid": "ecommerce-business-kpis",
+  "version": 1
+}

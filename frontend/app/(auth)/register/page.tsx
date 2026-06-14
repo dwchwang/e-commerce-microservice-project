@@ -9,9 +9,8 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 
 const schema = z.object({
   fullName: z.string().min(2, "Vui lòng nhập họ tên"),
@@ -48,7 +47,7 @@ export default function RegisterPage() {
         return;
       }
       setSuccess(true);
-      setTimeout(() => router.push("/login"), 2000);
+      setTimeout(() => router.push("/login"), 1800);
     } catch {
       setError("Lỗi kết nối, vui lòng thử lại");
     } finally {
@@ -58,61 +57,57 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <Card>
-        <CardContent className="text-center py-8">
-          <p className="text-lg font-semibold text-green-600 mb-2">Đăng ký thành công!</p>
-          <p className="text-muted-foreground">Đang chuyển đến trang đăng nhập...</p>
-        </CardContent>
-      </Card>
+      <div className="text-center">
+        <CheckCircle2 className="mx-auto mb-4 size-12 text-green-600" />
+        <h1 className="text-2xl font-semibold tracking-tight">Đăng ký thành công!</h1>
+        <p className="mt-2 text-muted-foreground">Đang chuyển đến trang đăng nhập…</p>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Đăng ký</CardTitle>
-        <CardDescription>Tạo tài khoản để bắt đầu mua sắm</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <Label htmlFor="fullName">Họ tên</Label>
-            <Input id="fullName" {...register("fullName")} placeholder="Nguyễn Văn A" />
-            {errors.fullName && (
-              <p className="text-sm text-destructive mt-1">{errors.fullName.message}</p>
-            )}
-          </div>
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" {...register("email")} placeholder="example@email.com" />
-            {errors.email && (
-              <p className="text-sm text-destructive mt-1">{errors.email.message}</p>
-            )}
-          </div>
-          <div>
-            <Label htmlFor="password">Mật khẩu</Label>
-            <Input id="password" type="password" {...register("password")} placeholder="Ít nhất 8 ký tự" />
-            {errors.password && (
-              <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
-            )}
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Đăng ký
-          </Button>
-        </form>
-        <p className="text-center text-sm text-muted-foreground mt-4">
-          Đã có tài khoản?{" "}
-          <Link href="/login" className="text-primary hover:underline font-medium">
-            Đăng nhập
-          </Link>
+    <div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold tracking-tight">Tạo tài khoản</h1>
+        <p className="mt-2 text-[15px] text-muted-foreground">
+          Đăng ký để bắt đầu mua sắm tại TechStore.
         </p>
-      </CardContent>
-    </Card>
+      </div>
+
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div>
+          <Label htmlFor="fullName">Họ tên</Label>
+          <Input id="fullName" {...register("fullName")} placeholder="Nguyễn Văn A" className="mt-1.5 h-11" />
+          {errors.fullName && <p className="mt-1 text-sm text-destructive">{errors.fullName.message}</p>}
+        </div>
+        <div>
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" type="email" {...register("email")} placeholder="example@email.com" className="mt-1.5 h-11" />
+          {errors.email && <p className="mt-1 text-sm text-destructive">{errors.email.message}</p>}
+        </div>
+        <div>
+          <Label htmlFor="password">Mật khẩu</Label>
+          <Input id="password" type="password" {...register("password")} placeholder="Ít nhất 8 ký tự" className="mt-1.5 h-11" />
+          {errors.password && <p className="mt-1 text-sm text-destructive">{errors.password.message}</p>}
+        </div>
+        <Button type="submit" className="h-11 w-full rounded-full text-[15px]" disabled={loading}>
+          {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+          Đăng ký
+        </Button>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Đã có tài khoản?{" "}
+        <Link href="/login" className="font-medium text-primary hover:underline">
+          Đăng nhập
+        </Link>
+      </p>
+    </div>
   );
 }

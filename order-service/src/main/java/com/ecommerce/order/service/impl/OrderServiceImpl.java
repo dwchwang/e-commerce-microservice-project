@@ -22,6 +22,7 @@ import com.ecommerce.order.entity.PaymentMethod;
 import com.ecommerce.order.repository.OrderRepository;
 import com.ecommerce.order.service.OrderService;
 import com.ecommerce.order.service.OutboxService;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -46,6 +47,7 @@ public class OrderServiceImpl implements OrderService {
     private final VoucherServiceClient voucherClient;
     private final CartServiceClient cartClient;
     private final OutboxService outboxService;
+    private final MeterRegistry meterRegistry;
 
     @Override
     @Transactional
@@ -124,6 +126,8 @@ public class OrderServiceImpl implements OrderService {
                             .build());
 
             registerCartClearAfterCommit(userId);
+            meterRegistry.counter("ecommerce.orders.placed",
+                    "payment_method", request.getPaymentMethod().name(), "type", "standard").increment();
             return OrderResponse.from(saved);
         } catch (RuntimeException ex) {
             releaseVoucherAfterFailedPlacement(request, orderId, voucherReserved);
@@ -184,6 +188,8 @@ public class OrderServiceImpl implements OrderService {
                         .totalAmount(saved.getTotalAmount())
                         .build());
 
+        meterRegistry.counter("ecommerce.orders.placed",
+                "payment_method", saved.getPaymentMethod().name(), "type", "flash_sale").increment();
         return OrderResponse.from(saved);
     }
 

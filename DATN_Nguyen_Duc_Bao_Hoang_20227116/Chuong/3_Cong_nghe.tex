@@ -2,203 +2,152 @@
 \documentclass[../DoAn.tex]{subfiles}
 \begin{document}
 
-Chương này trình bày chi tiết các giải pháp công nghệ được lựa chọn để hiện thực hóa hệ
-thống. Trong khi Chương~\ref{chapter:Related_works} đã trình bày các nguyên lý và mẫu thiết
-kế nền tảng, chương này tập trung trả lời câu hỏi: \textit{với mỗi yêu cầu kỹ thuật đặt ra,
-công nghệ nào được chọn, vì sao và có những lựa chọn thay thế nào}. Mỗi công nghệ được phân
-tích theo bốn khía cạnh: vai trò trong hệ thống, lý do lựa chọn, so sánh với các giải pháp
-thay thế và những hạn chế cần lưu ý.
+Chương này trình bày các giải pháp công nghệ được chọn để hiện thực hóa hệ thống, trả lời
+câu hỏi \textit{công nghệ nào, vì sao và đánh đổi gì}. Mỗi mục phân tích vai trò thực tế
+trong hệ thống, lý do lựa chọn so với lựa chọn thay thế và hạn chế cần nhận thức.
 
 % =======================================================================
-\section{Tổng quan giải pháp công nghệ}
+\section{Nền tảng phát triển}
 \label{section:3.1}
 
-Hệ thống được xây dựng dựa trên một tập hợp công nghệ được tuyển chọn để đáp ứng đồng thời
-các yêu cầu về kiến trúc microservices, xử lý phân tán, bảo mật, hiệu năng và khả năng vận
-hành. Ở tầng ngôn ngữ và nền tảng, Java 21 kết hợp với Spring Boot 3.5 và Maven multi-module
-tạo thành bộ khung phát triển chính. Ở tầng điều phối, Spring Cloud cung cấp ba thành phần
-cốt lõi: API Gateway (Spring Cloud Gateway), Service Registry (Netflix Eureka) và Config
-Server (Spring Cloud Config), cùng với OpenFeign cho giao tiếp đồng bộ giữa các dịch vụ.
-Ở tầng dữ liệu, hệ thống áp dụng chiến lược polyglot persistence với PostgreSQL cho dữ liệu
-quan hệ, Redis cho cache và thao tác nguyên tử, Elasticsearch cho tìm kiếm toàn văn. Apache
-Kafka đảm nhiệm vai trò message broker trung tâm cho toàn bộ giao tiếp bất đồng bộ. Keycloak
-cung cấp giải pháp bảo mật tập trung, VNPAY xử lý thanh toán trực tuyến. Ở tầng giao diện,
-Next.js được dùng để xây dựng storefront và Admin Panel. Toàn bộ hệ thống được đóng gói và
-vận hành thông qua Docker Compose; môi trường production-like chạy trên AWS EC2, dùng Caddy
-làm reverse proxy/HTTPS và GitHub Actions/GHCR cho quy trình build/push image. Prometheus,
-Grafana và Zipkin tạo thành bộ công cụ quan sát toàn diện.
+Hệ thống sử dụng \textbf{Java 21} (LTS, hỗ trợ đến 2031) cho toàn bộ 16 service backend,
+tận dụng các cải tiến của nền tảng ở mức phù hợp: Record Classes giảm boilerplate cho một
+số DTO; Pattern Matching và switch expression giúp logic điều kiện ngắn gọn hơn. Bản thân
+Java 21 cũng mở sẵn khả năng dùng Virtual Threads (Project Loom) để tăng thông lượng I/O,
+là hướng tối ưu có thể bật khi triển khai ở quy mô lớn hơn. Toàn
+bộ mã nguồn tổ chức theo \textbf{Maven multi-module} với một \texttt{pom.xml} cha quản lý
+phiên bản tập trung cho 17 module (16 service + \texttt{common}); module \texttt{common} chứa
+\texttt{ApiResponse} wrapper, exception chuẩn hóa và DTO hợp đồng sự kiện Kafka dùng chung,
+đảm bảo producer và consumer đồng thuận về cấu trúc thông điệp.
 
-% \begin{figure}[H]
-%     \centering
-%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
-%     \caption{Sơ đồ tổng quan các nhóm công nghệ trong hệ thống}
-%     \label{fig:tech-overview}
-% \end{figure}
-
-% =======================================================================
-\section{Ngôn ngữ và nền tảng phát triển}
-\label{section:3.2}
-
-\subsection{Java 21}
-
-Java 21 được chọn làm ngôn ngữ lập trình chính cho toàn bộ hệ thống. Đây là phiên bản Hỗ
-trợ Dài hạn (LTS) mới nhất tại thời điểm phát triển, được Oracle cam kết hỗ trợ đến năm
-2031. Java 21 mang lại nhiều cải tiến đáng kể so với các phiên bản LTS trước đó: Virtual
-Threads (Project Loom) cho phép xử lý hàng triệu kết nối đồng thời với chi phí thấp hơn
-nhiều so với mô hình thread truyền thống; Pattern Matching cải thiện cú pháp làm việc với
-kiểu dữ liệu; Record Classes giảm đáng kể mã boilerplate cho các lớp DTO.
-
-Đối chiếu với các ngôn ngữ JVM khác, Kotlin cung cấp cú pháp ngắn gọn hơn và null safety
-tốt hơn nhưng cộng đồng và hệ sinh thái nhỏ hơn đáng kể so với Java, đặc biệt trong mảng
-enterprise. Scala có hệ thống kiểu mạnh mẽ hơn nhưng đường cong học tập dốc và tốc độ biên
-dịch chậm. Trong bối cảnh đồ án tốt nghiệp với yêu cầu ổn định, tài liệu phong phú và khả
-năng tuyển dụng sau khi tốt nghiệp, Java 21 là lựa chọn tối ưu.
-
-Hạn chế chính của Java trong bối cảnh microservices là thời gian khởi động tương đối chậm
-và mức tiêu thụ bộ nhớ cao hơn so với Go hoặc Rust. Điều này được khắc phục một phần thông
-qua cấu hình JVM memory cap trong Docker Compose production profile.
-
-\subsection{Maven Multi-Module}
-
-Toàn bộ mã nguồn được tổ chức theo cấu trúc Maven multi-module với một file \texttt{pom.xml}
-cha quản lý tập trung các phiên bản dependency, plugin và cấu hình build chung. Cấu trúc
-này mang lại ba lợi ích chính. Thứ nhất, đảm bảo tính nhất quán về phiên bản thư viện trên
-toàn bộ 17 module --- tránh xung đột dependency khi các service sử dụng chung các thư viện
-như Spring Boot, Spring Cloud, Jackson và Lombok. Thứ hai, module \texttt{common} chứa các
-lớp dùng chung (\texttt{ApiResponse}, các lớp ngoại lệ chuẩn hóa, các DTO hợp đồng sự kiện)
-mà tất cả service đều phụ thuộc vào, giúp tránh trùng lặp mã nguồn và đảm bảo tính nhất
-quán trong giao tiếp. Thứ ba, Maven Wrapper (\texttt{mvnw}) được tích hợp vào dự án, cho
-phép biên dịch toàn bộ hệ thống mà không cần cài đặt Maven thủ công.
-
-So với Gradle --- một lựa chọn thay thế phổ biến với DSL linh hoạt hơn và tốc độ build
-nhanh hơn nhờ incremental build và build cache --- Maven được chọn vì cấu trúc XML tường
-minh, dễ đọc và phổ biến rộng rãi trong các dự án Spring Boot truyền thống. Với quy mô 17
-module của đồ án, sự khác biệt về tốc độ build giữa Maven và Gradle không đáng kể.
-
-\subsection{Spring Boot 3.5}
-
-Spring Boot 3.5 là nền tảng phát triển chính cho toàn bộ 16 dịch vụ Java trong hệ thống
-(13 business service và 3 infrastructure service). Spring Boot được chọn vì bốn lý do chính:
-(1)~cơ chế auto-configuration loại bỏ phần lớn cấu hình thủ công, cho phép tập trung vào
-logic nghiệp vụ; (2)~hệ sinh thái Spring phong phú cung cấp giải pháp cho hầu hết mọi nhu
-cầu --- từ bảo mật (Spring Security), truy cập dữ liệu (Spring Data JPA, Spring Data Redis,
-Spring Data Elasticsearch), đến messaging (Spring Kafka) và observability (Micrometer
-Tracing); (3)~Actuator tích hợp sẵn các endpoint giám sát và health check, là
-nền tảng cho toàn bộ hệ thống observability; (4)~khả năng embedded server (Netty cho
-Gateway, Tomcat cho các service khác) giúp đóng gói mỗi service thành một JAR tự chứa, dễ
-dàng container hóa.
-
-Đối chiếu với các lựa chọn thay thế: Quarkus và Micronaut cung cấp thời gian khởi động
-nhanh hơn và mức tiêu thụ bộ nhớ thấp hơn nhờ cơ chế compile-time dependency injection
-thay vì runtime reflection, rất phù hợp cho môi trường serverless hoặc Kubernetes. Tuy
-nhiên, Spring Boot vượt trội về độ hoàn thiện của hệ sinh thái, chất lượng tài liệu và
-quy mô cộng đồng --- những yếu tố quan trọng đối với một đồ án tốt nghiệp có thời gian
-giới hạn.
-
-\subsection{Thư viện hỗ trợ}
-
-Bên cạnh các framework chính, dự án sử dụng một số thư viện hỗ trợ quan trọng. Lombok
-giảm đáng kể mã boilerplate cho các lớp entity, DTO và configuration thông qua các
-annotation như \texttt{@Data}, \texttt{@Builder}, \texttt{@RequiredArgsConstructor}, cho
-phép tập trung vào logic nghiệp vụ thay vì viết getter, setter và constructor thủ công.
-Jackson đảm nhiệm việc tuần tự hóa và giải tuần tự hóa JSON trong toàn bộ hệ thống,
-từ request/response của REST API đến payload của Kafka message. Flyway quản lý phiên
-bản schema database thông qua các migration script SQL được đánh số thứ tự, đảm bảo
-schema database luôn đồng bộ với phiên bản mã nguồn hiện tại trên mọi môi trường.
+\textbf{Spring Boot 3.5}~\cite{springboot_docs} là framework chính cho 16 service. Bốn lý do lựa chọn:
+\textbf{(1) Auto-configuration} --- khai báo dependency, Spring Boot tự cấu hình
+\texttt{DataSource}, \texttt{KafkaTemplate}, \texttt{ElasticsearchClient}, loại bỏ phần lớn
+cấu hình thủ công; \textbf{(2) Hệ sinh thái đồng bộ} --- Spring Data JPA, Spring Data Redis,
+Spring Data Elasticsearch, Spring Kafka, Spring Security và Micrometer Tracing tích hợp liền
+mạch; \textbf{(3) Spring Boot Actuator} tự động expose \texttt{/actuator/health} và
+\texttt{/actuator/prometheus} làm nền cho observability stack; \textbf{(4) Embedded server}
+--- Tomcat cho business service, Netty cho Gateway phản ứng bất đồng bộ, giúp mỗi service
+đóng gói thành JAR tự chứa, dễ container hóa. Lựa chọn thay thế Quarkus và Micronaut có
+thời gian khởi động nhanh hơn nhờ compile-time DI, nhưng Spring Boot vượt trội về độ hoàn
+thiện hệ sinh thái và tài liệu --- yếu tố quan trọng hơn trong thời gian phát triển giới hạn.
+Các thư viện hỗ trợ chính: \textbf{Lombok} giảm boilerplate qua \texttt{@Data}/\texttt{@Builder},
+\textbf{Jackson} xử lý JSON nhất quán cho REST và Kafka payload, \textbf{Flyway} quản lý
+schema migration SQL theo thứ tự, \textbf{SpringDoc OpenAPI} tự động sinh tài liệu API.
 
 \begin{table}[H]
 \centering
-\caption{Các thư viện và công cụ phát triển chính}
+\caption{Các thư viện và phiên bản chính}
 \label{table:dev-tools}
-\begin{tabular}{|l|l|l|}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{3.5cm}|Y|L{3cm}|}
 \hline
-\textbf{Mục đích} & \textbf{Công cụ / Thư viện} & \textbf{Phiên bản} \\ \hline
-Ngôn ngữ lập trình   & Java (OpenJDK)           & 21 LTS \\ \hline
-Build tool           & Maven Wrapper            & 3.9+ \\ \hline
-Framework chính      & Spring Boot              & 3.5.13 \\ \hline
-Spring Cloud         & Spring Cloud Dependencies & 2025.0.0 \\ \hline
-Giảm boilerplate     & Lombok                   & 1.18.36+ \\ \hline
-JSON serialization   & Jackson                  & (qua Spring Boot) \\ \hline
-Database migration   & Flyway                   & 11.7.0 \\ \hline
-API documentation    & SpringDoc OpenAPI        & 2.8.11 \\ \hline
-\end{tabular}
+\textbf{Mục đích} & \textbf{Thư viện / Công cụ} & \textbf{Phiên bản} \\ \hline
+Ngôn ngữ / Runtime   & Java (OpenJDK)            & 21 LTS \\ \hline
+Framework chính      & Spring Boot               & 3.5.x \\ \hline
+Spring Cloud         & Spring Cloud Dependencies & 2025.0.x \\ \hline
+Giảm boilerplate     & Lombok                    & 1.18.x \\ \hline
+JSON serialization   & Jackson Databind          & (qua Spring Boot BOM) \\ \hline
+Database migration   & Flyway                    & 11.x \\ \hline
+API documentation    & SpringDoc OpenAPI         & 2.8.x \\ \hline
+\end{tabularx}
+\end{compacttable}
 \end{table}
 
 % =======================================================================
 \section{Hệ sinh thái Spring Cloud}
+\label{section:3.2}
+
+\textbf{Spring Cloud Gateway}~\cite{springcloud_docs} là điểm vào duy nhất cho mọi request từ client, xây dựng trên
+Spring WebFlux và Reactor Netty với mô hình phi đồng bộ non-blocking, xử lý hàng nghìn kết
+nối đồng thời với số thread hạn chế. Mỗi route ánh xạ đường dẫn đến service đích qua Eureka
+(\texttt{lb://product-service}) rồi áp dụng chuỗi filter. Hệ thống có hai filter tùy chỉnh:
+\textbf{AuthHeaderFilter} thực thi Trusted Subsystem Pattern --- loại bỏ các header
+\texttt{X-User-Id/Roles/Email} từ client (ngăn giả mạo), xác minh JWT bằng public key JWKS
+từ Keycloak, chèn lại thông tin đã xác thực cho service đích; \textbf{GuestSessionFilter}
+tạo và duy trì \texttt{sessionId} qua cookie cho người dùng chưa đăng nhập để bảo toàn giỏ
+hàng. Bên cạnh đó, Gateway dùng filter \textbf{RequestRateLimiter} tích hợp sẵn của Spring
+Cloud Gateway (thuật toán Redis token bucket) cho \texttt{POST /api/orders}
+(10~req/s, burst 20) và \texttt{POST /api/flash-sales/*/purchase} (3~req/s, burst 5). CORS
+cấu hình tập trung qua biến môi trường \texttt{CORS\_ALLOWED\_ORIGINS}.
+
+\textbf{Netflix Eureka} là Service Registry trung tâm: service đăng ký địa chỉ khi khởi động
+và gửi heartbeat mỗi 30 giây; Gateway truy vấn Eureka để lấy danh sách instance và thực hiện
+client-side load balancing Round-Robin. Eureka theo mô hình AP (CAP Theorem), phù hợp với TMĐT
+nơi tính sẵn sàng quan trọng hơn nhất quán tuyệt đối; cơ chế self-preservation giữ nguyên
+registry thay vì xóa hàng loạt khi heartbeat sụt giảm.
+
+\textbf{Spring Cloud Config Server} quản lý cấu hình tập trung: mỗi service khi khởi động
+lấy cấu hình qua HTTP theo tên và profile (\texttt{order-service-docker.yml}...), cho phép
+thay đổi tại một điểm mà không cần rebuild image. Trong đồ án dùng native profile (đọc từ
+classpath container) thay vì Git backend; hạn chế là cần rebuild Config Server image khi
+thay đổi cấu hình.
+
+\textbf{OpenFeign} là HTTP client khai báo: lập trình viên định nghĩa interface với annotation
+mô tả endpoint đích, OpenFeign sinh implementation tại runtime và tích hợp Eureka để phân giải
+địa chỉ thực tế. Bảy Feign call trong hệ thống: cart-service → product-service (snapshot sản
+phẩm khi thêm giỏ); order-service → product-service (snapshot giá), order-service →
+voucher-service (đặt chỗ/commit/hoàn voucher), order-service → cart-service (xóa giỏ sau khi
+đặt hàng); payment-service → order-service (lấy payment context); review-service →
+order-service (xác minh lịch sử mua); và flash-sale-service → order-service (đếm đơn phục vụ
+reconciliation). Riêng việc đặt chỗ tồn kho không dùng Feign mà đi qua sự kiện Kafka
+\texttt{order-created} trong luồng Saga.
+
+\textbf{Resilience4j} bảo vệ toàn bộ Feign call khỏi cascading failure qua ba cơ chế phối
+hợp. \textit{Circuit Breaker} giám sát tỷ lệ lỗi trên sliding window 10 lần: vượt 50\%,
+circuit chuyển \texttt{OPEN} (fail-fast, trả fallback ngay); sau 10 giây chuyển
+\texttt{HALF\_OPEN} thử lại; nếu thành công về \texttt{CLOSED}. \textit{Retry} thử lại tối
+đa 3 lần với delay 500ms cho lỗi có thể phục hồi, chỉ kích hoạt khi circuit \texttt{CLOSED}
+hoặc \texttt{HALF\_OPEN}. \textit{Time Limiter} áp timeout 3 giây mỗi call; kết hợp ba cơ
+chế, worst-case là $3 \times 3 = 9$ giây trước khi trả fallback, không có request bị chặn
+vô thời hạn.
+
+% =======================================================================
+\section{Apache Kafka --- Message Broker}
 \label{section:3.3}
 
-\subsection{Spring Cloud Gateway}
+Apache Kafka~\cite{narkhede2017} là trục giao tiếp bất đồng bộ trung tâm, vận hành ở chế độ \textbf{KRaft}
+(Kafka Raft metadata mode) --- không phụ thuộc ZooKeeper, giảm số thành phần hạ tầng và
+đơn giản hóa triển khai trong Docker Compose. Hệ thống sử dụng 13 Kafka topic, mỗi topic
+phục vụ một luồng nghiệp vụ cụ thể, tổng hợp ở Bảng~\ref{table:kafka-topics}.
 
-Spring Cloud Gateway đóng vai trò API Gateway --- điểm vào duy nhất cho mọi yêu cầu từ
-client đến hệ thống. Gateway được xây dựng trên nền tảng Spring WebFlux và Netty, cung cấp
-mô hình xử lý bất đồng bộ, non-blocking, cho phép xử lý hàng nghìn kết nối đồng thời với
-số lượng thread hạn chế.
+\begin{table}[H]
+\centering
+\caption{Danh sách Kafka topic và luồng dữ liệu tương ứng}
+\label{table:kafka-topics}
+\begin{compacttable}
+\begin{tabularx}{\textwidth}{|L{4.5cm}|L{3.5cm}|Y|}
+\hline
+\textbf{Topic} & \textbf{Producer} & \textbf{Consumer} \\ \hline
+\texttt{user-registered}            & identity-service    & user-service \\ \hline
+\texttt{order-created}              & order-service       & inventory-service \\ \hline
+\texttt{inventory-updated}          & inventory-service   & order-service \\ \hline
+\texttt{inventory-failed}           & inventory-service   & order-service \\ \hline
+\texttt{payment-requested}          & order-service       & payment-service \\ \hline
+\texttt{payment-success}            & payment-service     & order-service \\ \hline
+\texttt{payment-failed}             & payment-service     & order-service \\ \hline
+\texttt{order-confirmed}            & order-service       & inventory-service, notification-service \\ \hline
+\texttt{order-cancelled}            & order-service       & inventory-service, notification-service \\ \hline
+\texttt{flash-sale-order-requested} & flash-sale-service  & order-service \\ \hline
+\texttt{product-created}            & product-service     & search-service \\ \hline
+\texttt{product-updated}            & product-service     & search-service \\ \hline
+\texttt{product-deleted}            & product-service     & search-service \\ \hline
+\end{tabularx}
+\end{compacttable}
+\end{table}
 
-Gateway được cấu hình thông qua các route định tuyến, mỗi route ánh xạ một đường dẫn
-(\texttt{/api/products/**}) đến một dịch vụ đích (\texttt{lb://product-service}) thông qua
-Eureka service discovery. Các filter được áp dụng trên từng route hoặc toàn cục để xử lý
-các trách nhiệm cross-cutting: AuthHeaderFilter trích xuất thông tin người dùng từ JWT và
-chèn vào header của request chuyển tiếp đến backend; GuestSessionFilter tạo và duy trì
-session cho người dùng chưa đăng nhập khi thao tác với giỏ hàng; RateLimiterFilter áp dụng
-Redis token bucket rate limiter cho các endpoint nhạy cảm. CORS được cấu hình tập trung tại
-Gateway thông qua biến môi trường \texttt{CORS\_ALLOWED\_ORIGINS}, cho phép linh hoạt thay
-đổi giữa môi trường phát triển và sản xuất.
+Kafka được chọn thay vì RabbitMQ vì ba ưu thế trong bối cảnh hệ thống này. Thứ nhất, Kafka
+lưu trữ thông điệp bền vững trên đĩa với retention có thể cấu hình --- OutboxPoller có thể
+đọc lại sự kiện từ quá khứ nếu cần tái xử lý hoặc debug sau sự cố. Thứ hai, cơ chế
+partition và consumer group đảm bảo thứ tự sự kiện trong cùng partition trong khi vẫn cho
+phép xử lý song song --- yếu tố quan trọng để tuần tự hóa sự kiện của cùng một đơn hàng.
+Thứ ba, throughput cao nhờ sequential disk I/O và zero-copy transfer, phù hợp với lưu lượng
+lớn trong sự kiện flash sale.
 
-So sánh với các giải pháp thay thế: Netflix Zuul (phiên bản 1.x dựa trên Servlet API
-blocking, hiệu năng thấp hơn đáng kể so với reactive Gateway; phiên bản 2.x chưa bao giờ
-được phát hành chính thức). Kong và Traefik là các API Gateway độc lập, mạnh mẽ và hiệu
-năng cao, nhưng yêu cầu vận hành riêng biệt và không tích hợp sẵn với Spring Security/OAuth2
-như Spring Cloud Gateway. Với hệ thống toàn Spring, Gateway là lựa chọn tự nhiên và tối ưu.
-
-\subsection{Netflix Eureka --- Service Discovery}
-
-Eureka Server đóng vai trò Service Registry --- nơi tất cả dịch vụ đăng ký địa chỉ của mình
-khi khởi động. Mỗi service được cấu hình với \path|eureka.client.serviceUrl.defaultZone|
-trỏ về Eureka Server tại \path|http://eureka:8761/eureka|. Khi API Gateway cần định tuyến
-một request đến \path|lb://product-service|, nó truy vấn Eureka để lấy danh sách các
-instance hiện có của product-service và thực hiện client-side load balancing.
-
-Eureka hoạt động theo mô hình AP (ưu tiên Availability và Partition Tolerance theo CAP
-Theorem), phù hợp với yêu cầu của hệ thống TMĐT --- nơi tính sẵn sàng của service registry
-quan trọng hơn tính nhất quán tuyệt đối. Cơ chế self-preservation của Eureka ngăn việc xóa
-hàng loạt registration khi có sự cố mạng tạm thời, đảm bảo hệ thống tiếp tục hoạt động.
-
-Lựa chọn thay thế: Consul (HashiCorp) cung cấp health check mạnh mẽ hơn và hỗ trợ key-value
-store có thể thay thế Config Server; Kubernetes Service + Ingress cung cấp service discovery
-tự nhiên trong môi trường Kubernetes nhưng không khả dụng trong môi trường Docker Compose
-mà đề tài hướng tới. Eureka được chọn vì tích hợp chặt chẽ với Spring Cloud, cấu hình tối
-thiểu và đáp ứng tốt yêu cầu single-host của đồ án.
-
-\subsection{Spring Cloud Config Server}
-
-Config Server cung cấp cơ chế quản lý cấu hình tập trung cho toàn bộ hệ thống. Thay vì mỗi
-service nhúng cấu hình trong file \texttt{application.yml} tĩnh hoặc phụ thuộc vào biến môi
-trường rải rác, tất cả cấu hình được lưu trữ tập trung trên Config Server và được phục vụ
-qua HTTP API. Mỗi service khi khởi động sẽ gọi đến Config Server để lấy cấu hình tương ứng
-với tên service và profile đang chạy, cho phép thay đổi cấu hình tại một điểm duy nhất và
-áp dụng cho tất cả instance của service mà không cần rebuild image.
-
-Trong đồ án, Config Server sử dụng native profile (đọc từ classpath) thay vì Git backend,
-phù hợp với quy mô đồ án và môi trường Docker. Cấu hình được tổ chức theo cấu trúc
-\texttt{\{service-name\}-\{profile\}.yml}, cho phép mỗi service có cấu hình riêng cho môi
-trường docker và local. Hạn chế của cách tiếp cận này là cần rebuild Config Server image
-mỗi khi thay đổi cấu hình, không linh hoạt bằng Git backend hoặc các giải pháp quản lý cấu
-hình động như Vault.
-
-\subsection{OpenFeign --- Giao tiếp đồng bộ giữa các dịch vụ}
-
-OpenFeign là thư viện HTTP client khai báo (declarative) cho phép giao tiếp giữa các dịch
-vụ một cách đơn giản: lập trình viên chỉ cần định nghĩa một interface với các annotation mô
-tả endpoint đích, OpenFeign tự động sinh implementation tại runtime. Cơ chế này giảm đáng
-kể lượng code boilerplate so với việc sử dụng \texttt{RestTemplate} hoặc \texttt{WebClient}
-thủ công, đồng thời tích hợp sẵn với Eureka để phân giải tên dịch vụ thành địa chỉ thực tế.
-
-Trong hệ thống, OpenFeign được sử dụng cho các tương tác đồng bộ cần phản hồi ngay: cart-service
-gọi product-service để xác minh sản phẩm; order-service gọi product-service, inventory-service
-và voucher-service để kiểm tra trước khi tạo đơn; review-service gọi order-service để xác
-minh quyền đánh giá. Các Feign client được cấu hình timeout và retry để xử lý tình huống
-dịch vụ đích tạm thời không khả dụng.
+Hạn chế của Kafka so với RabbitMQ: độ trễ end-to-end cao hơn do cơ chế batch và polling,
+kém phù hợp cho các tương tác cần phản hồi tức thì --- lý do các call đồng bộ trong hệ
+thống vẫn dùng OpenFeign. Kafka cũng phức tạp hơn về cấu hình và vận hành, tiêu tốn nhiều
+tài nguyên hơn trên môi trường single-host.
 
 % =======================================================================
 \section{Hạ tầng dữ liệu}
@@ -206,299 +155,172 @@ dịch vụ đích tạm thời không khả dụng.
 
 \subsection{PostgreSQL 17}
 
-PostgreSQL là hệ quản trị cơ sở dữ liệu quan hệ chính của hệ thống, được sử dụng cho 10
-trong số 13 business service theo nguyên tắc database-per-service. Trên một instance
-PostgreSQL duy nhất, mỗi service sở hữu một logical database riêng biệt (ví dụ:
-\texttt{order\_db}, \texttt{payment\_db}, \texttt{product\_db}), đảm bảo cách ly dữ liệu
-ở mức schema và cho phép mỗi service quản lý schema độc lập thông qua Flyway migration.
+PostgreSQL~\cite{postgresql_docs} là RDBMS chính, phục vụ 10 trong 13 business service theo nguyên tắc Database per
+Service. Trên một instance PostgreSQL duy nhất, mỗi service sở hữu một logical database riêng
+biệt (\texttt{order\_db}, \texttt{payment\_db}, \texttt{product\_db}...), đảm bảo cách ly dữ
+liệu và cho phép mỗi service quản lý schema độc lập thông qua Flyway migration.
 
-PostgreSQL được chọn thay vì MySQL vì bốn lý do. Thứ nhất, PostgreSQL hỗ trợ tốt hơn các
-kiểu dữ liệu nâng cao như UUID (được sử dụng làm khóa chính cho hầu hết các bảng trong hệ
-thống), JSONB cho dữ liệu bán cấu trúc và ARRAY cho các tập giá trị. Thứ hai, PostgreSQL
-có hệ thống indexing mạnh mẽ hơn với GiST, GIN và BRIN, đặc biệt hữu ích cho các truy vấn
-tìm kiếm và lọc phức tạp trong TMĐT. Thứ ba, MVCC (Multi-Version Concurrency Control) của
-PostgreSQL xử lý tốt hơn các tình huống đọc-ghi đồng thời cao so với cơ chế khóa của MySQL
-InnoDB. Thứ tư, PostgreSQL có tính tương thích cao với Flyway và Spring Data JPA.
+PostgreSQL được chọn thay vì MySQL vì bốn lý do cụ thể. \textbf{UUID native}: PostgreSQL hỗ
+trợ kiểu \texttt{uuid} làm khóa chính cho hầu hết bảng trong hệ thống --- phù hợp với môi
+trường phân tán nơi ID phải duy nhất toàn cầu mà không cần phối hợp trung tâm.
+\textbf{JSONB}: một số bảng (ví dụ snapshot thông tin sản phẩm trong đơn hàng) lưu trữ dữ
+liệu bán cấu trúc dưới dạng JSONB, cho phép truy vấn JSON với index hiệu quả. \textbf{FOR
+UPDATE SKIP LOCKED}: mệnh đề này --- cốt lõi của cơ chế OutboxPoller cho phép nhiều instance
+xử lý song song mà không tranh chấp --- được PostgreSQL hỗ trợ đầy đủ. \textbf{MVCC}:
+Multi-Version Concurrency Control xử lý tốt tình huống đọc-ghi đồng thời cao trong các
+service như order và payment mà không cần khóa đọc.
+
+Hạn chế: 10 database chạy trên một instance PostgreSQL single-host, không có replication hay
+failover --- điểm cần cải thiện khi chuyển sang Kubernetes với managed database.
 
 \subsection{Redis 8}
 
-Redis đảm nhiệm ba vai trò quan trọng trong hệ thống, tận dụng mô hình single-threaded và
-khả năng thao tác trong bộ nhớ với độ trễ dưới mili-giây. Vai trò thứ nhất là \textbf{cache
-phân tán}: product-service sử dụng Redis để cache thông tin sản phẩm, giảm tải cho PostgreSQL
-và giảm độ trễ phản hồi cho các request đọc danh sách sản phẩm --- chiếm phần lớn lưu lượng
-của hệ thống TMĐT. Vai trò thứ hai là \textbf{lưu trữ giỏ hàng}: cart-service lưu toàn bộ
-giỏ hàng của người dùng trong Redis, với key được tạo từ userId hoặc sessionId, tận dụng
-thời gian truy cập nhanh của Redis và cơ chế TTL để tự động dọn dẹp giỏ hàng bỏ hoang.
-Vai trò thứ ba là \textbf{rate limiting}: API Gateway sử dụng Redis làm backend cho token
-bucket rate limiter, lưu trữ và cập nhật số lượng token còn lại cho mỗi client.
+Redis đảm nhiệm bốn vai trò với đặc điểm truy cập khác nhau, tận dụng mô hình single-threaded
+và thao tác in-memory với độ trễ dưới mili-giây:
 
-So sánh với các lựa chọn thay thế: Memcached là giải pháp cache đơn giản hơn nhưng thiếu
-các cấu trúc dữ liệu phong phú của Redis (Sorted Set cho ranking, Hash cho object, List cho
-queue) và không hỗ trợ Lua scripting --- yếu tố then chốt cho atomic operation trong flash
-sale. Hazelcast cung cấp cache phân tán embedded trong JVM, loại bỏ dependency network đến
-Redis, nhưng tiêu tốn bộ nhớ heap của chính service và phức tạp hơn trong việc đồng bộ
-trạng thái giữa các instance.
+\textbf{(1) Flash sale atomic operations}: flash-sale-service sử dụng Redis làm bộ đếm tồn
+kho (\texttt{flash-sale:\{id\}:stock}) và tập hợp người mua (\texttt{flash-sale:\{id\}:buyers}),
+khai thác Lua Script để thực thi kiểm tra và giảm slot một cách nguyên tử trong một bước duy
+nhất. Đây là vai trò đặc trưng nhất và quan trọng nhất của Redis trong hệ thống.
+
+\textbf{(2) Distributed Lock}: flash-sale-service sử dụng lệnh \texttt{SET NX EX} để tranh
+giành quyền thực thi các scheduler (CampaignScheduler, ReconciliationScheduler) khi chạy
+nhiều instance, đảm bảo chỉ một instance xử lý mỗi thời điểm và tránh deadlock vĩnh viễn
+qua TTL tự động.
+
+\textbf{(3) Cart storage}: cart-service lưu giỏ hàng với key \texttt{cart:\{userId\}} hoặc
+\texttt{cart:\{sessionId\}}, tận dụng TTL để tự động dọn dẹp giỏ hàng bỏ hoang mà không
+cần cron job.
+
+\textbf{(4) Rate Limiting}: API Gateway lưu trạng thái token bucket trên Redis, định danh
+theo \texttt{X-User-Id} cho các endpoint đã xác thực (đặt hàng, flash sale) và theo địa chỉ
+IP cho endpoint công khai, cho phép rate limiting hoạt động nhất quán khi Gateway chạy nhiều
+instance.
+
+So sánh lựa chọn thay thế: Memcached thiếu Lua scripting và cấu trúc dữ liệu phong phú
+(Sorted Set, Set, Hash) nên không đáp ứng được vai trò flash sale; Hazelcast in-process cache
+loại bỏ network overhead nhưng phức tạp hơn khi đồng bộ trạng thái giữa instance và tiêu
+tốn heap JVM của chính service.
 
 \subsection{Elasticsearch 8}
 
-Elasticsearch được sử dụng làm search engine cho chức năng tìm kiếm toàn văn sản phẩm, triển
-khai theo mô hình CQRS-lite. Trong khi product-service (với PostgreSQL) đóng vai trò write
-model --- nơi quản trị viên tạo và cập nhật thông tin sản phẩm, search-service (với
-Elasticsearch) đóng vai trò read model --- phục vụ các truy vấn tìm kiếm phức tạp từ phía
-khách hàng. Hai mô hình được đồng bộ qua Kafka: mỗi khi sản phẩm được tạo, cập nhật hoặc
-xóa, một sự kiện được phát hành và search-service tiêu thụ để cập nhật chỉ mục Elasticsearch
-tương ứng.
+Elasticsearch~\cite{elasticsearch_docs} phục vụ read model trong CQRS-lite của search-service. Index \texttt{products}
+lưu bản sao denormalized của thông tin sản phẩm, được tối ưu cho full-text search đa ngôn
+ngữ, lọc kết hợp nhiều tiêu chí (category, brand, price range) và xếp hạng mức độ liên quan.
+Đồng bộ từ PostgreSQL qua Kafka: mỗi sự kiện \texttt{product-created/updated/deleted} từ
+product-service được search-service tiêu thụ và ánh xạ vào Elasticsearch document tương ứng,
+chấp nhận độ trễ đồng bộ ngắn để đổi lấy hiệu năng tìm kiếm.
 
-Elasticsearch được chọn thay vì Apache Solr vì khả năng mở rộng theo chiều ngang tốt hơn,
-REST API hiện đại và tích hợp tốt với hệ sinh thái Spring Data Elasticsearch. So với
-PostgreSQL full-text search (\texttt{tsvector}), Elasticsearch vượt trội về tốc độ tìm kiếm
+So với PostgreSQL full-text search (\texttt{tsvector}): Elasticsearch vượt trội về tốc độ
 trên tập dữ liệu lớn, hỗ trợ tìm kiếm mờ (fuzzy search), gợi ý tự động (autocomplete) và
-phân tích tần suất từ khóa --- những tính năng quan trọng đối với trải nghiệm tìm kiếm sản
-phẩm trong TMĐT. Tuy nhiên, Elasticsearch tiêu tốn nhiều tài nguyên hơn (RAM và CPU) và
-cần được cấu hình JVM heap cẩn thận để tránh ảnh hưởng đến các container khác trong môi
-trường Docker Compose single-host.
+phân tích tần suất từ khóa --- những tính năng quan trọng cho trải nghiệm tìm kiếm sản phẩm
+trong TMĐT. So với Apache Solr: Elasticsearch có REST API hiện đại hơn và tích hợp tốt với
+Spring Data Elasticsearch.
 
-% =======================================================================
-\section{Apache Kafka --- Message Broker}
-\label{section:3.5}
-
-Apache Kafka được chọn làm message broker trung tâm, đảm nhiệm toàn bộ giao tiếp bất đồng
-bộ giữa các dịch vụ trong hệ thống. Kafka vận hành ở chế độ KRaft (KRaft metadata mode) ---
-không phụ thuộc vào Apache ZooKeeper, giảm đáng kể số lượng thành phần hạ tầng cần quản lý
-và đơn giản hóa việc triển khai. Đây là cải tiến quan trọng của Kafka từ phiên bản 3.x,
-đặc biệt phù hợp với môi trường triển khai single-host như đồ án này.
-
-Kafka được chọn thay vì RabbitMQ vì ba ưu thế chính trong bối cảnh hệ thống TMĐT. Thứ nhất,
-Kafka được thiết kế cho throughput cao với cơ chế lưu trữ tuần tự trên đĩa (sequential disk
-I/O) và zero-copy transfer, cho phép xử lý hàng triệu thông điệp mỗi giây --- phù hợp với
-lưu lượng lớn trong các sự kiện flash sale. Thứ hai, Kafka lưu trữ thông điệp bền vững trên
-đĩa với thời gian lưu trữ có thể cấu hình (retention), cho phép consumer đọc lại thông điệp
-từ quá khứ --- hữu ích cho các cơ chế reconciliation và khôi phục trạng thái. Thứ ba, cơ
-chế partitioning và consumer group của Kafka cho phép xử lý song song và đảm bảo thứ tự
-trong cùng một partition --- yếu tố quan trọng để tuần tự hóa yêu cầu flash sale.
-
-Tuy nhiên, Kafka cũng có những hạn chế cần cân nhắc. So với RabbitMQ, Kafka có độ trễ
-end-to-end cao hơn do cơ chế batch và polling, do đó kém phù hợp hơn cho các tương tác yêu
-cầu phản hồi tức thời. Kafka cũng phức tạp hơn về mặt cấu hình và vận hành, tiêu tốn nhiều
-tài nguyên hơn. Trong đồ án, các tương tác cần phản hồi ngay được xử lý qua REST/OpenFeign,
-còn Kafka chỉ đảm nhiệm các luồng bất đồng bộ.
+Hạn chế: Elasticsearch tiêu tốn nhiều RAM (JVM heap mặc định 512MB--1GB), cần cấu hình
+\texttt{ES\_JAVA\_OPTS} cẩn thận trong môi trường single-host để không ảnh hưởng đến các
+container khác.
 
 % =======================================================================
 \section{Keycloak --- Bảo mật và quản lý định danh}
+\label{section:3.5}
+
+Keycloak 26~\cite{keycloak_docs} được chọn làm Identity Provider (IdP) tập trung, chịu trách nhiệm quản lý người
+dùng, xác thực và cấp phát token theo chuẩn OAuth 2.0~\cite{rfc6749} và OpenID Connect. Với Keycloak, hệ
+thống không cần tự triển khai logic quản lý mật khẩu, phiên làm việc hay làm mới token ---
+tất cả được Keycloak xử lý theo chuẩn đã được kiểm chứng rộng rãi.
+
+Keycloak đảm nhiệm ba chức năng cụ thể. \textbf{Cấp phát token}: sau khi người dùng xác
+thực thành công, Keycloak cấp ba loại token --- Access Token (JWT RS256, thời hạn 5 phút),
+Refresh Token (thời hạn 30 phút) và ID Token. Access Token được ký bằng private key của
+Keycloak; public key được công bố tại JWKS endpoint
+(\texttt{/realms/ecommerce/protocol/openid-connect/certs}) để API Gateway xác minh cục bộ
+mà không cần gọi lại Keycloak cho mỗi request. \textbf{Làm mới token}: khi Access Token
+hết hạn, client dùng Refresh Token để nhận Access Token mới mà không cần đăng nhập lại.
+\textbf{Quản trị người dùng}: quản trị viên tạo, sửa, khóa tài khoản và quản lý vai trò
+(\texttt{ROLE\_USER}, \texttt{ROLE\_ADMIN}) qua Keycloak Admin Console.
+
+So sánh lựa chọn: tự xây dựng hệ thống xác thực (Spring Security + database người dùng) thiếu
+các tính năng bảo mật đã kiểm chứng như brute-force detection, MFA, social login và token
+refresh an toàn; Auth0 và Okta là dịch vụ thương mại, phụ thuộc bên thứ ba và giới hạn số
+người dùng ở free tier; Keycloak là mã nguồn mở, self-hosted, không giới hạn người dùng và
+phù hợp với môi trường học thuật.
+
+Hạn chế: Keycloak là ứng dụng Java nặng, tiêu tốn đáng kể tài nguyên RAM và CPU trên
+single-host --- được quản lý bằng \texttt{mem\_limit} trong Docker Compose và chấp nhận như
+đánh đổi để có giải pháp bảo mật toàn diện.
+
+% =======================================================================
+\section{Next.js --- Tầng giao diện}
 \label{section:3.6}
 
-Keycloak 26 được chọn làm Identity Provider (IdP) cho toàn bộ hệ thống, chịu trách nhiệm
-quản lý người dùng, xác thực và cấp phát token. Keycloak là giải pháp mã nguồn mở, được
-phát triển bởi Red Hat, hỗ trợ đầy đủ các giao thức chuẩn công nghiệp: OAuth 2.0, OpenID
-Connect và SAML 2.0. Với Keycloak, hệ thống không cần tự triển khai logic quản lý người
-dùng, xác thực mật khẩu, quản lý phiên làm việc hay làm mới token --- tất cả được Keycloak
-xử lý một cách chuẩn hóa và an toàn.
+Next.js 16~\cite{nextjs_docs} (App Router, React 19, TypeScript, Tailwind CSS) phục vụ hai nhóm màn hình:
+Storefront cho khách hàng và Admin Panel cho quản
+trị viên. Access Token lưu trong \texttt{httpOnly cookie} và chỉ gắn vào header
+\texttt{Authorization} khi server-side code gọi API Gateway (pattern BFF --- Backend for
+Frontend), ngăn JavaScript phía client truy cập token và giảm nguy cơ XSS. Admin Panel
+(\texttt{/admin/*}) được bảo vệ bởi middleware kiểm tra cookie và vai trò \texttt{ROLE\_ADMIN};
+các mutation dùng Server Actions để token không xuất hiện trong JavaScript trên trình duyệt.
 
-Keycloak được lựa chọn thay vì các giải pháp thay thế vì những lý do sau. So với việc tự
-xây dựng hệ thống xác thực (Spring Security + database người dùng tự quản), Keycloak cung
-cấp sẵn các tính năng bảo mật phức tạp đã được kiểm chứng: hỗ trợ đa yếu tố xác thực
-(MFA), chính sách mật khẩu, brute-force detection, social login (Google, Facebook) và quản
-trị tập trung qua giao diện web. So với Auth0 hoặc Okta --- các giải pháp Identity-as-a-Service
-thương mại, Keycloak là mã nguồn mở và tự lưu trữ (self-hosted), không phụ thuộc vào bên
-thứ ba, không giới hạn số lượng người dùng và phù hợp với môi trường học thuật không có
-ngân sách. So với Apache Shiro hoặc CAS, Keycloak có hệ sinh thái tích hợp Spring Boot/Security
-phong phú hơn và cộng đồng hỗ trợ lớn hơn.
-
-Trong kiến trúc bảo mật của hệ thống, Keycloak đảm nhiệm ba chức năng chính. Chức năng thứ
-nhất là \textbf{cấp phát token}: sau khi người dùng đăng nhập thành công (qua giao diện đăng
-nhập của Keycloak hoặc qua API của identity-service), Keycloak cấp một bộ token gồm Access
-Token (JWT, thời hạn 5 phút), Refresh Token (thời hạn 30 phút) và ID Token. Access Token
-được ký bằng thuật toán RS256 với private key của Keycloak; public key được công khai tại
-endpoint JWKS (\texttt{/realms/ecommerce/protocol/openid-connect/certs}) để API Gateway xác
-minh. Chức năng thứ hai là \textbf{làm mới token}: khi Access Token hết hạn, client sử dụng
-Refresh Token để nhận Access Token mới mà không cần đăng nhập lại. Chức năng thứ ba là
-\textbf{quản trị tập trung}: quản trị viên có thể tạo, sửa, khóa người dùng, quản lý vai
-trò (ROLE\_USER, ROLE\_ADMIN) và theo dõi phiên làm việc qua Keycloak Admin Console tại
-\texttt{http://localhost:8180}.
-
-Hạn chế của Keycloak trong bối cảnh đồ án: Keycloak là một ứng dụng Java nặng, tiêu tốn
-đáng kể tài nguyên (RAM và CPU) trên môi trường single-host. Điều này được quản lý thông
-qua giới hạn bộ nhớ trong Docker Compose và chấp nhận như một đánh đổi để có được giải pháp
-bảo mật toàn diện.
+App Router của Next.js 16 cho phép kết hợp linh hoạt Server Components (render HTML phía
+server, giảm JavaScript bundle) và Client Components (tương tác động phía client). Storefront
+tận dụng Server Components cho các trang catalog, chi tiết sản phẩm và kết quả tìm kiếm ---
+cải thiện SEO và thời gian tải lần đầu. Các tính năng realtime như cập nhật giỏ hàng và
+trạng thái flash sale dùng Client Components với React state. Next.js được chọn thay vì React
+SPA thuần vì hỗ trợ SSR/SSG, routing tích hợp và không cần reverse proxy riêng cho frontend.
 
 % =======================================================================
-\section{VNPAY --- Cổng thanh toán trực tuyến}
+\section{Docker --- Đóng gói và triển khai}
 \label{section:3.7}
 
-VNPAY được chọn làm cổng thanh toán cho chức năng thanh toán trực tuyến của hệ thống. Đây
-là một trong những cổng thanh toán hàng đầu tại Việt Nam, hỗ trợ đa dạng phương thức thanh
-toán bao gồm thẻ ATM nội địa, thẻ tín dụng quốc tế (Visa, Mastercard, JCB), ví điện tử và
-QR code. Đối với đồ án tốt nghiệp, VNPAY cung cấp môi trường sandbox miễn phí với đầy đủ
-API, tài liệu và thẻ test, cho phép kiểm thử toàn bộ luồng thanh toán mà không cần giao
-dịch thật.
+Docker~\cite{docker_docs} đóng gói toàn bộ hệ thống --- 16 service backend, 1 frontend Next.js cùng các thành
+phần hạ tầng (PostgreSQL, Redis, Kafka, Elasticsearch, Keycloak, Prometheus, Grafana, Zipkin,
+Mailpit) --- thành container độc lập, đảm bảo môi trường đồng nhất giữa phát triển và
+production. Docker Compose điều phối các container với healthcheck, \texttt{depends\_on} và
+network nội bộ.
 
-Quy trình thanh toán qua VNPAY được thiết kế theo ba bước. Bước thứ nhất, payment-service
-tạo một URL thanh toán bằng cách gửi yêu cầu đến VNPAY với các tham số: mã đơn hàng, số
-tiền, mô tả đơn hàng, địa chỉ IP của khách hàng, ngân hàng (tùy chọn) và ngôn ngữ hiển thị.
-Tất cả tham số được sắp xếp theo thứ tự alphabet và ký với HMAC-SHA512 sử dụng secret key
-được VNPAY cấp, tạo ra một chữ ký số (\texttt{vnp\_SecureHash}) đảm bảo tính toàn vẹn và
-chống giả mạo. Bước thứ hai, khách hàng được chuyển hướng đến trang thanh toán của VNPAY
-để nhập thông tin thẻ và xác nhận thanh toán. Bước thứ ba, sau khi thanh toán hoàn tất
-(thành công hoặc thất bại), VNPAY gọi đến Return URL đã đăng ký kèm theo kết quả thanh toán
-đã được ký, payment-service xác minh chữ ký và cập nhật trạng thái thanh toán. Song song,
-VNPAY cũng gửi IPN (Instant Payment Notification) đến một endpoint riêng để đảm bảo kết quả
-được ghi nhận ngay cả khi khách hàng đóng trình duyệt trước khi được chuyển hướng về Return
-URL.
-
-Lựa chọn thay thế cho VNPAY bao gồm Momo, ZaloPay và PayPal. Momo và ZaloPay có quy trình
-tích hợp tương tự nhưng tài liệu sandbox và thẻ test ít phong phú hơn cho mục đích học
-thuật. PayPal phổ biến toàn cầu nhưng không hỗ trợ tốt các ngân hàng nội địa Việt Nam.
-VNPAY được chọn vì tính phổ biến tại Việt Nam, tài liệu tiếng Việt đầy đủ và sandbox dễ
-tiếp cận.
-
-Hạn chế: phạm vi đồ án chỉ dừng ở môi trường sandbox, chưa kiểm thử với giao dịch thật.
-Trong môi trường production, cần xử lý thêm các tình huống như hoàn tiền, truy vấn giao
-dịch và đối soát định kỳ.
+Hai file cấu hình tách biệt môi trường: \texttt{docker-compose.yml} cho phát triển local
+(build từ source, expose đầy đủ cổng) và \texttt{docker-compose.prod.yml} cho production-like
+(kéo image từ GitHub Container Registry, đặt \texttt{mem\_limit} và \texttt{mem\_reservation}
+phù hợp tài nguyên EC2). Caddy đóng vai trò reverse proxy trước API Gateway, tự động cấp và
+gia hạn chứng chỉ TLS qua Let's Encrypt. Docker Compose được chọn thay vì Kubernetes vì phù
+hợp với mô hình single-host của đồ án; hạn chế rõ ràng là không có auto-scaling, self-healing
+hay rolling update --- các tính năng cần Kubernetes khi hệ thống ra production thật.
 
 % =======================================================================
-\section{Hệ thống quan sát --- Observability Stack}
+\section{Các công nghệ và công cụ hỗ trợ}
 \label{section:3.8}
 
-\subsection{Prometheus và Grafana --- Giám sát số liệu}
+\textbf{VNPAY}~\cite{vnpay_docs} là cổng thanh toán tích hợp, hỗ trợ thẻ ATM nội địa, thẻ tín dụng quốc tế
+và QR code, cung cấp môi trường sandbox miễn phí cho phát triển. Payment-service ký tham số
+bằng HMAC-SHA512 để tạo URL thanh toán; sau khi người dùng hoàn tất, VNPAY gọi lại qua cả
+Return URL (cập nhật giao diện) và IPN endpoint (ghi nhận kết quả phía server), đảm bảo kết
+quả không bị mất khi người dùng đóng trình duyệt sớm. Phạm vi đồ án giới hạn ở sandbox.
 
-Prometheus được chọn làm hệ thống thu thập và lưu trữ metrics cho toàn bộ hệ thống. Đây là
-giải pháp giám sát mã nguồn mở, được thiết kế đặc biệt cho môi trường động và microservices
-với cơ chế pull-based: thay vì chờ service đẩy metrics về, Prometheus chủ động kéo (scrape)
-dữ liệu từ các endpoint \texttt{/actuator/prometheus} của từng service theo chu kỳ cấu hình
-(15 giây trong đồ án). Cơ chế này giúp Prometheus tự phát hiện service mới hoặc service
-ngừng hoạt động mà không cần cấu hình thủ công, đồng thời giảm tải cho service so với mô
-hình push-based.
+\textbf{GitHub Actions} tự động build Docker image và publish lên GitHub Container Registry
+(GHCR) mỗi khi push lên nhánh \texttt{main}; \textbf{AWS EC2} single-host kéo image mới và
+khởi động lại container qua \texttt{docker-compose.prod.yml}, kiểm chứng khả năng triển khai
+liên tục trong phạm vi đồ án.
 
-Prometheus sử dụng ngôn ngữ truy vấn PromQL mạnh mẽ, cho phép tính toán các chỉ số phức tạp
-như latency percentile (p50, p95, p99), tỷ lệ lỗi theo thời gian và tốc độ tăng trưởng của
-một chỉ số. Dữ liệu được lưu trữ theo mô hình time-series với khả năng nén hiệu quả, phù
-hợp cho việc lưu trữ dài hạn trên môi trường single-host với tài nguyên hạn chế.
+\textbf{Prometheus}~\cite{prometheus_docs} thu thập metrics định kỳ 15 giây từ \texttt{/actuator/prometheus} của
+từng service (JVM, request rate/latency/error, Kafka consumer lag, Circuit Breaker state);
+\textbf{Grafana} trực quan hóa qua ba dashboard provision tự động: \texttt{jvm-overview},
+\texttt{spring-boot-overview} và \texttt{ecommerce-saga-overview} (trạng thái đơn hàng
+theo thời gian). \textbf{Zipkin}~\cite{zipkin_docs} theo dõi hành trình request xuyên service: Micrometer
+Tracing sinh \texttt{TraceId}/\texttt{SpanId} và propagate qua HTTP header \texttt{traceparent}
+(W3C) và Kafka header, cho phép tái tạo toàn bộ chuỗi xử lý khi điều tra sự cố.
 
-Grafana đảm nhiệm vai trò trực quan hóa dữ liệu từ Prometheus. Các dashboard được provision
-tự động thông qua cơ chế file-based provisioning của Grafana, bao gồm \path|jvm-overview|,
-\path|spring-boot-overview| và \path|ecommerce-saga-overview|. Ba dashboard này tập trung
-vào các chỉ số JVM, request/latency/error rate của Spring Boot service và trạng thái các
-luồng Saga cốt lõi. Grafana được chọn thay vì Kibana vì tích hợp tốt hơn với Prometheus
-(Kibana chủ yếu dành cho Elasticsearch) và cộng đồng dashboard template phong phú hơn.
+\textbf{Mailpit} là SMTP server giả lập cho môi trường phát triển, bắt giữ toàn bộ email từ
+notification-service và hiển thị qua giao diện web tại \texttt{http://localhost:8025}; thay
+thế bằng SMTP thật trên production qua biến môi trường mà không cần thay đổi mã nguồn.
 
-\subsection{Zipkin --- Truy vết phân tán}
-
-Zipkin được chọn làm hệ thống distributed tracing, cho phép theo dõi hành trình của một
-request qua nhiều service. Zipkin là giải pháp mã nguồn mở, nhẹ và dễ triển khai --- trong
-đồ án, Zipkin chạy như một container độc lập với storage in-memory, không yêu cầu cơ sở dữ
-liệu backend phức tạp. Zipkin tuân thủ chuẩn W3C Trace Context, đảm bảo khả năng tương tác
-với các thư viện tracing khác nhau trong hệ sinh thái.
-
-Mỗi service trong hệ thống được tích hợp Micrometer Tracing (trước đây là Spring Cloud
-Sleuth) để tự động sinh Trace ID và Span ID cho mỗi request, đồng thời gửi dữ liệu trace
-về Zipkin server qua HTTP. Khi cần điều tra một request cụ thể --- ví dụ một đơn hàng thất
-bại --- kỹ sư có thể tìm kiếm theo Trace ID trên Zipkin UI và xem toàn bộ chuỗi span, thời
-gian xử lý tại từng service và các tag nghiệp vụ kèm theo. Điều này đặc biệt hữu ích cho
-việc gỡ lỗi các luồng Saga phức tạp.
-
-Lựa chọn thay thế: Jaeger (Uber) cung cấp hiệu năng cao hơn và hỗ trợ storage backend linh
-hoạt hơn (Cassandra, Elasticsearch), phù hợp với hệ thống production quy mô lớn. Tuy nhiên,
-Zipkin nhẹ hơn, dễ triển khai hơn và tích hợp sẵn trong Spring Boot ecosystem thông qua
-Micrometer --- phù hợp hơn với quy mô đồ án.
-
-\subsection{Mailpit --- Kiểm thử email}
-
-Mailpit được chọn làm SMTP server cho môi trường phát triển, thay thế cho các dịch vụ email
-thật như Gmail SMTP hoặc SendGrid. Mailpit bắt giữ tất cả email được gửi từ notification-service
-và hiển thị chúng qua giao diện web tại \texttt{http://localhost:8025}, cho phép kiểm tra nội
-dung email xác nhận đơn hàng, email hủy đơn và email thông báo flash sale mà không cần gửi
-email thật ra bên ngoài. Trong môi trường production, Mailpit được thay thế bằng SMTP server
-thật thông qua cấu hình biến môi trường.
-
-% =======================================================================
-\section{Next.js, AWS EC2 và CI/CD}
-\label{section:3.frontend-deployment}
-
-\subsection{Next.js --- Storefront và Admin Panel}
-
-Next.js được chọn cho tầng giao diện vì hỗ trợ App Router, Server Components, Server Actions
-và khả năng kết hợp linh hoạt giữa render phía server và tương tác phía client. Trong hệ thống,
-Next.js phục vụ hai nhóm màn hình: storefront cho khách hàng và Admin Panel cho quản trị viên.
-Các request từ trình duyệt đi qua lớp BFF/proxy của frontend; access token được lưu trong
-httpOnly cookie và chỉ được gắn vào header \texttt{Authorization} khi server-side code gọi API
-Gateway. Cách tổ chức này giảm nguy cơ lộ token ở phía client và phù hợp với mô hình Gateway
-đóng vai Resource Server.
-
-Admin Panel sử dụng route segment \texttt{/admin/*}, được bảo vệ bởi hai lớp: middleware kiểm
-tra cookie/JWT và role \texttt{ROLE\_ADMIN}, sau đó layout phía server gọi \texttt{getAdminSession}
-để chặn truy cập khi token thiếu hoặc không đủ quyền. Các mutation như tạo sản phẩm, điều chỉnh
-tồn kho, cập nhật đơn hàng, quản lý voucher, flash-sale và content được thực hiện bằng Server
-Actions, nhờ đó token không cần xuất hiện trong JavaScript chạy trên trình duyệt.
-
-\subsection{AWS EC2, Caddy và GitHub Actions}
-
-Môi trường triển khai của đồ án là một máy ảo AWS EC2 single-host, phù hợp với giới hạn tài
-nguyên của đồ án và vẫn đủ để kiểm chứng các đặc tính vận hành chính. Caddy được dùng làm
-reverse proxy vì có khả năng tự động cấp/gia hạn chứng chỉ TLS qua Let's Encrypt và cấu hình
-đơn giản cho các subdomain dạng \path|nip.io|. Trên môi trường production-like, Grafana được
-đổi sang cổng host \path|3001| để tránh xung đột với frontend ở cổng \path|3000|.
-
-GitHub Actions đảm nhiệm quy trình build và publish Docker image lên GitHub Container Registry
-(GHCR). File \path|docker-compose.prod.yml| sử dụng các image \path|ghcr.io/...| thay cho
-local build, đồng thời đặt \path|mem_limit| và \path|mem_reservation| cho từng container
-để phù hợp tài nguyên của EC2. Quy trình này chưa phải GitOps/Kubernetes pipeline hoàn chỉnh,
-nhưng đáp ứng mục tiêu production-like deployment trong phạm vi đồ án.
-
-% =======================================================================
-\section{Docker Compose --- Đóng gói và triển khai}
-\label{section:3.9}
-
-Backend, frontend và các thành phần hạ tầng của hệ thống được định nghĩa và điều phối thông
-qua Docker Compose. Mỗi service được mô tả trong file \path|docker-compose.yml| với đầy đủ thông tin: image
-hoặc Dockerfile, cổng, biến môi trường, volume, network, healthcheck, resource limits và
-mối quan hệ khởi động (\texttt{depends\_on}).
-
-Docker Compose được chọn thay vì Kubernetes vì ba lý do. Thứ nhất, Docker Compose sử dụng
-cú pháp YAML đơn giản, dễ đọc và dễ cấu hình. Thứ hai, Docker Compose phù hợp với mô hình triển
-khai single-host mà đề tài hướng tới, trong khi Kubernetes được thiết kế cho môi trường
-multi-node cluster và đòi hỏi kiến thức vận hành phức tạp hơn nhiều. Thứ ba, Docker Compose
-tích hợp sẵn trong Docker Desktop, không yêu cầu cài đặt thêm công cụ, giúp giảm rào cản
-tiếp cận cho người học.
-
-Hệ thống sử dụng Docker Compose profile để tách biệt cấu hình giữa môi trường phát triển
-và môi trường production. File \texttt{docker-compose.yml} định nghĩa cấu hình cơ sở dùng
-chung; file \texttt{docker-compose.prod.yml} kế thừa và ghi đè các thiết lập cho production
-như GHCR image, \texttt{mem\_limit}, \texttt{mem\_reservation}, cổng Grafana \texttt{3001}
-và CORS allowed origins. Cách tiếp cận này tránh trùng lặp cấu hình và đảm bảo môi trường
-development không bị ảnh hưởng bởi các ràng buộc của production.
-
-% =======================================================================
-\section{Công cụ kiểm thử}
-\label{section:3.10}
-
-\subsection{JUnit 5 và Testcontainers}
-
-JUnit 5 là nền tảng kiểm thử chính cho toàn bộ hệ thống, được tích hợp sẵn trong Spring
-Boot starter test. JUnit 5 mang lại nhiều cải tiến so với JUnit 4: mô hình extension
-model linh hoạt hơn, hỗ trợ lambda trong assertion, tổ chức test theo class lồng nhau
-(\texttt{@Nested}) và parameterized test mạnh mẽ hơn. Kết hợp với Mockito, JUnit 5 cho
-phép mock các dependency bên ngoài (repository, Feign client, Kafka template) để kiểm
-thử logic nghiệp vụ một cách cô lập.
-
-Testcontainers là thư viện hỗ trợ kiểm thử tích hợp với cơ sở hạ tầng thật: thay vì sử
-dụng H2 in-memory database --- vốn không tương thích hoàn toàn với PostgreSQL, Testcontainers
-khởi tạo một container PostgreSQL thật trong quá trình chạy test, đảm bảo môi trường kiểm
-thử giống hệt môi trường production. Testcontainers cũng hỗ trợ khởi tạo container Kafka,
-Redis và Elasticsearch, mặc dù trong đồ án chủ yếu được sử dụng cho PostgreSQL.
-
-\subsection{k6 --- Kiểm thử hiệu năng}
-
-k6 được chọn làm công cụ kiểm thử hiệu năng cho hệ thống. Đây là công cụ mã nguồn mở, sử
-dụng JavaScript làm ngôn ngữ kịch bản, cho phép viết các kịch bản kiểm thử phức tạp với
-logic tùy chỉnh (tạo user, lấy token, đặt hàng, kiểm tra kết quả). k6 hỗ trợ nhiều mô
-hình tải: constant load (duy trì số lượng VU cố định), ramping load (tăng dần số lượng
-VU) và spike test (tăng đột biến). Kết quả kiểm thử được xuất ra dưới dạng JSON với các
-chỉ số chi tiết: request rate, latency percentile, error rate, checks pass/fail --- các
-chỉ số này được sử dụng làm bằng chứng định lượng trong Chương~\ref{chapter:SolutionAndContribution}.
-
-So với JMeter --- công cụ kiểm thử hiệu năng truyền thống với giao diện GUI, k6 ưu việt
-hơn ở khả năng viết kịch bản dưới dạng code (Infrastructure as Code), tích hợp CI/CD
-dễ dàng hơn và tiêu tốn ít tài nguyên hơn khi chạy. Với yêu cầu mô phỏng 500 VU đồng
-thời cho flash sale spike test, k6 là lựa chọn phù hợp.
+\textbf{JUnit 5 + Mockito} kiểm thử đơn vị, mock Feign client/Kafka template/repository để
+kiểm thử logic nghiệp vụ cô lập. \textbf{Testcontainers} khởi tạo container PostgreSQL thật
+trong test thay vì H2 in-memory --- cần thiết vì H2 không hỗ trợ \texttt{uuid}, \texttt{jsonb}
+và \texttt{FOR UPDATE SKIP LOCKED}; dùng chủ yếu cho OutboxPoller và Idempotent Consumer.
+\textbf{k6}~\cite{k6_docs} kiểm thử hiệu năng với bốn kịch bản: smoke test (9/9 pass), catalog stress test
+(p95~=~61\,ms, 200~VU), checkout load test (100\% success, 50~VU) và flash sale spike test
+(500~VU đồng thời, 0 over-sell) --- kết quả dùng làm bằng chứng định lượng trong
+Chương~\ref{chapter:SolutionAndContribution}.
 
 \end{document}

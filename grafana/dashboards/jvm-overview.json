@@ -1,136 +1,111 @@
 {
-  "annotations": {
-    "list": []
-  },
+  "annotations": { "list": [] },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "id": null,
   "links": [],
-  "panels": [
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 0,
-        "y": 0
-      },
-      "id": 1,
-      "targets": [
-        {
-          "expr": "sum by (job) (jvm_memory_used_bytes{area=\"heap\",job=~\"$job\"})",
-          "legendFormat": "{{job}}"
-        }
-      ],
-      "title": "Heap Used",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 0
-      },
-      "id": 2,
-      "targets": [
-        {
-          "expr": "sum by (job, action) (rate(jvm_gc_pause_seconds_sum{job=~\"$job\"}[5m]))",
-          "legendFormat": "{{job}} {{action}}"
-        }
-      ],
-      "title": "GC Pause Time",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 0
-      },
-      "id": 3,
-      "targets": [
-        {
-          "expr": "sum by (job) (jvm_threads_live_threads{job=~\"$job\"})",
-          "legendFormat": "{{job}}"
-        }
-      ],
-      "title": "Live Threads",
-      "type": "timeseries"
-    }
-  ],
-  "refresh": "30s",
-  "schemaVersion": 41,
-  "tags": [
-    "jvm",
-    "micrometer"
-  ],
   "templating": {
     "list": [
       {
-        "current": {
-          "selected": false,
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "definition": "label_values(up, job)",
-        "hide": 0,
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(up{job!=\"prometheus\"}, job)",
         "includeAll": true,
         "multi": true,
         "name": "job",
+        "label": "Service",
         "options": [],
-        "query": {
-          "query": "label_values(up, job)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 1,
-        "regex": "",
+        "query": { "query": "label_values(up{job!=\"prometheus\"}, job)", "refId": "StandardVariableQuery" },
+        "refresh": 2,
         "sort": 1,
         "type": "query"
       }
     ]
   },
-  "time": {
-    "from": "now-1h",
-    "to": "now"
-  },
+  "panels": [
+    { "type": "row", "title": "KPI", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "id": 100, "collapsed": false, "panels": [] },
+    {
+      "type": "stat", "title": "Heap Used (total)", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 }, "id": 1,
+      "fieldConfig": { "defaults": { "unit": "decbytes", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "purple" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(jvm_memory_used_bytes{area=\"heap\",job=~\"$job\"})" } ]
+    },
+    {
+      "type": "stat", "title": "Live Threads (total)", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 }, "id": 2,
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(jvm_threads_live_threads{job=~\"$job\"})" } ]
+    },
+    {
+      "type": "stat", "title": "GC Pause (s/s, total)", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 }, "id": 3,
+      "fieldConfig": { "defaults": { "unit": "s", "decimals": 4, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 0.05 }, { "color": "red", "value": 0.2 } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "justifyMode": "center", "textMode": "value" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(jvm_gc_pause_seconds_sum{job=~\"$job\"}[5m]))" } ]
+    },
+    {
+      "type": "stat", "title": "Uptime (ngắn nhất)", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 }, "id": 4,
+      "fieldConfig": { "defaults": { "unit": "s", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "green" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "justifyMode": "center", "textMode": "value" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "min(process_uptime_seconds{job=~\"$job\"})" } ]
+    },
+
+    { "type": "row", "title": "Memory", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 }, "id": 101, "collapsed": false, "panels": [] },
+    {
+      "type": "timeseries", "title": "Heap Used theo service", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 6 }, "id": 10,
+      "fieldConfig": { "defaults": { "unit": "decbytes", "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 20, "showPoints": "never", "stacking": { "mode": "normal", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (job) (jvm_memory_used_bytes{area=\"heap\",job=~\"$job\"})", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "type": "timeseries", "title": "Heap sử dụng (% so với max)", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 6 }, "id": 11,
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (job) (jvm_memory_used_bytes{area=\"heap\",job=~\"$job\"}) / clamp_min(sum by (job) (jvm_memory_max_bytes{area=\"heap\",job=~\"$job\"}), 1)", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "type": "timeseries", "title": "Non-Heap Used theo service", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 6 }, "id": 12,
+      "fieldConfig": { "defaults": { "unit": "decbytes", "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 20, "showPoints": "never", "stacking": { "mode": "normal", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (job) (jvm_memory_used_bytes{area=\"nonheap\",job=~\"$job\"})", "legendFormat": "{{job}}" } ]
+    },
+
+    { "type": "row", "title": "GC, Threads & CPU", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 }, "id": 102, "collapsed": false, "panels": [] },
+    {
+      "type": "timeseries", "title": "GC Pause Time theo service", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 15 }, "id": 20,
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (job) (rate(jvm_gc_pause_seconds_sum{job=~\"$job\"}[5m]))", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "type": "timeseries", "title": "Live Threads theo service", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 15 }, "id": 21,
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 0, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (job) (jvm_threads_live_threads{job=~\"$job\"})", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "type": "timeseries", "title": "CPU theo service", "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 15 }, "id": 22,
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "process_cpu_usage{job=~\"$job\"}", "legendFormat": "{{job}}" } ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": ["ecommerce", "jvm", "micrometer"],
+  "time": { "from": "now-1h", "to": "now" },
   "timezone": "browser",
-  "title": "JVM Overview",
+  "title": "JVM & Runtime",
   "uid": "ecommerce-jvm-overview",
-  "version": 1
+  "version": 2
 }

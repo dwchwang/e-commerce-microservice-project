@@ -7,31 +7,27 @@
 \end{center}
 \vspace{1cm}
 
-Đồ án trình bày toàn bộ quá trình phân tích, thiết kế và triển khai một hệ thống thương mại điện
-tử theo kiến trúc microservices, sử dụng Spring Boot 3.5, Spring Cloud 2025 và Java 21. Hệ thống
-được phân rã thành 13 microservice độc lập dựa trên nguyên tắc Domain-Driven Design (DDD) và
-Bounded Context, mỗi service sở hữu cơ sở dữ liệu và vòng đời triển khai riêng biệt.
+Đồ án trình bày quá trình phân tích, thiết kế và triển khai một hệ thống thương mại điện tử
+theo kiến trúc microservices, sử dụng Java~21, Spring Boot~3.5 và Spring Cloud~2025. Hệ thống
+được phân rã thành 13 microservice độc lập theo nguyên tắc Domain-Driven Design và Bounded
+Context, mỗi service sở hữu cơ sở dữ liệu và vòng đời triển khai riêng biệt. Giao tiếp kết
+hợp REST/OpenFeign đồng bộ với Apache Kafka KRaft bất đồng bộ.
 
-Về giao tiếp dịch vụ, hệ thống kết hợp REST + OpenFeign (đồng bộ) với Apache Kafka KRaft (bất
-đồng bộ). Bốn distributed pattern cốt lõi được áp dụng đầy đủ: Saga Orchestration với
-order-service đóng vai orchestrator quản lý distributed transaction; Transactional Outbox đảm bảo
-at-least-once event publishing; Idempotent Consumer đảm bảo exactly-once processing effect;
-CQRS-lite với Elasticsearch làm read model phục vụ full-text search.
+Bốn distributed pattern cốt lõi được triển khai đầy đủ: Saga Orchestration với order-service
+làm orchestrator quản lý giao dịch phân tán; Transactional Outbox và Idempotent Consumer đảm
+bảo at-least-once delivery kết hợp exactly-once processing effect; CQRS-lite với Elasticsearch
+làm read model phục vụ tìm kiếm toàn văn. Hai tính năng kỹ thuật nổi bật là cơ chế chống
+over-sell trong flash sale bằng Redis Lua atomic script, buyer set và reconciliation; và tích
+hợp cổng thanh toán VNPAY với HMAC-SHA512, IPN callback và timeout scheduler. Bảo mật tập
+trung qua Keycloak~26 (OAuth~2.0/OIDC, JWT~RS256) theo Trusted Subsystem Pattern tại API
+Gateway.
 
-Hai tính năng kỹ thuật nổi bật của hệ thống là: (1) flash sale chống over-sell bằng Redis Lua
-atomic script, buyer set, cơ chế bù trừ và reconciliation; (2) tích hợp cổng thanh toán VNPAY
-sandbox với xác thực HMAC-SHA512, Return URL, IPN callback và timeout scheduler. Bảo mật được
-xử lý tập trung qua Keycloak 26 (OAuth 2.0/OIDC) với JWT RS256, API Gateway đóng vai Resource
-Server theo Trusted Subsystem Pattern --- các service nội bộ nhận thông tin định danh qua header
-mà không cần gọi lại Keycloak ở mỗi request.
-
-Ngoài backend, đồ án triển khai Next.js storefront và Admin Panel phục vụ các luồng người mua và
-quản trị. Hệ thống được đóng gói bằng Docker Compose, triển khai production-like trên một máy ảo
-AWS EC2 với Caddy reverse proxy/HTTPS và GitHub Actions/GHCR cho quy trình build/push image.
-Observability stack gồm Prometheus, Grafana và Zipkin cho phép giám sát metrics, trace và debug
-các luồng nghiệp vụ end-to-end. Kết quả thực nghiệm gồm smoke test backend 9/9 nhóm đạt, k6
-catalog/checkout/flash-sale và các kịch bản resilience cho order-service, Kafka, Redis và inventory
-compensation.
+Ngoài backend, đồ án xây dựng Next.js storefront và Admin Panel, đóng gói bằng Docker Compose
+và triển khai production-like trên AWS EC2 với Caddy reverse proxy và GitHub Actions/GHCR.
+Observability stack gồm Prometheus, Grafana và Zipkin. Kết quả thực nghiệm cho thấy toàn bộ
+9 nhóm smoke test đạt; kiểm thử k6 catalog, checkout và flash-sale đều đạt mục tiêu về độ
+trễ và tính đúng đắn; các kịch bản resilience xác nhận khả năng phục hồi khi Kafka hoặc Redis
+gặp sự cố và bù trừ Saga khi tồn kho không đủ.
 
 \vspace{1cm}
 

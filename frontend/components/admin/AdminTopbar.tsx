@@ -17,7 +17,7 @@ export function AdminTopbar({ user }: { user: AdminSession }) {
           className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-sm font-medium hover:bg-muted"
         >
           <Store className="size-4" />
-          Storefront
+          Quay lại cửa hàng
         </Link>
         <form action="/api/auth/logout" method="post">
           <Button type="submit" variant="ghost" size="sm">

@@ -25,17 +25,17 @@ export default async function ContentPage({
   if (!post) notFound();
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <h1 className="text-3xl font-bold mb-2">{post.title || slug}</h1>
+    <article className="container mx-auto max-w-3xl px-4 py-12 md:py-16">
+      <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">{post.title || slug}</h1>
       {post.author && (
-        <p className="text-sm text-muted-foreground mb-6">
+        <p className="mt-4 text-sm text-muted-foreground">
           {post.author}
           {post.publishedAt && ` · ${new Date(post.publishedAt).toLocaleDateString("vi-VN")}`}
         </p>
       )}
-      <div className="prose dark:prose-invert max-w-none whitespace-pre-line">
+      <div className="mt-8 whitespace-pre-line text-[17px] leading-relaxed text-foreground/90">
         {post.content}
       </div>
-    </div>
+    </article>
   );
 }

@@ -3,9 +3,9 @@ import { notFound } from "next/navigation";
 import { serverFetch } from "@/lib/api/server-client";
 import type { Product, ProductResponse, ProductRating } from "@/lib/api/types";
 import { mapProductDetail } from "@/lib/api/mappers";
+import { resolveProductImage } from "@/lib/product-image";
 import { PriceTag } from "@/components/shared/PriceTag";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
-import { CompareButton } from "@/components/product/CompareButton";
 import { ProductReviews } from "@/components/product/ProductReviews";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -41,21 +41,17 @@ export default async function ProductDetailPage({
     <div className="container mx-auto px-4 py-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Image */}
-        <div className="aspect-square relative bg-muted rounded-lg overflow-hidden">
-          {product.imageUrl ? (
-            <Image
-              src={product.imageUrl}
-              alt={product.name}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 50vw"
-              priority
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full text-6xl">📦</div>
-          )}
+        <div className="relative aspect-square overflow-hidden rounded-3xl bg-secondary">
+          <Image
+            src={resolveProductImage(product, product.imageUrl, 1000)}
+            alt={product.name}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 50vw"
+            priority
+          />
           {hasDiscount && (
-            <Badge className="absolute top-3 left-3 text-lg px-3 py-1 bg-destructive">
+            <Badge className="absolute left-4 top-4 rounded-full bg-destructive px-3 py-1 text-base text-destructive-foreground">
               -{Math.round((1 - product.price / product.originalPrice!) * 100)}%
             </Badge>
           )}
@@ -66,7 +62,7 @@ export default async function ProductDetailPage({
           {product.brand && (
             <p className="text-sm text-muted-foreground mb-1">{product.brand}</p>
           )}
-          <h1 className="text-2xl md:text-3xl font-bold mb-4">{product.name}</h1>
+          <h1 className="mb-4 text-2xl font-semibold tracking-tight md:text-4xl">{product.name}</h1>
 
           {rating && rating.reviewCount && rating.reviewCount > 0 && (
             <div className="flex items-center gap-1 mb-4">
@@ -79,8 +75,7 @@ export default async function ProductDetailPage({
           <PriceTag price={product.price} originalPrice={product.originalPrice} size="lg" className="mb-6" />
 
           <div className="flex gap-3 mb-6">
-            <AddToCartButton productId={product.id} className="h-10 px-8" />
-            <CompareButton productId={product.id} className="h-10 w-10" />
+            <AddToCartButton productId={product.id} className="h-11 rounded-full px-8" />
           </div>
 
           <Separator className="my-6" />

@@ -37,11 +37,16 @@ public class SearchServiceImpl implements SearchService {
         Criteria criteria = Criteria.where("isActive").is(true);
 
         if (StringUtils.hasText(normalized.getQ())) {
-            Criteria textCriteria = Criteria.where("name").contains(normalized.getQ())
-                    .or("brandName").contains(normalized.getQ())
-                    .or("description").contains(normalized.getQ())
-                    .or("categoryName").contains(normalized.getQ());
-            criteria = criteria.and(textCriteria);
+            String q = normalized.getQ();
+            // Grouped OR across the text fields, attached via subCriteria() so it becomes a
+            // REQUIRED nested boolean (minimum_should_match=1). Using .and() instead would
+            // flatten the OR clauses into optional `should` clauses next to the isActive
+            // `must`, making every active product match regardless of the query.
+            Criteria textCriteria = Criteria.where("name").matches(q)
+                    .or(Criteria.where("brandName").matches(q))
+                    .or(Criteria.where("categoryName").matches(q))
+                    .or(Criteria.where("description").matches(q));
+            criteria = criteria.subCriteria(textCriteria);
         }
         if (StringUtils.hasText(normalized.getCategoryId())) {
             criteria = criteria.and("categoryId").is(normalized.getCategoryId());

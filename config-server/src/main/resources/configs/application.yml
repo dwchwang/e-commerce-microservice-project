@@ -1,0 +1,15 @@
+# Shared defaults served by Spring Cloud Config (native) to EVERY service.
+# Per-service {name}.yml values override these.
+#
+# Enables Prometheus histogram buckets for HTTP server requests so Grafana can
+# compute real p95/p99 latency via histogram_quantile(). Bucket range is bounded
+# (10ms..10s) to keep metric cardinality reasonable.
+management:
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      minimum-expected-value:
+        http.server.requests: 10ms
+      maximum-expected-value:
+        http.server.requests: 10s

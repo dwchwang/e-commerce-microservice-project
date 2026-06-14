@@ -1,13 +1,63 @@
 % !TEX root = ../DoAn.tex
 \documentclass[../DoAn.tex]{subfiles}
 \begin{document}
-\section{Kết luận}
-Sinh viên so sánh kết quả nghiên cứu hoặc sản phẩm của mình với các nghiên cứu hoặc sản phẩm tương tự.
 
-Sinh viên phân tích trong suốt quá trình thực hiện ĐATN, mình đã làm được gì, chưa làm được gì, các đóng góp nổi bật là gì, và tổng hợp những bài học kinh nghiệm rút ra nếu có.
+% =======================================================================
+\section*{Kết luận}
+\addcontentsline{toc}{section}{Kết luận}
 
-\section{Hướng phát triển}
-Trong phần này, sinh viên trình bày định hướng công việc trong tương lai để hoàn thiện sản phẩm hoặc nghiên cứu của mình.
+Đồ án đã hoàn thành mục tiêu xây dựng một hệ thống thương mại điện tử theo kiến trúc
+microservices, đi trọn vẹn từ phân tích yêu cầu, thiết kế, hiện thực hóa, đóng gói, triển khai
+cho đến kiểm thử trên môi trường gần thực tế. Hệ thống gồm 13 service nghiệp vụ và 3 service hạ
+tầng Spring Cloud, xây dựng trên Java~21, Spring Boot~3.5 và Spring Cloud~2025, đáp ứng đầy đủ
+sáu nhóm mục tiêu đặt ra ở Chương~\ref{chapter:Introduction}.
 
-Trước tiên, sinh viên trình bày các công việc cần thiết để hoàn thiện các chức năng/nhiệm vụ đã làm. Sau đó sinh viên phân tích các hướng đi mới cho phép cải thiện và nâng cấp các chức năng/nhiệm vụ đã làm.
+Về kiến trúc, hệ thống được phân rã thành các Bounded Context độc lập theo nguyên tắc
+Domain-Driven Design, mỗi service sở hữu cơ sở dữ liệu riêng và chỉ giao tiếp qua API hoặc sự
+kiện Kafka, với API Gateway làm cổng vào duy nhất, Eureka khám phá dịch vụ và Config Server quản
+lý cấu hình tập trung. Các bài toán khó của giao dịch phân tán được giải quyết bằng những mẫu
+thiết kế phù hợp: Saga Orchestration điều phối luồng đặt hàng, Transactional Outbox kết hợp
+Idempotent Consumer bảo đảm xử lý exactly-once ở tầng ứng dụng, và CQRS-lite với Elasticsearch
+cho tìm kiếm toàn văn. Bảo mật được tập trung tại Gateway theo Trusted Subsystem Pattern dựa trên
+Keycloak và JWT RS256, kết hợp rate limiter cho các luồng nhạy cảm. Hệ thống cũng tích hợp thanh
+toán VNPAY và một cơ chế flash sale chống over-sell đa lớp dựa trên Redis Lua atomic reservation.
+
+Điểm nổi bật nhất về mặt kỹ thuật là cơ chế flash sale đa lớp và bảo đảm exactly-once ở tầng ứng
+dụng --- cả hai đều được kiểm chứng bằng số liệu thực nghiệm thay vì chỉ mô tả lý thuyết. Hệ
+thống được đóng gói bằng Docker, triển khai production-like trên AWS EC2 với quy trình build/push
+image tự động qua GitHub Actions/GHCR, và được trang bị một lớp quan sát hoàn chỉnh gồm
+Prometheus/Grafana cho số liệu, Zipkin cho truy vết phân tán và structured logging. Kết quả kiểm
+thử trên môi trường này cho thấy hệ thống vận hành ổn định: catalog soak đạt p95 61,68~ms với
+220.956 request không lỗi, checkout stress giữ tỷ lệ tạo đơn 100\%, flash-sale spike 500~VU mua
+đúng 100/100 slot không có duplicate buyer, và các kịch bản resilience xác nhận khả năng tự phục
+hồi qua outbox replay và graceful degradation. Toàn bộ hệ thống được hoàn thiện bằng giao diện
+Next.js gồm storefront và Admin Panel, đủ để demo một sản phẩm hoàn chỉnh.
+
+Bên cạnh các kết quả đạt được, đồ án vẫn còn một số hạn chế cần ghi nhận trung thực. Môi trường
+triển khai mới ở mức single-host EC2 nên chưa có high availability; quy trình CI/CD mới dừng ở
+build/push/deploy cơ bản; frontend phục vụ tốt cho demo nhưng chưa hỗ trợ upload file qua object
+storage hay quản lý người dùng đầy đủ qua Keycloak Admin API; event schema đang quản lý bằng
+module dùng chung thay vì schema registry; và hệ thống chưa có log aggregation cùng alerting ở
+mức production. Những hạn chế này chính là tiền đề cho các hướng phát triển tiếp theo.
+
+% =======================================================================
+\section*{Hướng phát triển}
+\addcontentsline{toc}{section}{Hướng phát triển}
+
+Hướng phát triển của đồ án tập trung vào ba nhóm chính. \textit{Trước hết là hoàn thiện nền tảng
+vận hành:} chuyển từ single-host Docker Compose sang Kubernetes nhiều node để đạt high
+availability và tự co giãn theo tải, đồng thời nâng cấp CI/CD với security scan, quản lý secret
+chuyên dụng và chiến lược triển khai canary/blue-green, bổ sung log aggregation và alerting cho
+khả năng quan sát ở mức production.
+
+\textit{Tiếp theo là mở rộng chức năng nghiệp vụ:} tích hợp object storage (S3 hoặc MinIO) cho
+phép upload ảnh thật thay vì nhập URL, kết nối Admin Panel với Keycloak Admin API để quản lý
+người dùng hoàn chỉnh, tách một analytics service riêng theo mô hình CQRS, và xây dựng dịch vụ
+gợi ý sản phẩm dựa trên lịch sử mua hàng và hành vi duyệt.
+
+\textit{Cuối cùng là nâng cấp nền tảng kỹ thuật cho quy mô lớn hơn:} áp dụng schema registry và
+contract testing để quản lý hợp đồng sự kiện giữa các service, triển khai service mesh cho mTLS
+và observability ở tầng mạng, và mở rộng sang ứng dụng di động bằng cách tái sử dụng API Gateway
+cùng luồng xác thực OAuth~2.0 sẵn có của Keycloak.
+
 \end{document}

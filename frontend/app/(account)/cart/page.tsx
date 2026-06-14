@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import { resolveProductImage } from "@/lib/product-image";
 import { useCart, useUpdateCartItem, useRemoveCartItem } from "@/lib/cart/hooks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,8 +47,14 @@ export default function CartPage() {
         {cart.items.map((item) => (
           <Card key={item.productId}>
             <CardContent className="flex items-center gap-4 p-4">
-              <div className="w-16 h-16 bg-muted rounded shrink-0 flex items-center justify-center text-2xl">
-                📦
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-secondary">
+                <Image
+                  src={resolveProductImage({ id: item.productId, name: item.productName }, item.productImage, 160)}
+                  alt={item.productName}
+                  fill
+                  className="object-cover"
+                  sizes="64px"
+                />
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-sm truncate">{item.productName}</h3>

@@ -2,11 +2,12 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminTableShell } from "@/components/admin/AdminTableShell";
+import { AdminPagination } from "@/components/admin/AdminPagination";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { adminFetchSafe, formatCurrency, formatDateTime } from "@/lib/admin/api";
+import { adminFetchSafe, formatCurrency, formatDateTime, toAdminPage, type PagePayload } from "@/lib/admin/api";
 import type { OrderAdmin } from "@/lib/admin/types";
 
 export default async function AdminOrdersPage({
@@ -17,11 +18,13 @@ export default async function AdminOrdersPage({
   const sp = await searchParams;
   const q = String(sp.q ?? "");
   const status = String(sp.status ?? "");
-  const query = new URLSearchParams({ size: "50" });
+  const page = String(sp.page ?? "0");
+  const query = new URLSearchParams({ size: "20", page });
   if (q) query.set("q", q);
   if (status) query.set("status", status);
 
-  const orders = await adminFetchSafe<OrderAdmin[]>(`/orders/admin?${query.toString()}`, []);
+  const payload = await adminFetchSafe<PagePayload<OrderAdmin>>(`/orders/admin?${query.toString()}`, { content: [] });
+  const orders = toAdminPage(payload, 20);
 
   return (
     <>
@@ -44,7 +47,15 @@ export default async function AdminOrdersPage({
             </Button>
           </form>
         }
-        footer={`Tổng ${orders.length} đơn hàng`}
+        footer={
+          <AdminPagination
+            basePath="/admin/orders"
+            page={orders.page}
+            totalPages={orders.totalPages}
+            totalElements={orders.totalElements}
+            searchParams={sp}
+          />
+        }
       >
         <Table>
           <TableHeader>
@@ -58,7 +69,7 @@ export default async function AdminOrdersPage({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.map((order) => (
+            {orders.items.map((order) => (
               <TableRow key={order.id}>
                 <TableCell>
                   <Link href={`/admin/orders/${order.id}`} className="font-medium hover:underline">
@@ -74,7 +85,7 @@ export default async function AdminOrdersPage({
                 <TableCell className="text-right">{formatCurrency(order.totalAmount)}</TableCell>
               </TableRow>
             ))}
-            {orders.length === 0 && (
+            {orders.items.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                   Chưa có đơn hàng phù hợp.

@@ -52,7 +52,8 @@ class PaymentServiceImplTest {
             vnPayService,
             vnPayConfig,
             new ObjectMapper(),
-            transactionTemplate);
+            transactionTemplate,
+            new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
 
     PaymentServiceImplTest() {
         vnPayConfig.setTmnCode("DEMO_TMN");

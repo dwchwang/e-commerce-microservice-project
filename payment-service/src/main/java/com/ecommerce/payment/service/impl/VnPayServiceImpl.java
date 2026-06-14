@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,8 +33,14 @@ public class VnPayServiceImpl implements VnPayService {
         params.put("vnp_Locale", "vn");
         params.put("vnp_ReturnUrl", config.getReturnUrl());
         params.put("vnp_IpAddr", ipAddress == null || ipAddress.isBlank() ? "127.0.0.1" : ipAddress);
-        params.put("vnp_CreateDate", VnPayUtil.formatDate(LocalDateTime.now()));
-        params.put("vnp_ExpireDate", VnPayUtil.formatDate(expiresAt));
+        // VNPay requires vnp_CreateDate/vnp_ExpireDate in real Vietnam wall-clock time.
+        // The container JVM may run in UTC, so we convert from the system default zone
+        // to Asia/Ho_Chi_Minh. Otherwise the timestamps are off by the UTC offset and
+        // VNPay treats the transaction as already expired (Error.html?code=15).
+        params.put("vnp_CreateDate",
+                VnPayUtil.formatDate(ZonedDateTime.now(VnPayUtil.VN_ZONE).toLocalDateTime()));
+        params.put("vnp_ExpireDate", VnPayUtil.formatDate(
+                expiresAt.atZone(ZoneId.systemDefault()).withZoneSameInstant(VnPayUtil.VN_ZONE).toLocalDateTime()));
         params.put("vnp_SecureHash", VnPayUtil.hmacSha512(config.getHashSecret(), VnPayUtil.signingData(params)));
         return config.getPayUrl() + "?" + VnPayUtil.queryString(params);
     }

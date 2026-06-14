@@ -10,6 +10,9 @@ import com.ecommerce.order.repository.OrderRepository;
 import lombok.Builder;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -39,13 +42,14 @@ public class AdminOrderController {
     private final OrderRepository orderRepository;
 
     @GetMapping
-    public ApiResponse<List<OrderResponse>> listOrders(
+    public ApiResponse<Page<OrderResponse>> listOrders(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) OrderStatus status,
             @RequestParam(required = false) String userId,
-            @RequestParam(defaultValue = "50") int size) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         String normalizedQ = q == null ? "" : q.trim().toLowerCase();
-        List<OrderResponse> orders = orderRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
+        List<OrderResponse> filtered = orderRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
                 .filter(order -> status == null || order.getStatus() == status)
                 .filter(order -> userId == null || userId.isBlank()
                         || userId.equals(order.getUserId())
@@ -55,10 +59,16 @@ public class AdminOrderController {
                         || safeLower(order.getUserEmail()).contains(normalizedQ)
                         || safeLower(order.getShippingName()).contains(normalizedQ)
                         || safeLower(order.getShippingPhone()).contains(normalizedQ))
-                .limit(Math.max(1, Math.min(size, 200)))
                 .map(OrderResponse::from)
                 .toList();
-        return ApiResponse.ok(orders);
+
+        int pageSize = Math.max(1, Math.min(size, 200));
+        int pageIndex = Math.max(0, page);
+        int from = Math.min(pageIndex * pageSize, filtered.size());
+        int to = Math.min(from + pageSize, filtered.size());
+        Page<OrderResponse> result = new PageImpl<>(
+                filtered.subList(from, to), PageRequest.of(pageIndex, pageSize), filtered.size());
+        return ApiResponse.ok(result);
     }
 
     @GetMapping("/{id}")

@@ -55,7 +55,7 @@ export default async function ProductsPage({
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Tất cả sản phẩm</h1>
+      <h1 className="mb-6 text-3xl font-semibold tracking-tight md:text-4xl">Tất cả sản phẩm</h1>
       <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
         <aside className="hidden md:block">
           <Suspense fallback={<Skeleton className="h-96" />}>

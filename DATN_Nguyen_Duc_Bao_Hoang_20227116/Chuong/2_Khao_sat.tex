@@ -2,217 +2,232 @@
 \documentclass[../DoAn.tex]{subfiles}
 \begin{document}
 
-Chương này trình bày các khái niệm lý thuyết và mẫu thiết kế kiến trúc làm nền tảng cho
-các quyết định thiết kế của hệ thống. Các nội dung được sắp xếp theo trình tự từ tổng quan
-đến chi tiết: bắt đầu với kiến trúc microservices và phương pháp phân rã hệ thống, tiếp đến
-các mô hình giao tiếp và xử lý giao dịch phân tán, sau cùng là các cơ chế đảm bảo độ tin
-cậy, bảo mật và khả năng quan sát. Phần áp dụng các lý thuyết này vào công nghệ cụ thể sẽ
-được trình bày ở Chương~\ref{chapter:Methodology}.
+Chương này trình bày bảy nền tảng lý thuyết trực tiếp định hình các quyết định thiết kế
+then chốt của hệ thống. Mỗi mục xuất phát từ một bài toán kỹ thuật cụ thể mà hệ thống
+phải giải quyết, sau đó phân tích nguyên lý và đánh giá cách áp dụng: (1)~kiến trúc
+microservices là nền tảng triển khai toàn bộ hệ thống; (2)~phân rã hệ thống và cách ly
+dữ liệu dẫn đến bài toán nhất quán phân tán; (3)~giao dịch nhiều bước xuyên service đòi
+hỏi Saga Orchestration; (4)~giao tiếp bất đồng bộ tin cậy cần Transactional Outbox và
+Idempotent Consumer; (5)~flash sale đồng thời cao yêu cầu thao tác nguyên tử trên Redis;
+(6)~xác thực phân tán cần mô hình Trusted Subsystem; (7)~các mẫu hỗ trợ bổ sung hoàn
+thiện độ tin cậy và khả năng quan sát.
 
 % =======================================================================
 \section{Kiến trúc Microservices}
 \label{section:2.1}
 
-\subsection{Định nghĩa và đặc trưng cốt lõi}
+\subsection{Khái niệm và đặc điểm cốt lõi}
 
-Kiến trúc microservices là một phong cách kiến trúc phần mềm, trong đó ứng dụng được xây
-dựng như một tập hợp các dịch vụ nhỏ, độc lập, mỗi dịch vụ chạy trong tiến trình riêng và
-giao tiếp với nhau thông qua các giao thức nhẹ, điển hình là HTTP/REST hoặc message queue.
-Khác với kiến trúc Monolith truyền thống --- nơi toàn bộ ứng dụng được đóng gói thành một
-khối thống nhất, microservices phân rã hệ thống theo ranh giới nghiệp vụ, cho phép mỗi
-dịch vụ được phát triển, triển khai và mở rộng một cách độc lập.
+Kiến trúc microservices là phong cách kiến trúc phần mềm cấu trúc một ứng dụng thành tập
+hợp các service nhỏ, triển khai độc lập, mỗi service chạy trong tiến trình riêng và giao
+tiếp qua cơ chế nhẹ --- thường là HTTP/REST hoặc message broker. Mỗi service được tổ chức
+xung quanh một khả năng nghiệp vụ (business capability) cụ thể và có thể được triển khai
+độc lập bằng hệ thống tự động hóa~\cite{fowler2014, newman2021}.
 
-Một microservice được thiết kế đúng chuẩn cần thỏa mãn năm đặc trưng cốt lõi. Thứ nhất,
-dịch vụ phải được mô hình hóa xung quanh một miền nghiệp vụ cụ thể, ranh giới của dịch vụ
-được xác định bởi nghiệp vụ chứ không phải bởi tầng kỹ thuật. Thứ hai, mỗi dịch vụ sở hữu
-cơ sở dữ liệu riêng và không chia sẻ trực tiếp dữ liệu với dịch vụ khác --- mọi truy cập
-dữ liệu chéo phải thông qua API hoặc sự kiện được công bố công khai. Thứ ba, mỗi dịch vụ
-có thể được triển khai độc lập mà không ảnh hưởng đến hoạt động của các dịch vụ còn lại.
-Thứ tư, hệ thống được phân quyền --- không tồn tại điểm kiểm soát tập trung duy nhất, logic
-nghiệp vụ và dữ liệu được phân tán trên nhiều dịch vụ. Thứ năm, tổ chức nhóm phát triển
-cần phản ánh cấu trúc hệ thống, trong đó mỗi nhóm sở hữu và chịu trách nhiệm với một hoặc
-một vài dịch vụ.
+Sáu đặc điểm cốt lõi phân biệt microservices với các kiểu kiến trúc khác:
+
+\begin{itemize}[noitemsep]
+    \item \textbf{Single Responsibility}: mỗi service đảm nhiệm đúng một bounded context
+          nghiệp vụ, không chồng lấn trách nhiệm. Ranh giới rõ ràng giúp nhóm phát triển
+          hiểu toàn bộ service và thay đổi mà không ảnh hưởng service khác.
+    \item \textbf{Loose Coupling, High Cohesion}: các service không biết chi tiết nội bộ
+          của nhau (loose coupling), mọi giao tiếp đều qua API/sự kiện được công bố công
+          khai; trong khi đó logic liên quan được nhóm lại trong cùng service (high cohesion).
+    \item \textbf{Decentralized Data Management}: mỗi service sở hữu và quản lý kho dữ
+          liệu riêng (Database per Service). Không có service nào được phép đọc trực tiếp
+          vào database của service khác.
+    \item \textbf{Independent Deployability}: mỗi service có pipeline CI/CD riêng, có thể
+          cập nhật, rollback và scale mà không cần phối hợp với service khác.
+    \item \textbf{Technology Heterogeneity}: mỗi service được phép chọn ngôn ngữ lập trình,
+          framework và loại cơ sở dữ liệu phù hợp nhất với đặc thù nghiệp vụ của nó
+          (Polyglot Persistence).
+    \item \textbf{Design for Failure}: trong hệ thống phân tán, sự cố mạng, timeout và
+          lỗi từng phần là tất yếu. Mỗi service phải được thiết kế giả định service lân
+          cận có thể không sẵn sàng và xử lý gracefully qua Circuit Breaker, Retry và
+          fallback.
+\end{itemize}
 
 \subsection{So sánh với Monolith và SOA}
 
-Để hiểu rõ vị trí của microservices trong phổ kiến trúc phần mềm, Bảng~\ref{table:arch-comparison}
-so sánh ba mô hình kiến trúc chính trên các tiêu chí thiết kế quan trọng.
+Để đánh giá đúng lý do lựa chọn microservices, cần đối chiếu với hai kiểu kiến trúc tiền
+nhiệm là Monolith và SOA (Service-Oriented Architecture). Bảng~\ref{table:arch-comparison}
+tổng hợp sự khác biệt theo các chiều quan trọng:
 
 \begin{table}[H]
 \centering
-\caption{So sánh ba mô hình kiến trúc phần mềm}
+\caption{So sánh kiến trúc Monolith, SOA và Microservices}
 \label{table:arch-comparison}
 \begin{compacttable}
-\begin{tabularx}{\textwidth}{|L{2.5cm}|Y|Y|Y|}
+\begin{tabularx}{\textwidth}{|L{3.2cm}|Y|Y|Y|}
 \hline
-\textbf{Tiêu chí}  & \textbf{Monolith}       & \textbf{SOA}              & \textbf{Microservices}          \\ \hline
-Cơ sở dữ liệu      & Dùng chung             & Thường dùng chung         & Cơ sở dữ liệu riêng             \\ \hline
-Giao tiếp          & Lời gọi nội bộ         & Enterprise Service Bus    & REST / Message Queue            \\ \hline
-Triển khai         & Toàn bộ ứng dụng       & Từng dịch vụ              & Độc lập từng dịch vụ            \\ \hline
-Mở rộng            & Theo chiều dọc         & Theo dịch vụ              & Theo chiều ngang, từng dịch vụ  \\ \hline
-Cách ly sự cố      & Không có               & Một phần                  & Tốt (circuit breaker, bulkhead) \\ \hline
-Độ phức tạp        & Thấp ban đầu           & Cao (phức tạp ESB)        & Cao (hệ thống phân tán)         \\ \hline
-Phù hợp khi        & Nhóm nhỏ, sản phẩm MVP & Doanh nghiệp lớn, kế thừa & Nhóm lớn, cần mở rộng độc lập  \\ \hline
+\textbf{Tiêu chí} & \textbf{Monolith} & \textbf{SOA} & \textbf{Microservices} \\ \hline
+Đơn vị triển khai
+    & Toàn bộ ứng dụng trong một artifact duy nhất
+    & Nhóm chức năng, thường là WAR/EAR lớn
+    & Service đơn lẻ, JAR độc lập, container riêng \\ \hline
+Cơ sở dữ liệu
+    & Shared database duy nhất
+    & Shared hoặc ít database dùng chung
+    & Database per Service --- mỗi service sở hữu DB riêng \\ \hline
+Giao tiếp nội bộ
+    & Gọi hàm trong bộ nhớ (in-process)
+    & SOAP/XML qua Enterprise Service Bus (ESB)
+    & REST, gRPC hoặc message broker nhẹ (Kafka) \\ \hline
+Công nghệ
+    & Bị ràng buộc một stack duy nhất
+    & Chủ yếu một ngôn ngữ, ESB là nút thắt
+    & Tự do --- polyglot theo từng service \\ \hline
+Khả năng mở rộng
+    & Scale toàn bộ ứng dụng, lãng phí tài nguyên
+    & Scale theo nhóm service
+    & Scale từng service độc lập theo nhu cầu \\ \hline
+Tổ chức nhóm
+    & Nhóm lớn, chung codebase, dễ xung đột
+    & Nhóm trung bình theo layer
+    & Nhóm nhỏ, mỗi nhóm sở hữu vài service \\ \hline
+Độ phức tạp vận hành
+    & Thấp --- một artifact, một deployment
+    & Trung bình --- ESB là điểm phức tạp
+    & Cao --- phân tán, cần observability, service mesh \\ \hline
+Phù hợp với
+    & MVP, nhóm nhỏ, ứng dụng đơn giản
+    & Enterprise legacy, tích hợp hệ thống cũ
+    & Hệ thống lớn, nhiều nhóm, yêu cầu scale cao \\ \hline
 \end{tabularx}
 \end{compacttable}
 \end{table}
 
-Kiến trúc Monolith phù hợp với giai đoạn đầu của sản phẩm khi quy mô nhỏ và tốc độ phát
-triển được ưu tiên. Tuy nhiên, khi hệ thống phát triển, Monolith bộc lộ các hạn chế về khả
-năng mở rộng chọn lọc, tốc độ triển khai và cách ly sự cố. SOA ra đời nhằm giải quyết một
-phần các hạn chế này thông qua việc tách hệ thống thành các dịch vụ, nhưng phụ thuộc nặng
-vào Enterprise Service Bus (ESB) --- một thành phần trung tâm dễ trở thành điểm nghẽn và
-điểm lỗi đơn. Microservices khắc phục nhược điểm của SOA bằng cách loại bỏ ESB, chuyển trí
-thông minh từ đường ống truyền dẫn sang các điểm đầu cuối, đồng thời trao cho mỗi dịch vụ
-toàn quyền sở hữu dữ liệu của mình.
+\textbf{Kiến trúc Monolith} đơn giản trong triển khai và debug --- toàn bộ code chạy
+trong cùng một tiến trình nên không có độ trễ mạng nội bộ, không cần service discovery
+và transaction ACID hoạt động tự nhiên. Tuy nhiên, khi hệ thống tăng trưởng, monolith
+gặp hai vấn đề không thể tránh: mọi thay đổi dù nhỏ đều yêu cầu rebuild và redeploy
+toàn bộ ứng dụng; scale chỉ có thể thực hiện theo chiều ngang toàn bộ ứng dụng, không
+thể scale riêng module nào đang là bottleneck.
 
-\subsection{Tám ngộ nhận trong tính toán phân tán}
+\textbf{SOA} giải quyết một phần bằng cách chia nhỏ thành các service lớn hơn, nhưng
+phụ thuộc nặng vào ESB như một bus trung tâm. ESB trở thành điểm tập trung cho routing,
+transformation và orchestration --- khi ESB gặp sự cố hoặc trở thành bottleneck, toàn bộ
+hệ thống bị ảnh hưởng. Ngoài ra, shared database trong SOA vẫn tạo ra coupling ở tầng dữ
+liệu ngay cả khi logic đã được tách ra.
 
-Khi chuyển từ Monolith sang microservices, hệ thống trở thành một hệ phân tán và lập tức
-phải đối mặt với tám ngộ nhận nguy hiểm đã được tổng kết từ thực tiễn công nghiệp: (1)~mạng
-luôn đáng tin cậy; (2)~độ trễ bằng không; (3)~băng thông vô hạn; (4)~mạng an toàn tuyệt
-đối; (5)~topology mạng không thay đổi; (6)~chỉ có một quản trị viên duy nhất; (7)~chi phí
-truyền tải bằng không; (8)~mạng đồng nhất. Mỗi ngộ nhận này đặt ra một yêu cầu thiết kế cụ
-thể cho hệ thống microservices: cần cơ chế thử lại và ngắt mạch để đối phó với mạng không
-đáng tin cậy; cần khám phá dịch vụ động để thích ứng với topology thay đổi; cần quản lý cấu
-hình tập trung và hệ thống quan sát để vận hành hiệu quả môi trường đa dịch vụ.
+\textbf{Microservices} đẩy nguyên tắc tách biệt đến mức tối đa: mỗi service là một đơn
+vị triển khai độc lập hoàn toàn, từ code đến database. Đánh đổi là độ phức tạp vận hành
+tăng đáng kể --- phải giải quyết các bài toán phân tán như nhất quán dữ liệu, distributed
+tracing và service-to-service authentication mà monolith không bao giờ gặp phải. Các
+phần tiếp theo của chương phân tích cụ thể từng bài toán đó.
 
-% \begin{figure}[H]
-%     \centering
-%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
-%     \caption{Sơ đồ minh họa tám ngộ nhận trong tính toán phân tán và các yêu cầu thiết kế tương ứng}
-%     \label{fig:fallacies}
-% \end{figure}
+Hệ thống được xây dựng theo kiến trúc microservices với 13 business service và 3 service
+hạ tầng. Mỗi business service tương ứng với một domain nghiệp vụ tách biệt: định danh
+(identity-service), hồ sơ người dùng (user-service), catalog sản phẩm (product-service),
+tìm kiếm (search-service), giỏ hàng (cart-service), đặt hàng (order-service), thanh toán
+(payment-service), kho hàng (inventory-service), voucher (voucher-service), đánh giá
+(review-service), nội dung (content-service), thông báo (notification-service) và flash
+sale (flash-sale-service). Ba service hạ tầng --- API Gateway, Config Server và Service
+Registry --- hỗ trợ vận hành mà không chứa logic nghiệp vụ. Mỗi
+service được đóng gói thành Docker container riêng với cơ sở dữ liệu độc lập, pipeline
+CI/CD riêng và giao tiếp với nhau qua REST (đồng bộ) hoặc Kafka (bất đồng bộ). Quyết định
+này dẫn trực tiếp đến các thách thức kỹ thuật được giải quyết trong các phần tiếp theo.
 
 % =======================================================================
-\section{Domain-Driven Design và phân rã hệ thống}
+\section{Phân rã hệ thống và Database per Service}
 \label{section:2.2}
 
-Domain-Driven Design (DDD) là phương pháp thiết kế phần mềm lấy lĩnh vực nghiệp vụ làm
-trung tâm, đặc biệt phù hợp cho việc xác định ranh giới giữa các microservice trong một hệ
-thống phức tạp. DDD cung cấp một bộ công cụ khái niệm giúp đội ngũ phát triển và chuyên
-gia nghiệp vụ cùng xây dựng một mô hình chung, nhất quán về hệ thống.
+Hệ thống thương mại điện tử phức tạp không thể được mô hình hóa bằng một mô hình dữ liệu
+thống nhất duy nhất, vì các miền nghiệp vụ khác nhau nhìn nhận cùng một khái niệm theo những
+cách không tương thích. Ví dụ, khái niệm \textit{Đơn hàng} trong miền đặt hàng mang ý nghĩa
+về thông tin khách hàng, danh sách sản phẩm và phương thức thanh toán; trong miền kho hàng,
+chính đơn hàng đó lại là tập hợp các mặt hàng cần trừ tồn kho. Domain-Driven Design (DDD)
+giải quyết mâu thuẫn này thông qua khái niệm \textbf{Bounded Context}~\cite{evans2003}: một ranh giới tường
+minh trong đó một mô hình nghiệp vụ cụ thể có ý nghĩa nhất quán và không cần giải thích thêm.
 
-Khái niệm trung tâm của DDD là \textbf{Bounded Context} --- một ranh giới tường minh bên
-trong đó một mô hình nghiệp vụ cụ thể được định nghĩa và áp dụng một cách nhất quán. Trong
-mỗi Bounded Context, mọi thuật ngữ đều có một ý nghĩa duy nhất, rõ ràng, được thống nhất
-giữa đội ngũ kỹ thuật và đội ngũ nghiệp vụ thông qua \textbf{Ubiquitous Language} (ngôn ngữ
-chung). Ví dụ, khái niệm "Đơn hàng" (Order) trong ngữ cảnh đặt hàng mang ý nghĩa về thông
-tin khách hàng, danh sách sản phẩm và tổng giá trị; trong khi đó, "Đơn hàng" trong ngữ cảnh
-kho hàng lại mang ý nghĩa về danh sách mặt hàng cần picking, packing và shipping. Hai cách
-hiểu này thuộc về hai Bounded Context khác nhau và do đó nên được triển khai trong hai
-microservice riêng biệt.
+Áp dụng DDD vào hệ thống, 13 Bounded Context được xác định tương ứng với 13 microservice:
+mỗi service sở hữu mô hình nghiệp vụ riêng, không chia sẻ lớp domain với service khác.
+Ranh giới giữa các context được thể hiện qua nguyên tắc \textit{Database per Service}~\cite{richardson2018}: mỗi
+service chỉ được phép đọc và ghi vào cơ sở dữ liệu mà nó sở hữu, mọi trao đổi dữ liệu
+chéo buộc phải đi qua API hoặc sự kiện được công bố công khai. Nguyên tắc này loại bỏ
+hoàn toàn sự kết dính schema giữa các service --- một trong những nguyên nhân hàng đầu khiến
+monolith khó phát triển độc lập.
 
-DDD cũng định nghĩa \textbf{Aggregate} là một nhóm các thực thể (entity) và đối tượng giá
-trị (value object) có liên quan chặt chẽ với nhau, được xử lý như một đơn vị nhất quán duy
-nhất. Mỗi Aggregate có một \textbf{Aggregate Root} --- thực thể gốc đóng vai trò là điểm
-truy cập duy nhất từ bên ngoài vào Aggregate. Mọi thao tác thay đổi trạng thái bên trong
-Aggregate đều phải đi qua Aggregate Root, đảm bảo các ràng buộc nhất quán (invariant) không
-bị vi phạm. Trong thiết kế microservices, ranh giới của một Aggregate thường cũng chính là
-ranh giới của một giao dịch cơ sở dữ liệu --- một transaction chỉ nên thao tác trên một
-Aggregate duy nhất.
+\textbf{Polyglot Persistence} --- Database per Service mở ra khả năng mỗi service chọn loại
+cơ sở dữ liệu phù hợp nhất với kiểu truy cập của miền mình thay vì ép tất cả vào một mô
+hình duy nhất. Trong hệ thống, lựa chọn được thực hiện dựa trên đặc thù truy cập:
+\textbf{PostgreSQL 17} (10 database riêng biệt) cho các service cần tính nhất quán mạnh,
+ràng buộc khóa ngoại và giao dịch ACID; \textbf{Redis 8} cho cart-service (key-value với
+TTL) và flash-sale-service (bộ đếm nguyên tử); \textbf{Elasticsearch 8.18} là kho đọc của
+search-service, tối ưu cho tìm kiếm toàn văn đa tiêu chí; \textbf{Apache Kafka KRaft} đóng
+vai trò message broker bền vững, đảm bảo giao tiếp bất đồng bộ tin cậy giữa các service.
 
-\textbf{Context Map} là biểu đồ thể hiện mối quan hệ giữa các Bounded Context trong toàn hệ
-thống, bao gồm các mẫu quan hệ như: Shared Kernel (chia sẻ một phần mô hình), Customer-Supplier
-(một bên cung cấp, một bên tiêu thụ), Conformist (một bên tuân theo mô hình của bên kia),
-Anti-corruption Layer (lớp chống nhiễu, bảo vệ mô hình nội bộ khỏi ảnh hưởng từ bên ngoài)
-và Open Host Service (dịch vụ công khai cho nhiều đối tượng sử dụng). Context Map là công
-cụ quan trọng giúp hình dung toàn bộ bức tranh tích hợp giữa các dịch vụ.
-
-% \begin{figure}[H]
-%     \centering
-%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
-%     \caption{Mô hình minh họa Bounded Context, Aggregate và Context Map}
-%     \label{fig:ddd-concepts}
-% \end{figure}
+Database per Service tạo ra một hệ quả không thể tránh: khi một nghiệp vụ yêu cầu cập
+nhật dữ liệu trên nhiều service (ví dụ: đặt hàng đồng thời phải cập nhật order\_db,
+inventory\_db, voucher\_db và payment\_db), không thể dùng giao dịch ACID truyền thống
+để bao phủ tất cả vì mỗi database thuộc về một service độc lập. Đây là bài toán nhất
+quán phân tán~\cite{kleppmann2017}, được giải quyết bằng các mẫu thiết kế ở các phần tiếp theo.
 
 % =======================================================================
-\section{Các mô hình giao tiếp trong Microservices}
+\section{Saga Orchestration --- giao dịch phân tán nhiều bước}
 \label{section:2.3}
 
-\subsection{Giao tiếp đồng bộ và bất đồng bộ}
+Giao dịch ACID của cơ sở dữ liệu quan hệ đảm bảo rằng một tập hợp thao tác trên cùng một
+database hoặc cùng thành công hoặc cùng bị hủy. Tuy nhiên, giao thức Two-Phase Commit (2PC)
+--- cách mở rộng ACID sang nhiều database --- có hai vấn đề nghiêm trọng trong kiến trúc
+microservices: 2PC yêu cầu coordinator trung tâm giữ khóa trên tất cả participant trong suốt
+giao dịch, tạo điểm nghẽn hiệu năng và điểm lỗi đơn; đồng thời khả năng hỗ trợ 2PC phụ
+thuộc vào driver cơ sở dữ liệu và với Redis, Elasticsearch thì không tồn tại.
 
-Trong hệ thống microservices, giao tiếp giữa các dịch vụ được phân thành hai mô hình chính
-với những đặc điểm và đánh đổi khác biệt. Việc lựa chọn mô hình giao tiếp phù hợp cho từng
-tương tác cụ thể là một trong những quyết định thiết kế quan trọng nhất.
+\textbf{Saga Pattern}~\cite{garcia1987, richardson2018} là giải pháp thay thế: phân rã giao dịch phân tán lớn thành chuỗi các
+giao dịch cục bộ $T_1, T_2, \ldots, T_n$, mỗi giao dịch thực thi trong phạm vi một service
+duy nhất và commit ngay khi hoàn thành. Với mỗi $T_i$ thành công, hệ thống phải xác định
+giao dịch bù trừ $C_i$ có khả năng hoàn tác tác động của $T_i$; nếu $T_k$ thất bại, hệ
+thống thực thi $C_{k-1}, C_{k-2}, \ldots, C_1$ theo thứ tự ngược. Điểm khác biệt so với ACID
+là Saga không cung cấp \textit{isolation}: dữ liệu tạm thời không nhất quán giữa các service
+nhưng hội tụ về đúng sau khi chuỗi Saga hoàn thành (\textit{eventual consistency}).
 
-\begin{table}[H]
-\centering
-\caption{So sánh hai mô hình giao tiếp trong microservices}
-\label{table:sync-async}
-\begin{compacttable}
-\begin{tabularx}{\textwidth}{|L{2.8cm}|Y|Y|}
-\hline
-\textbf{Tiêu chí}      & \textbf{Đồng bộ (REST/gRPC)}                          & \textbf{Bất đồng bộ (Message Queue)}                 \\ \hline
-Tính kết dính          & Chặt về mặt thời gian --- bên gọi phải chờ phản hồi   & Lỏng --- bên gửi không cần biết bên nhận              \\ \hline
-Xử lý lỗi              & Bên gọi bị ảnh hưởng trực tiếp nếu bên được gọi lỗi   & Bên gửi không bị ảnh hưởng trực tiếp                  \\ \hline
-Độ trễ                 & Thấp cho từng yêu cầu đơn lẻ                           & Có thêm độ trễ do đi qua trung gian message queue     \\ \hline
-Tình huống sử dụng     & Truy vấn cần kết quả ngay (kiểm tra giá, tồn kho)     & Tác động phụ không cần kết quả ngay (gửi email, index) \\ \hline
-Khả năng mở rộng       & Bị giới hạn bởi bên được gọi                          & Có thể mở rộng độc lập cả bên gửi và bên nhận         \\ \hline
-\end{tabularx}
-\end{compacttable}
-\end{table}
+\subsection{Saga Choreography}
 
-Giao tiếp đồng bộ phù hợp với các tình huống client cần phản hồi ngay lập tức để tiếp tục
-xử lý, ví dụ như kiểm tra tính hợp lệ của sản phẩm trước khi thêm vào giỏ hàng, hoặc xác
-minh số dư voucher trước khi áp dụng. Tuy nhiên, giao tiếp đồng bộ tạo ra sự phụ thuộc về
-mặt thời gian giữa các dịch vụ --- nếu dịch vụ được gọi gặp sự cố hoặc chậm, dịch vụ gọi
-cũng bị ảnh hưởng theo hiệu ứng dây chuyền.
+Trong biến thể Choreography, không có thành phần điều phối trung tâm: mỗi service tự lắng
+nghe sự kiện từ Kafka và tự quyết định hành động kế tiếp dựa trên loại sự kiện nhận được.
+Ví dụ, nếu áp dụng Choreography cho luồng đặt hàng, inventory-service sẽ lắng nghe
+\texttt{order-created}, xử lý đặt chỗ tồn kho rồi phát \texttt{inventory-updated}; tiếp đó
+payment-service lắng nghe \texttt{inventory-updated} và tự tiến hành thanh toán mà không cần
+ai ra lệnh. Mỗi service chỉ biết sự kiện nó quan tâm, không biết gì về các service khác
+trong luồng --- tạo ra tính kết dính rất lỏng (loose coupling).
 
-Giao tiếp bất đồng bộ thông qua message queue giải quyết vấn đề này bằng cách tách rời bên
-gửi và bên nhận về mặt thời gian. Bên gửi công bố sự kiện lên message broker và tiếp tục
-xử lý mà không cần chờ phản hồi; bên nhận tiêu thụ sự kiện khi có thể. Mô hình này đặc
-biệt phù hợp cho các tác động phụ như gửi email xác nhận đơn hàng, cập nhật chỉ mục tìm
-kiếm, hoặc đồng bộ dữ liệu giữa các dịch vụ.
+Ưu điểm của Choreography là phù hợp với luồng đơn giản, ít bước, ít thay đổi: không cần
+thành phần trung tâm, mỗi service hoạt động hoàn toàn độc lập. Nhược điểm rõ ràng khi
+luồng phức tạp: trạng thái Saga bị phân tán khắp các service, không có điểm nào có bức
+tranh toàn cảnh về luồng đang ở bước nào; xử lý bù trừ trở nên khó kiểm soát vì không
+có orchestrator chủ động phát lệnh theo thứ tự ngược.
 
-\subsection{Mức độ đảm bảo phân phối thông điệp}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/saga-choreography.png}
+    \caption{Saga Choreography Pattern --- mỗi service tự phản ứng theo sự kiện}
+    \label{fig:saga-choreography}
+\end{figure}
 
-Trong giao tiếp bất đồng bộ, mức độ đảm bảo phân phối thông điệp là một yếu tố thiết kế
-quan trọng, được phân thành ba cấp độ. \textbf{At-most-once} nghĩa là thông điệp có thể bị
-mất nhưng không bao giờ bị trùng lặp --- phù hợp với các tác vụ không quan trọng như cập
-nhật số liệu thống kê. \textbf{At-least-once} đảm bảo thông điệp luôn được xử lý ít nhất
-một lần, nhưng có thể bị trùng lặp trong trường hợp có sự cố mạng hoặc broker --- đây là
-mức đảm bảo phổ biến nhất. \textbf{Exactly-once} là mức lý tưởng, đảm bảo mỗi thông điệp
-được xử lý đúng một lần duy nhất. Trong thực tế, exactly-once thường không được cung cấp
-bởi bản thân message broker mà được hiện thực ở tầng ứng dụng bằng cách kết hợp cơ chế
-at-least-once delivery với Idempotent Consumer ở phía nhận.
+\subsection{Saga Orchestration}
 
-% =======================================================================
-\section{Giao dịch phân tán và tính nhất quán dữ liệu}
-\label{section:2.4}
+Trong biến thể Orchestration, một thành phần trung tâm (orchestrator) nắm toàn bộ luồng và
+ra lệnh tuần tự đến từng service tham gia. Orchestrator biết chính xác Saga đang ở bước
+nào, quyết định bước tiếp theo và khi có sự cố, chủ động phát lệnh bù trừ theo thứ tự
+ngược.
 
-\subsection{Định lý CAP và nguyên lý PACELC}
+Ưu điểm của Orchestration là toàn bộ trạng thái Saga được tập trung tại một nơi nên dễ
+theo dõi, kiểm thử và mở rộng: thêm hoặc sửa một bước nghiệp vụ chỉ cần thay đổi
+orchestrator thay vì sửa nhiều service. Nhược điểm là orchestrator là thành phần phức tạp
+hơn và cần được thiết kế cẩn thận để không trở thành điểm nghẽn hay điểm lỗi đơn của toàn
+luồng.
 
-Trong môi trường cơ sở dữ liệu phân tán, Định lý CAP phát biểu rằng một hệ thống không thể
-đồng thời đảm bảo cả ba thuộc tính: Tính nhất quán (Consistency) --- mọi thao tác đọc đều
-trả về kết quả của thao tác ghi gần nhất; Tính khả dụng (Availability) --- mọi yêu cầu đều
-nhận được phản hồi (thành công hoặc thất bại); và Khả năng chịu phân mảnh (Partition
-Tolerance) --- hệ thống tiếp tục hoạt động khi mạng bị phân mảnh. Vì phân mảnh mạng là
-điều không thể tránh khỏi trong thực tế, mọi hệ thống phân tán buộc phải chọn giữa CP (ưu
-tiên nhất quán, hy sinh khả dụng khi có phân mảnh) và AP (ưu tiên khả dụng, chấp nhận nhất
-quán cuối cùng). Hệ thống thương mại điện tử thường lựa chọn mô hình AP với eventual
-consistency --- dữ liệu có thể tạm thời không nhất quán giữa các bản sao, nhưng sẽ hội tụ
-về cùng một giá trị sau một khoảng thời gian nhất định.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/saga-orchestrator.png}
+    \caption{Saga Orchestration Pattern --- orchestrator điều phối tập trung}
+    \label{fig:saga-orchestration}
+\end{figure}
 
-Nguyên lý PACELC mở rộng CAP bằng cách chỉ ra rằng ngay cả khi không có phân mảnh mạng,
-hệ thống vẫn phải đối mặt với sự đánh đổi giữa Độ trễ (Latency) và Tính nhất quán
-(Consistency). Điều này có ý nghĩa thực tiễn quan trọng: trong điều kiện vận hành bình
-thường, nhà thiết kế vẫn phải quyết định ưu tiên tốc độ phản hồi hay độ chính xác tuyệt
-đối của dữ liệu.
-
-\subsection{Saga Pattern}
-
-Trong kiến trúc microservices với nguyên tắc mỗi dịch vụ sở hữu cơ sở dữ liệu riêng, không
-thể sử dụng giao dịch ACID truyền thống để đảm bảo tính nhất quán xuyên suốt nhiều dịch vụ.
-Saga Pattern giải quyết bài toán này bằng cách phân rã một giao dịch phân tán lớn thành một
-chuỗi các giao dịch cục bộ tuần tự $T_1, T_2, \ldots, T_n$, mỗi giao dịch được thực thi
-trong phạm vi một dịch vụ duy nhất và có thể commit hoặc rollback độc lập. Điểm mấu chốt
-của Saga là cơ chế bù trừ (compensation): nếu một giao dịch $T_i$ trong chuỗi thất bại,
-hệ thống sẽ thực thi tuần tự các giao dịch bù trừ $C_{i-1}, \ldots, C_1$ theo thứ tự
-ngược để hoàn tác các thay đổi đã được commit trước đó, đưa hệ thống về trạng thái nhất
-quán.
-
-Saga có hai biến thể triển khai với những đặc điểm khác biệt rõ rệt:
+Sau khi đã phân tích riêng từng biến thể, Bảng~\ref{table:saga-comparison} đối chiếu trực
+tiếp Choreography và Orchestration theo các tiêu chí then chốt để làm cơ sở cho lựa chọn
+của hệ thống.
 
 \begin{table}[H]
 \centering
@@ -221,61 +236,54 @@ Saga có hai biến thể triển khai với những đặc điểm khác biệt
 \begin{compacttable}
 \begin{tabularx}{\textwidth}{|L{2.8cm}|Y|Y|}
 \hline
-\textbf{Đặc điểm}      & \textbf{Choreography}                                  & \textbf{Orchestration}                                \\ \hline
-Cơ chế                 & Mỗi dịch vụ tự quyết định hành động dựa trên sự kiện   & Bộ điều phối trung tâm ra lệnh tuần tự                \\ \hline
-Tính kết dính          & Lỏng --- các dịch vụ không biết về nhau                & Chặt hơn --- bộ điều phối nắm toàn bộ luồng           \\ \hline
-Khả năng theo dõi      & Khó --- luồng xử lý phân tán khắp các dịch vụ          & Dễ --- trạng thái tập trung tại bộ điều phối           \\ \hline
-Xử lý bù trừ           & Phức tạp --- khó xác định ai kích hoạt bù trừ          & Bộ điều phối tự xử lý bù trừ                           \\ \hline
-Thêm bước mới          & Cần sửa đổi nhiều dịch vụ                              & Chỉ cần sửa đổi bộ điều phối                           \\ \hline
-Phù hợp khi            & Luồng đơn giản, ít bước                                & Luồng phức tạp, nhiều bước, cần kiểm soát tập trung   \\ \hline
+\textbf{Đặc điểm} & \textbf{Choreography} & \textbf{Orchestration} \\ \hline
+Cơ chế điều phối  & Mỗi service tự lắng nghe sự kiện và tự quyết định hành động kế tiếp & Orchestrator trung tâm ra lệnh tuần tự đến từng service \\ \hline
+Tính kết dính     & Lỏng --- các service không biết về nhau & Chặt hơn --- orchestrator nắm toàn bộ luồng \\ \hline
+Trạng thái Saga   & Phân tán khắp các service, khó theo dõi & Tập trung tại orchestrator, dễ kiểm tra \\ \hline
+Xử lý bù trừ     & Phức tạp --- khó xác định điểm kích hoạt bù trừ & Orchestrator chủ động phát lệnh bù trừ theo thứ tự ngược \\ \hline
+Thêm bước nghiệp vụ & Cần sửa nhiều service & Chỉ sửa orchestrator \\ \hline
+Phù hợp khi       & Luồng đơn, ít bước, ít thay đổi & Luồng phức tạp, nhiều bước, cần truy vết tập trung \\ \hline
 \end{tabularx}
 \end{compacttable}
 \end{table}
 
-Trong Choreography, mỗi dịch vụ tự lắng nghe sự kiện từ dịch vụ trước đó và quyết định hành
-động tiếp theo --- giống như một vũ công tự ứng biến theo nhạc. Trong Orchestration, một bộ
-điều phối trung tâm (orchestrator) chịu trách nhiệm điều phối toàn bộ luồng, gửi lệnh tuần
-tự đến từng dịch vụ và xử lý kết quả trả về --- giống như một nhạc trưởng chỉ huy dàn nhạc.
-Đối với các luồng nghiệp vụ phức tạp, nhiều bước và yêu cầu khả năng theo dõi, kiểm soát
-tập trung như luồng đặt hàng trong thương mại điện tử, Orchestration thường là lựa chọn
-phù hợp hơn.
+Luồng đặt hàng trong hệ thống trải qua 6--8 bước liên quan đến năm service khác nhau
+(product, inventory, voucher, payment và notification) ngoài chính order-service điều phối,
+với hai nhánh rẽ phụ thuộc vào phương thức thanh toán (COD hoặc VNPAY) và nhiều điểm có thể
+thất bại. Orchestration là lựa chọn phù hợp hơn vì trạng thái Saga được tập trung tại
+order-service, logic bù trừ được xử lý một chỗ và thêm hoặc sửa bước nghiệp vụ chỉ cần
+thay đổi một nơi. Order-service đóng vai trò orchestrator duy nhất và duy trì vòng đời đơn
+hàng qua bốn trạng thái: \texttt{PENDING} (đang chờ đặt chỗ tồn kho), \texttt{STOCK\_RESERVED}
+(tồn kho đã đặt, chờ thanh toán), \texttt{CONFIRMED} (kết thúc thành công) và
+\texttt{CANCELLED} (thất bại, orchestrator phát lệnh bù trừ giải phóng tồn kho và hoàn trả
+voucher). Mỗi chuyển trạng thái được kích hoạt bởi sự kiện Kafka cụ thể, đảm bảo mọi đường
+chuyển đổi bất hợp lệ bị từ chối ở tầng code.
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/saga-orchestrator.png}
-    \caption{Saga Orchestration Pattern}
-    \label{fig:saga-orchestration}
-\end{figure}
+% =======================================================================
+\section{Transactional Outbox và Idempotent Consumer}
+\label{section:2.4}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/saga-choreography.png}
-    \caption{Saga Choreography Pattern}
-    \label{fig:saga-choreography}
-\end{figure}
+Sau khi order-service tạo đơn hàng trong cơ sở dữ liệu, nó cần phát sự kiện
+\texttt{order-created} lên Kafka để inventory-service tiến hành đặt chỗ tồn kho. Cách
+tiếp cận thông thường là ghi dữ liệu vào database rồi ngay sau đó gọi \texttt{kafkaTemplate.send()}
+--- đây là vấn đề \textbf{dual-write}. Nếu service gặp sự cố sau khi commit transaction
+database nhưng trước khi kịp gọi Kafka, sự kiện sẽ không bao giờ được phát: đơn hàng tồn
+tại trong database với trạng thái \texttt{PENDING} nhưng inventory-service không nhận được
+yêu cầu đặt chỗ. Ngược lại, nếu Kafka nhận sự kiện nhưng database bị rollback, inventory
+sẽ đặt chỗ cho đơn hàng không tồn tại. Cả hai tình huống đều dẫn đến mất đồng bộ không
+phát hiện được bằng cách quan sát từng thành phần riêng lẻ.
 
-\subsection{Transactional Outbox Pattern}
-
-Một trong những thách thức kỹ thuật quan trọng nhất khi kết hợp cơ sở dữ liệu quan hệ với
-message broker là bài toán dual-write: làm thế nào để đảm bảo thao tác ghi dữ liệu nghiệp
-vụ vào cơ sở dữ liệu và thao tác phát hành sự kiện lên message broker là nguyên tử ---
-cả hai cùng thành công hoặc cùng thất bại. Trong cách tiếp cận thông thường, nếu dịch vụ
-ghi dữ liệu thành công nhưng gặp sự cố trước khi kịp phát hành sự kiện, các dịch vụ khác
-sẽ không bao giờ nhận được thông báo về thay đổi, dẫn đến mất đồng bộ dữ liệu.
-
-Transactional Outbox Pattern giải quyết bài toán này bằng một ý tưởng đơn giản nhưng hiệu
-quả: thay vì phát hành sự kiện trực tiếp lên message broker, dịch vụ ghi bản ghi sự kiện
-vào một bảng \texttt{outbox\_events} trong cùng một giao dịch cơ sở dữ liệu với dữ liệu
-nghiệp vụ. Vì cả hai thao tác ghi đều nằm trong cùng một giao dịch ACID, chúng được đảm
-bảo là nguyên tử --- hoặc cùng thành công, hoặc cùng thất bại. Một tiến trình nền độc lập
-(Outbox Poller) định kỳ quét bảng outbox, đọc các sự kiện chưa được phát hành và gửi chúng
-lên message broker. Sau khi phát hành thành công, bản ghi được đánh dấu là đã gửi.
-
-Cơ chế này đảm bảo at-least-once delivery: nếu dịch vụ gặp sự cố trước khi Outbox Poller
-kịp phát hành sự kiện, sau khi khởi động lại, Poller sẽ quét lại bảng outbox và phát hành
-các sự kiện còn tồn đọng. Trong trường hợp Poller phát hành thành công nhưng gặp sự cố
-trước khi kịp đánh dấu đã gửi, sự kiện có thể bị phát hành trùng lặp --- và đây chính là
-lý do cần đến Idempotent Consumer ở phía nhận.
+\textbf{Transactional Outbox Pattern}~\cite{richardson2018} giải quyết dual-write bằng cách khai thác ACID của
+database đã có: thay vì gọi Kafka trực tiếp, service ghi bản ghi sự kiện vào bảng
+\texttt{outbox} trong \textbf{cùng một giao dịch database} với dữ liệu nghiệp vụ. Một tiến
+trình nền (OutboxPoller) chạy định kỳ quét bảng outbox, đọc các sự kiện chưa gửi và phát
+lên Kafka; sau khi Kafka xác nhận, bản ghi được đánh dấu \texttt{processed = true}. Sơ đồ
+luồng được minh họa ở Hình~\ref{fig:outbox-pattern}. OutboxPoller sử dụng
+\texttt{SELECT ... FOR UPDATE SKIP LOCKED}: \texttt{FOR UPDATE} khóa các hàng được chọn
+ngăn instance khác lấy trùng; \texttt{SKIP LOCKED} bỏ qua hàng đã bị khóa thay vì chờ ---
+cho phép nhiều instance xử lý song song. Cơ chế này cung cấp \textbf{at-least-once delivery}:
+nếu service gặp sự cố sau khi Kafka nhận nhưng trước khi outbox được đánh dấu, Poller sẽ
+phát lại sự kiện sau khi khởi động lại.
 
 \begin{figure}[H]
     \centering
@@ -284,258 +292,230 @@ lý do cần đến Idempotent Consumer ở phía nhận.
     \label{fig:outbox-pattern}
 \end{figure}
 
-\subsection{Idempotent Consumer}
+\textbf{Idempotent Consumer} đảm bảo rằng việc xử lý cùng một thông điệp nhiều lần không
+tạo ra tác động phụ khác biệt so với chỉ xử lý một lần. Cơ chế dựa trên bảng
+\texttt{processed\_events} với khóa chính là \texttt{event\_id}: consumer nhận thông điệp
+với \texttt{event\_id} duy nhất; trong cùng một transaction, cố gắng INSERT \texttt{event\_id}
+vào \texttt{processed\_events} và thực thi logic nghiệp vụ. Nếu INSERT thành công (event
+chưa xử lý), logic được commit; nếu INSERT vi phạm unique constraint (event đã xử lý),
+transaction rollback và thông điệp bị bỏ qua hoàn toàn. Kết hợp lại: Transactional Outbox
+đảm bảo sự kiện không bao giờ bị mất (at-least-once); Idempotent Consumer loại bỏ tác động
+trùng lặp. Sự kết hợp này tạo ra \textbf{hiệu ứng exactly-once processing} ở tầng ứng dụng,
+ngay cả khi hạ tầng Kafka chỉ đảm bảo at-least-once delivery.
 
-Với cơ chế at-least-once delivery, message broker có thể phân phối cùng một thông điệp nhiều
-lần cho consumer --- điều này xảy ra khi consumer xử lý thông điệp thành công nhưng không
-kịp gửi tín hiệu xác nhận (acknowledgment) về broker trước khi gặp sự cố, hoặc khi Outbox
-Poller phát hành trùng lặp. Idempotent Consumer là mẫu thiết kế giải quyết vấn đề này: đảm
-bảo rằng việc xử lý cùng một thông điệp nhiều lần không tạo ra tác động phụ khác biệt so
-với việc chỉ xử lý một lần.
+% =======================================================================
+\section{Xử lý đồng thời cao --- Redis Lua atomic và mô hình phòng thủ đa lớp}
+\label{section:2.5}
 
-Cơ chế triển khai phổ biến là sử dụng bảng \texttt{processed\_events} trong cơ sở dữ liệu
-của consumer. Trước khi xử lý một thông điệp, consumer kiểm tra xem mã định danh của thông
-điệp (\texttt{event\_id}) đã tồn tại trong bảng này hay chưa. Nếu đã tồn tại, thông điệp bị
-bỏ qua. Nếu chưa, consumer thực thi nghiệp vụ và ghi \texttt{event\_id} vào bảng
-\texttt{processed\_events} trong cùng một giao dịch, đảm bảo tính nguyên tử giữa việc xử lý
-nghiệp vụ và việc ghi nhận đã xử lý. Sự kết hợp giữa Transactional Outbox ở phía producer
-và Idempotent Consumer ở phía consumer tạo ra hiệu ứng exactly-once processing ở tầng ứng
-dụng, ngay cả khi hạ tầng bên dưới chỉ đảm bảo at-least-once.
+Flash sale tạo ra tình huống đồng thời cực cao: hàng trăm đến hàng nghìn người dùng đồng
+thời cố gắng mua một số lượng hàng giới hạn. Vấn đề nằm ở \textbf{race condition kinh điển}:
+giả sử còn 1 slot, hai request A và B đồng thời đọc stock~=~1, cả hai thấy còn hàng, cả hai
+tiến hành mua --- kết quả: 1 slot được bán cho 2 người (over-sell). Hai cách giải quyết
+truyền thống trong cơ sở dữ liệu quan hệ đều không phù hợp cho tải cao: pessimistic lock
+(\texttt{FOR UPDATE}) tạo hàng đợi tuần tự, hiệu năng sụp đổ khi có 500 VU đồng thời;
+optimistic lock (version column) tỷ lệ retry tăng tương ứng số VU, làm tăng tải thay vì
+giảm.
 
-\subsection{CQRS --- Phân tách trách nhiệm Lệnh và Truy vấn}
+\textbf{Redis single-threaded model} cung cấp nguyên tử tự nhiên: mỗi lệnh được thực thi
+hoàn chỉnh trước khi lệnh tiếp theo bắt đầu, không có sự xen ngang giữa các lệnh từ bất kỳ
+kết nối nào. Tuy nhiên, bài toán flash sale đòi hỏi thực hiện \textit{nhiều} lệnh như một
+khối không thể tách rời: kiểm tra người dùng đã mua chưa, kiểm tra stock, giảm stock và ghi
+nhận người mua --- nếu thực thi tuần tự các lệnh riêng biệt, khoảng trống giữa các lệnh vẫn
+tạo ra cửa sổ cho race condition.
 
-CQRS (Command Query Responsibility Segregation) là mẫu thiết kế tách biệt hoàn toàn mô hình
-ghi (Command) và mô hình đọc (Query) của hệ thống. Mô hình ghi được tối ưu cho tính nhất
-quán và toàn vẹn dữ liệu, thường sử dụng cơ sở dữ liệu quan hệ với các ràng buộc chặt chẽ.
-Mô hình đọc được tối ưu cho hiệu năng truy vấn, có thể được phi chuẩn hóa (denormalize)
-hoặc lưu trữ trên một loại cơ sở dữ liệu hoàn toàn khác, phù hợp hơn với nhu cầu tìm kiếm
-và hiển thị.
+\textbf{Redis Lua Script}~\cite{redis_docs} giải quyết triệt để: khi client gửi script Lua lên Redis, server
+thực thi toàn bộ script như một khối nguyên tử duy nhất --- không một lệnh nào khác được
+thực thi trong suốt thời gian script chạy. Script flash sale thực hiện đầy đủ trong một lần
+gọi: (1)~kiểm tra \texttt{flash-sale:\{id\}:buyers} xem \texttt{user\_id} đã mua chưa ---
+nếu rồi trả về \texttt{-1}; (2)~đọc \texttt{flash-sale:\{id\}:stock} --- nếu $\le 0$ trả
+về \texttt{0}; (3)~\texttt{DECR} stock và \texttt{SADD} user\_id vào buyers set, trả về
+\texttt{1}. Không có bất kỳ khoảng trống nào giữa các bước, không có race condition nào
+có thể xảy ra kể cả khi có hàng nghìn request đồng thời.
+
+\textbf{Mô hình phòng thủ đa lớp} bổ sung cho Lua script để bảo vệ trước sự cố hạ tầng:
+\textit{Lớp 1 --- Nguyên tử Redis}: Lua script xử lý phần lớn request trong bộ nhớ với độ
+trễ dưới mili-giây, loại bỏ ngay các request không đủ điều kiện trước khi đến tầng database
+hay Kafka. \textit{Lớp 2 --- Kafka Compensation}: nếu publish Kafka thất bại sau khi Lua
+script xác nhận slot, service lập tức thực thi compensation: \texttt{INCR} stock và
+\texttt{SREM} user\_id khỏi buyers set. \textit{Lớp 3 --- ReconciliationScheduler}: chạy
+mỗi 5 phút, đối chiếu \texttt{sold\_count} trong database với số đơn flash-sale thực tế;
+nếu phát hiện drift, bù trừ counter Redis về giá trị đúng. Ba lớp hoạt động độc lập và bổ
+sung cho nhau: lớp 1 nhanh nhưng không bảo vệ khỏi lỗi hạ tầng; lớp 2 xử lý lỗi ngay lập
+tức; lớp 3 bắt sai lệch tích lũy mà hai lớp trên bỏ sót.
+
+% =======================================================================
+\section{Bảo mật tập trung}
+\label{section:2.6}
+
+JSON Web Token (JWT)~\cite{rfc7519} là tiêu chuẩn mở cho phép truyền thông tin định danh đã được ký số
+giữa các bên mà không cần tra cứu trạng thái session trên server. Hệ thống sử dụng
+\textbf{RS256} (RSA + SHA-256) thay vì HS256 (HMAC): với HS256, cả bên ký lẫn bên xác minh
+phải chia sẻ cùng một khóa bí mật --- không phù hợp với kiến trúc nhiều service vì mỗi
+service phải biết secret key, tạo rủi ro bảo mật nếu một service bị xâm phạm. Với RS256,
+Keycloak giữ private key để ký token; các service chỉ cần public key (lấy từ JWKS endpoint)
+để xác minh chữ ký --- private key không bao giờ rời khỏi Keycloak.
+
+Trong kiến trúc microservices, nếu mỗi service tự xác minh JWT với Keycloak, mỗi request
+sinh thêm một lời gọi mạng từ từng service, tạo bottleneck và điểm lỗi đơn. \textbf{Trusted
+Subsystem Pattern} giải quyết bằng cách chỉ định một điểm thực thi xác thực duy nhất ---
+API Gateway --- và cho phép tất cả service nội bộ tin tưởng thông tin định danh do Gateway
+cung cấp mà không xác minh lại. Luồng cụ thể:
+
+\begin{enumerate}[noitemsep]
+    \item Client gửi request kèm Access Token trong header \texttt{Authorization: Bearer}.
+    \item API Gateway \textbf{loại bỏ} (strip) hoàn toàn các header \texttt{X-User-Id},
+          \texttt{X-User-Roles}, \texttt{X-User-Email} từ request gốc của client --- ngăn
+          chặn mọi nỗ lực giả mạo định danh từ phía client.
+    \item Gateway xác minh chữ ký JWT bằng public key lấy từ JWKS endpoint của Keycloak,
+          kiểm tra \texttt{exp} (hạn token) và \texttt{iss} (nhà phát hành).
+    \item Sau khi xác minh thành công, Gateway \textbf{chèn} thông tin định danh đã được
+          xác thực vào ba header: \texttt{X-User-Id} (sub claim), \texttt{X-User-Roles}
+          (realm\_access.roles), \texttt{X-User-Email} (email claim).
+    \item Request được chuyển tiếp đến service đích; service đọc trực tiếp các header này
+          mà không cần JWT library.
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/chuong4/keycloak.png}
+    \caption{Luồng xác thực Trusted Subsystem Pattern: Gateway xác minh JWT và inject header định danh}
+    \label{fig:trusted-subsystem}
+\end{figure}
+
+Pattern này chỉ an toàn khi kết hợp với cách ly mạng tầng hạ tầng: nếu service backend
+có thể bị gọi trực tiếp từ bên ngoài, kẻ tấn công có thể bỏ qua Gateway và tự chèn header
+tùy ý. Trong hệ thống, tất cả service business (cổng 8081--8093) chỉ kết nối vào mạng
+\texttt{internal} của Docker, không expose cổng ra host; API Gateway (cổng 8080) là điểm
+duy nhất kết nối cả mạng \texttt{internal} lẫn \texttt{public}, không có đường nào để client
+gọi trực tiếp vào business service mà không qua Gateway.
+
+% =======================================================================
+\section{Các mẫu thiết kế hỗ trợ: CQRS-lite, Circuit Breaker và Observability}
+\label{section:2.7}
+
+\subsection{CQRS-lite --- tách biệt mô hình đọc và ghi cho tìm kiếm}
+
+CQRS (Command Query Responsibility Segregation)~\cite{fowler2011cqrs} là mẫu thiết kế tách hoàn toàn mô hình
+ghi (Command) và mô hình đọc (Query) của hệ thống, mỗi mô hình được lưu trữ trên kho dữ
+liệu tối ưu cho kiểu thao tác của mình. Hệ thống áp dụng biến thể \textbf{CQRS-lite}
+cho chức năng tìm kiếm sản phẩm:
+
+\begin{itemize}[noitemsep]
+    \item \textbf{Mô hình ghi}: product-service quản lý catalog trên PostgreSQL với schema
+          quan hệ chuẩn hóa, đảm bảo tính nhất quán và toàn vẹn dữ liệu (khóa ngoại,
+          constraints, giao dịch ACID). Đây là nguồn dữ liệu chân thực (source of truth).
+    \item \textbf{Mô hình đọc}: search-service duy trì một bản sao denormalized trong
+          Elasticsearch index \texttt{products}, được tối ưu cho full-text search, lọc đa
+          tiêu chí (category, brand, price range) và xếp hạng mức độ liên quan.
+    \item \textbf{Đồng bộ bất đồng bộ}: khi quản trị viên tạo/sửa/xóa sản phẩm,
+          product-service phát sự kiện \texttt{product-created/updated/deleted} lên Kafka.
+          Search-service tiêu thụ sự kiện và cập nhật Elasticsearch, chấp nhận độ trễ
+          đồng bộ ngắn (thường dưới 1 giây) để đổi lấy hiệu năng tìm kiếm vượt trội.
+\end{itemize}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/CQRS.png}
-    \caption{Sơ đồ kiến trúc CQRS với mô hình ghi và mô hình đọc riêng biệt}
+    \caption{Kiến trúc CQRS-lite: PostgreSQL làm mô hình ghi, Elasticsearch làm mô hình đọc}
     \label{fig:CQRS}
 \end{figure}
 
-Hai mô hình được đồng bộ thông qua luồng sự kiện: khi có thay đổi ở phía ghi, một sự kiện
-được phát hành và phía đọc cập nhật mô hình của mình một cách bất đồng bộ. Điều này đồng
-nghĩa với việc chấp nhận eventual consistency --- dữ liệu phía đọc có thể tạm thời chưa
-phản ánh thay đổi mới nhất, nhưng sẽ hội tụ trong thời gian ngắn. Trong phạm vi hẹp hơn,
-CQRS-lite áp dụng nguyên tắc này cho một chức năng cụ thể thay vì toàn bộ hệ thống --- ví
-dụ, sử dụng Elasticsearch làm mô hình đọc riêng cho chức năng tìm kiếm toàn văn, trong
-khi các chức năng khác vẫn dùng chung mô hình đọc-ghi truyền thống.
+Lý do lựa chọn CQRS-lite thay vì query trực tiếp PostgreSQL: full-text search với phân
+tích ngữ nghĩa (stemming, tokenization), lọc kết hợp nhiều trường và xếp hạng mức độ liên
+quan là những khả năng mà Elasticsearch cung cấp tự nhiên nhưng sẽ cần query SQL cực kỳ
+phức tạp (LIKE, GIN index, tsvector) để mô phỏng trên PostgreSQL với hiệu năng kém hơn
+đáng kể.
 
-% =======================================================================
-\section{Các mẫu thiết kế đảm bảo độ tin cậy}
-\label{section:2.5}
+\subsection{Circuit Breaker --- ngăn sự cố dây chuyền giữa các service}
 
-\subsection{Circuit Breaker}
+Khi một service gọi đồng bộ đến service khác qua OpenFeign và service đích đang gặp sự
+cố hoặc phản hồi chậm, nếu không có cơ chế bảo vệ, thread pool của service gọi sẽ bị
+chiếm giữ bởi các request đang chờ, dẫn đến cạn kiệt tài nguyên và sự cố lan truyền sang
+các service lân cận --- hiện tượng \textit{cascading failure}.
 
-Trong kiến trúc microservices, một dịch vụ thường phụ thuộc vào nhiều dịch vụ khác để hoàn
-thành chức năng của mình. Khi một dịch vụ phụ thuộc gặp sự cố hoặc phản hồi chậm, nếu không
-có cơ chế bảo vệ, dịch vụ gọi sẽ tiếp tục gửi yêu cầu và chờ đợi trong vô vọng, dẫn đến cạn
-kiệt tài nguyên (thread pool, connection pool) và lan truyền sự cố sang các dịch vụ khác ---
-hiện tượng này được gọi là cascading failure (sự cố dây chuyền).
-
-Circuit Breaker Pattern hoạt động tương tự như cầu dao điện trong mạch điện: nó giám sát tần
-suất lỗi của các lời gọi đến dịch vụ phụ thuộc và tự động "ngắt mạch" khi tỷ lệ lỗi vượt
-quá ngưỡng cho phép. Pattern vận hành qua ba trạng thái. Ở trạng thái \textbf{CLOSED}, mọi
-yêu cầu được chuyển tiếp bình thường và bộ đếm lỗi được duy trì. Khi tỷ lệ lỗi vượt ngưỡng
-cấu hình, mạch chuyển sang trạng thái \textbf{OPEN} --- mọi yêu cầu bị từ chối ngay lập tức
-mà không gọi đến dịch vụ phụ thuộc, thay vào đó trả về kết quả dự phòng (fallback). Sau một
-khoảng thời gian chờ nhất định, mạch chuyển sang trạng thái \textbf{HALF\_OPEN}: một số
-lượng giới hạn yêu cầu được phép gọi thực tế đến dịch vụ phụ thuộc để kiểm tra. Nếu các
-yêu cầu này thành công, mạch trở về CLOSED; nếu thất bại, mạch quay lại OPEN và tiếp tục
-chờ.
+Circuit Breaker (Resilience4j)~\cite{nygard2018, resilience4j_docs} bảo vệ bằng cách giám sát tỷ lệ lỗi của mỗi Feign call
+và hoạt động theo ba trạng thái:
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/circuit-breaker.png}
-    \caption{Sơ đồ trạng thái của Circuit Breaker Pattern}
+    \caption{Sơ đồ ba trạng thái Circuit Breaker: CLOSED, OPEN và HALF\_OPEN}
     \label{fig:circuit-breaker}
 \end{figure}
 
-\subsection{Rate Limiting}
+\begin{itemize}[noitemsep]
+    \item \textbf{CLOSED}: mọi request được chuyển tiếp bình thường. Nếu tỷ lệ lỗi vượt
+          ngưỡng (50\% trong 10 lần gọi gần nhất), circuit chuyển sang OPEN.
+    \item \textbf{OPEN}: tất cả request bị từ chối ngay lập tức (fail-fast) mà không gọi
+          thật đến service đích, trả về kết quả fallback. Sau 10 giây, circuit chuyển
+          sang HALF\_OPEN.
+    \item \textbf{HALF\_OPEN}: cho phép một số lượng hạn chế request thật đến service
+          đích để kiểm tra. Nếu thành công, circuit trở về CLOSED; nếu thất bại, quay
+          lại OPEN.
+\end{itemize}
 
-Rate Limiting là kỹ thuật giới hạn số lượng yêu cầu mà một client có thể gửi đến hệ thống
-trong một khoảng thời gian nhất định. Trong bối cảnh thương mại điện tử, rate limiting phục
-vụ ba mục đích chính: bảo vệ hệ thống khỏi các cuộc tấn công từ chối dịch vụ (DoS/DDoS);
-ngăn chặn hành vi lạm dụng như bot đặt hàng tự động, quét giá sản phẩm; và đảm bảo công
-bằng giữa những người dùng trong các sự kiện giới hạn như flash sale.
+Trong hệ thống, Circuit Breaker được cấu hình cho toàn bộ bảy lời gọi Feign:
+cart-service → product-service (xác minh sản phẩm khi thêm giỏ), order-service →
+product-service (snapshot giá), order-service → voucher-service (reserve/commit/release),
+order-service → cart-service (xóa giỏ sau khi đặt hàng), payment-service → order-service
+(lấy payment context), review-service → order-service (xác minh lịch sử mua) và
+flash-sale-service → order-service (đếm đơn phục vụ reconciliation). Cần lưu ý các tương
+tác trong luồng Saga như đặt chỗ tồn kho không dùng Feign mà đi qua sự kiện Kafka, nên
+không nằm trong phạm vi bảo vệ của Circuit Breaker. Kết hợp với Retry (tối đa 3 lần, delay
+500ms) và Time Limiter (timeout 3 giây), Resilience4j đảm bảo sự cố tại một service không
+làm tê liệt service phụ thuộc.
 
-Thuật toán Token Bucket là một trong những cơ chế rate limiting phổ biến và linh hoạt nhất.
-Mỗi client được gán một "thùng" (bucket) có sức chứa tối đa $B$ token. Token được thêm vào
-thùng với tốc độ không đổi $r$ token mỗi giây, cho đến khi thùng đầy. Mỗi yêu cầu đến tiêu
-thụ một token từ thùng; nếu thùng rỗng, yêu cầu bị từ chối. Cơ chế này cho phép xử lý các
-đợt bùng nổ ngắn hạn (burst) --- client có thể gửi nhanh $B$ yêu cầu liên tiếp miễn là đã
-tích lũy đủ token, nhưng không thể duy trì tốc độ cao hơn $r$ trong dài hạn. Điều này đặc
-biệt phù hợp với các API thương mại điện tử, nơi người dùng thường thao tác nhanh trong
-thời gian ngắn rồi nghỉ.
+\textbf{Rate Limiting} tại API Gateway giới hạn số lượng request mỗi client có thể gửi
+trong một khoảng thời gian, bảo vệ hệ thống khỏi lạm dụng và đảm bảo công bằng giữa người
+dùng. Thuật toán Token Bucket được sử dụng: mỗi client được gán "thùng" với sức chứa tối đa
+$B$ token, token bổ sung với tốc độ $r$ token/giây, mỗi request tiêu thụ 1 token ---
+cho phép burst ngắn hạn nhưng giới hạn tốc độ trung bình dài hạn. Hai endpoint được giới
+hạn đặc biệt: \texttt{POST /api/orders} (10 req/s, burst 20) và
+\texttt{POST /api/flash-sales/*/purchase} (3 req/s, burst 5). Trạng thái token bucket lưu
+trên Redis, cho phép rate limiting nhất quán khi Gateway chạy nhiều instance.
 
-% =======================================================================
-\section{Bảo mật trong hệ thống phân tán}
-\label{section:2.6}
+\subsection{Khả năng quan sát --- ba trụ cột giám sát hệ thống phân tán}
 
-\subsection{OAuth 2.0 --- Khung ủy quyền tiêu chuẩn}
+Khi một request thất bại trong hệ thống 16 service, không thể biết lỗi phát sinh từ
+đâu mà không có công cụ quan sát đúng. Observability được xây dựng trên ba trụ cột bổ
+sung lẫn nhau:
 
-OAuth 2.0 là một khung ủy quyền (authorization framework) được tiêu chuẩn hóa, cho phép một
-ứng dụng bên thứ ba (Client) truy cập vào tài nguyên được bảo vệ trên một máy chủ tài nguyên
-(Resource Server) thay mặt cho người dùng (Resource Owner), mà không cần Client biết thông
-tin xác thực của người dùng. Mô hình này hoạt động thông qua bốn vai trò: Resource Owner
-(người dùng sở hữu dữ liệu), Client (ứng dụng muốn truy cập), Authorization Server (máy
-chủ cấp token ủy quyền) và Resource Server (máy chủ lưu trữ tài nguyên được bảo vệ).
+\textbf{Metrics (Prometheus + Grafana)}: thu thập định kỳ các giá trị số phản ánh tình
+trạng hệ thống --- request rate, latency percentile (p50/p95/p99), error rate, JVM memory,
+Kafka consumer lag. Metrics hiệu quả cho cảnh báo ngưỡng và lập kế hoạch năng lực, nhưng
+không giải thích nguyên nhân của từng sự kiện cụ thể.
 
-Luồng hoạt động cơ bản: Client yêu cầu ủy quyền từ Resource Owner, nhận được một Grant
-(mã ủy quyền). Client sau đó đổi Grant này lấy Access Token từ Authorization Server.
-Access Token được gửi kèm trong mỗi yêu cầu đến Resource Server để chứng minh quyền truy
-cập. Các grant type chính bao gồm: Authorization Code (dành cho ứng dụng web có backend),
-Client Credentials (dành cho giao tiếp máy-với-máy, không có người dùng), Authorization
-Code với PKCE (dành cho ứng dụng di động và Single Page Application).
+\textbf{Distributed Tracing (Zipkin)}: gán một \texttt{TraceId} duy nhất cho mỗi request,
+truyền qua tất cả service mà request đi qua. Mỗi đoạn xử lý tại một service tạo ra một
+\texttt{Span} với thời gian bắt đầu, kết thúc và các nhãn mô tả. Tập hợp tất cả Span của
+một Trace tái tạo chính xác hành trình của request qua hệ thống, xác định service nào
+đang gây độ trễ. Micrometer Tracing tự động propagate context qua HTTP header
+(\texttt{traceparent} theo chuẩn W3C) và qua Kafka message header.
 
-\subsection{OpenID Connect --- Lớp xác thực định danh}
+\textbf{Log tương quan theo trace context}: toàn bộ service dùng chung một Logback pattern
+thống nhất, nhúng tên service cùng \texttt{traceId} và \texttt{spanId} vào mỗi dòng log
+(các giá trị này được Micrometer Tracing tự động điền vào MDC). Nhờ \texttt{traceId} xuất
+hiện đồng nhất trên mọi dòng log của cùng một request, có thể lọc và ghép toàn bộ log liên
+quan đến một request xuyên suốt các service, đồng thời đối chiếu trực tiếp giữa dòng log và
+trace tương ứng trên Zipkin khi điều tra sự cố.
 
-OpenID Connect (OIDC) được xây dựng như một lớp định danh trên nền OAuth 2.0, bổ sung khả
-năng xác thực người dùng (authentication) --- điều mà bản thân OAuth 2.0 không giải quyết.
-Trong khi OAuth 2.0 trả lời câu hỏi "ứng dụng được phép làm gì?" (ủy quyền), OIDC bổ sung
-câu hỏi "người dùng là ai?" (xác thực). OIDC bổ sung một loại token mới gọi là ID Token
---- một JWT chứa các thông tin định danh của người dùng như mã định danh, địa chỉ email,
-tên hiển thị và các vai trò.
+\textbf{Scheduled Jobs và Distributed Lock} --- nhiều tác vụ phải chạy định kỳ theo thời
+gian: OutboxPoller phát sự kiện mỗi 1 giây, ReservationExpiryScheduler hủy đơn VNPAY hết
+hạn mỗi 60 giây, ReconciliationScheduler đối chiếu số liệu flash sale mỗi 5 phút. Khi
+service chạy nhiều instance, cần đảm bảo chỉ một instance thực thi scheduler tại mỗi thời
+điểm. Giải pháp là Distributed Lock trên Redis với \texttt{SET NX EX}: \texttt{NX} đảm bảo
+chỉ một instance giành được khóa; \texttt{EX} đảm bảo khóa tự động giải phóng nếu instance
+đang giữ khóa gặp sự cố, tránh deadlock vĩnh viễn. Đối với OutboxPoller, \texttt{FOR UPDATE
+SKIP LOCKED} đóng vai trò distributed lock ở tầng database: mỗi instance xử lý một tập con
+bản ghi outbox mà không xung đột, tối đa hóa thông lượng khi scale.
 
-Sự phân biệt giữa Access Token và ID Token mang ý nghĩa thiết kế quan trọng: Access Token
-được gửi đến Resource Server để ủy quyền truy cập API; ID Token được gửi đến Client để
-xác định danh tính người dùng và thiết lập phiên làm việc. Trong thực tế, một ứng dụng
-web thường nhận cả hai loại token: Access Token để gọi API backend, ID Token để hiển thị
-thông tin người dùng trên giao diện.
-
-\subsection{JSON Web Token (JWT)}
-
-JWT là một tiêu chuẩn mở định nghĩa cách thức truyền thông tin an toàn giữa các bên dưới
-dạng một đối tượng JSON được ký số. JWT bao gồm ba phần, được mã hóa base64url và phân tách
-bởi dấu chấm: Header chứa thông tin về thuật toán ký; Payload chứa các claims --- những
-khẳng định về thực thể (người dùng, ứng dụng) và các siêu dữ liệu như thời điểm phát hành,
-thời điểm hết hạn; Signature là chữ ký số được tạo ra bằng cách ký tổ hợp Header và Payload
-với một khóa bí mật hoặc khóa riêng.
-
-JWT cho phép xác thực phi trạng thái (stateless authentication): server không cần duy trì
-session, chỉ cần xác minh chữ ký của token là có thể tin tưởng vào nội dung bên trong. Hai
-chế độ ký chính được sử dụng: ký đối xứng (HS256) --- cùng một khóa bí mật được dùng để
-ký và xác minh, phù hợp với hệ thống đơn dịch vụ nhưng không phù hợp với môi trường đa
-dịch vụ vì tất cả dịch vụ phải chia sẻ cùng một khóa; ký bất đối xứng (RS256) --- khóa
-riêng để ký, khóa công khai để xác minh, cho phép mỗi dịch vụ xác minh token độc lập mà
-không cần biết khóa riêng, rất phù hợp với kiến trúc microservices.
-
-\subsection{Trusted Subsystem Pattern}
-
-Trong kiến trúc microservices, có hai cách tiếp cận để các dịch vụ backend xác định danh
-tính người dùng từ một request. Cách thứ nhất: mỗi dịch vụ tự xác minh JWT với
-Authorization Server --- cách này tiêu tốn tài nguyên do mỗi request phải thực hiện thêm
-một lời gọi mạng, đồng thời tạo ra sự phụ thuộc mạnh giữa tất cả dịch vụ và Authorization
-Server. Cách thứ hai --- Trusted Subsystem Pattern: chỉ có API Gateway thực hiện việc xác
-minh JWT, sau đó chuyển tiếp thông tin định danh đã được xác thực (mã người dùng, vai trò,
-email) qua các HTTP header tin cậy như \texttt{X-User-Id}, \texttt{X-User-Roles} và
-\texttt{X-User-Email} đến các dịch vụ backend. Backend hoàn toàn tin tưởng các header này
-mà không cần xác minh lại JWT.
-
-Pattern này hoạt động dựa trên một điều kiện tiên quyết quan trọng: các dịch vụ backend
-phải được bảo vệ ở tầng mạng, đảm bảo rằng chỉ có API Gateway mới có thể gọi trực tiếp
-vào các endpoint nội bộ của backend. Trong môi trường Docker Compose, điều kiện này được
-đảm bảo thông qua việc chỉ expose cổng của Gateway ra bên ngoài, trong khi tất cả các
-dịch vụ backend chỉ lắng nghe trên mạng nội bộ của Docker.
-
-% \begin{figure}[H]
-%     \centering
-%     \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/keycloak.png}
-%     \caption{Luồng xác thực theo Trusted Subsystem Pattern với Keycloak và API Gateway}
-%     \label{fig:trusted-subsystem}
-% \end{figure}
-
-% =======================================================================
-\section{API Gateway và Service Discovery}
-\label{section:2.7}
-
-\subsection{API Gateway Pattern}
-
-Trong kiến trúc microservices, mỗi dịch vụ có địa chỉ mạng và API riêng. Nếu client phải
-biết và giao tiếp trực tiếp với từng dịch vụ, độ phức tạp phía client sẽ tăng lên đáng kể,
-đặc biệt khi số lượng dịch vụ lớn và địa chỉ thay đổi liên tục trong môi trường container.
-Hơn nữa, các vấn đề cross-cutting như xác thực, phân quyền, rate limiting, CORS và biến
-đổi request/response sẽ phải được xử lý lặp lại ở mỗi dịch vụ hoặc đẩy về phía client.
-
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{Hinhve/chuong2/api-gateway.png}
-    \caption{Kiến trúc ứng dụng sử dụng API Gateway}
-    \label{fig:api-gateway}
+    \fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}%
+        \texttt{Hinhve/chuong2/observability.png}%
+    \vspace{3cm}}}
+    \caption{Ba trụ cột Observability: Metrics, Distributed Tracing và Log tương quan theo trace context}
+    \label{fig:observability}
 \end{figure}
-
-API Gateway Pattern giải quyết những vấn đề này bằng cách cung cấp một điểm vào duy nhất
-cho tất cả client. Gateway đảm nhiệm tập trung các trách nhiệm chung: định tuyến yêu cầu
-đến đúng dịch vụ đích dựa trên đường dẫn, header hoặc tham số; xác thực và phân quyền tại
-một điểm duy nhất; áp dụng rate limiting để bảo vệ hệ thống; xử lý CORS cho các yêu cầu
-từ trình duyệt; và thực hiện biến đổi request/response khi cần thiết (thêm header, chuyển
-đổi định dạng). Mô hình này giúp giảm đáng kể độ phức tạp phía client, tạo một điểm kiểm
-soát bảo mật duy nhất và cho phép thay đổi kiến trúc nội bộ mà không ảnh hưởng đến client.
-
-\subsection{Service Discovery}
-
-Trong môi trường container động như Docker, địa chỉ IP và cổng của các dịch vụ thay đổi mỗi
-khi container được khởi động lại hoặc scale. Việc hardcode địa chỉ trong cấu hình là không
-khả thi. Service Discovery là cơ chế giải quyết vấn đề này: mỗi dịch vụ tự động đăng ký địa
-chỉ hiện tại của mình lên một registry trung tâm (service registry) khi khởi động, và hủy
-đăng ký khi dừng. Các dịch vụ khác --- bao gồm API Gateway --- truy vấn registry để lấy địa
-chỉ thực tế của dịch vụ cần gọi.
-
-
-Có hai mô hình Service Discovery chính. Client-side Discovery: client tự truy vấn registry
-và tự quyết định dịch vụ đích, phù hợp khi client có đủ thông tin để đưa ra quyết định.
-Server-side Discovery: client gửi yêu cầu đến một load balancer, load balancer truy vấn
-registry và chuyển tiếp yêu cầu đến một instance phù hợp --- mô hình này che giấu hoàn
-toàn chi tiết discovery khỏi client. Trong hệ sinh thái Spring Cloud, Netflix Eureka đóng
-vai trò service registry, hỗ trợ cả hai mô hình và tích hợp chặt chẽ với Spring Cloud
-Gateway cho server-side discovery.
-
-% =======================================================================
-\section{Khả năng quan sát trong hệ thống phân tán}
-\label{section:2.8}
-
-Trong hệ thống microservices, một request từ client có thể đi qua hàng chục dịch vụ khác
-nhau trước khi hoàn thành. Khi xảy ra sự cố --- một request bị chậm, thất bại hoặc trả về
-kết quả không mong đợi --- việc xác định nguyên nhân gốc rễ trở nên cực kỳ khó khăn nếu
-chỉ dựa vào log của từng dịch vụ riêng lẻ. Khả năng quan sát (observability) là thuộc tính
-cho phép hiểu được trạng thái nội tại của hệ thống thông qua các tín hiệu đầu ra bên ngoài
-mà không cần biết trước câu hỏi cụ thể cần trả lời.
-
-Observability trong hệ thống phân tán được xây dựng trên ba trụ cột bổ sung và hỗ trợ lẫn
-nhau:
-
-\textbf{Metrics (Số liệu)} là các giá trị số được thu thập định kỳ theo thời gian, phản ánh
-tình trạng tổng thể của hệ thống: tỷ lệ yêu cầu (request rate), độ trễ (latency percentile),
-tỷ lệ lỗi (error rate), mức sử dụng CPU và bộ nhớ, số lượng kết nối cơ sở dữ liệu, độ trễ
-của message consumer (consumer lag). Metrics rất hiệu quả cho việc giám sát chủ động, thiết
-lập cảnh báo và lập kế hoạch năng lực, nhưng không cung cấp thông tin chi tiết về nguyên
-nhân của từng sự cố riêng lẻ.
-
-\textbf{Distributed Tracing (Truy vết phân tán)} theo dõi hành trình hoàn chỉnh của một
-request khi nó đi qua nhiều dịch vụ. Mỗi request được gán một mã định danh duy nhất toàn
-cục (Trace ID), và mỗi đoạn xử lý trong một dịch vụ được ghi nhận như một Span với mã
-định danh riêng, thời gian bắt đầu, thời gian kết thúc và các thẻ mô tả (tags). Tập hợp
-tất cả Span của một Trace cho phép tái tạo chính xác đường đi của request qua hệ thống,
-xác định dịch vụ nào đang gây ra độ trễ và điểm nào trong luồng xử lý bị lỗi. Chuẩn W3C
-Trace Context đảm bảo khả năng tương tác giữa các thư viện tracing khác nhau.
-
-\textbf{Structured Logging (Ghi nhật ký có cấu trúc)} ghi lại các sự kiện trong quá trình
-xử lý dưới dạng có cấu trúc (thường là JSON) thay vì văn bản thuần túy. Mỗi dòng log chứa
-các trường được đánh dấu rõ ràng: thời gian, tên dịch vụ, mức độ nghiêm trọng, Trace ID,
-Span ID và nội dung thông điệp. Khi kết hợp với Trace ID từ Distributed Tracing, structured
-logging cho phép lọc và tổng hợp toàn bộ log của một request duy nhất xuyên suốt tất cả
-dịch vụ, tạo ra bức tranh hoàn chỉnh về những gì đã xảy ra trong suốt vòng đời của request.
-
-% \begin{figure}[H]
-%     \centering
-%     \includegraphics[width=0.85\textwidth]{DUONG_DAN_ANH}
-%     \caption{Mô hình ba trụ cột của Observability trong hệ thống microservices}
-%     \label{fig:observability}
-% \end{figure}
 
 \end{document}

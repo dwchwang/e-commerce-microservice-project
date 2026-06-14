@@ -5,6 +5,9 @@ import com.ecommerce.user.dto.UserProfileResponse;
 import com.ecommerce.user.entity.UserProfile;
 import com.ecommerce.user.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,15 +28,26 @@ public class AdminUserController {
     private final UserProfileRepository userProfileRepository;
 
     @GetMapping
-    public ApiResponse<List<UserProfileResponse>> listUsers(@RequestParam(required = false) String q) {
+    public ApiResponse<Page<UserProfileResponse>> listUsers(
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         String normalizedQ = q == null ? "" : q.trim().toLowerCase();
-        return ApiResponse.ok(userProfileRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
+        List<UserProfileResponse> filtered = userProfileRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
                 .filter(user -> normalizedQ.isBlank()
                         || safeLower(user.getEmail()).contains(normalizedQ)
                         || safeLower(user.getFullName()).contains(normalizedQ)
                         || safeLower(user.getPhoneNumber()).contains(normalizedQ))
                 .map(this::toResponse)
-                .toList());
+                .toList();
+
+        int pageSize = Math.max(1, Math.min(size, 200));
+        int pageIndex = Math.max(0, page);
+        int from = Math.min(pageIndex * pageSize, filtered.size());
+        int to = Math.min(from + pageSize, filtered.size());
+        Page<UserProfileResponse> result = new PageImpl<>(
+                filtered.subList(from, to), PageRequest.of(pageIndex, pageSize), filtered.size());
+        return ApiResponse.ok(result);
     }
 
     @GetMapping("/{id}")

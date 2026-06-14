@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminTableShell } from "@/components/admin/AdminTableShell";
+import { AdminPagination } from "@/components/admin/AdminPagination";
 import { DeleteButton } from "@/components/admin/DeleteButton";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,9 +10,15 @@ import { adminFetchSafe, formatCurrency, formatDateTime, toAdminPage, type PageP
 import type { VoucherAdmin } from "@/lib/admin/types";
 import { deleteVoucherAction } from "./actions";
 
-export default async function AdminVouchersPage() {
-  const payload = await adminFetchSafe<PagePayload<VoucherAdmin>>("/vouchers?size=100", { content: [] });
-  const vouchers = toAdminPage(payload, 100);
+export default async function AdminVouchersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const page = String(sp.page ?? "0");
+  const payload = await adminFetchSafe<PagePayload<VoucherAdmin>>(`/vouchers?size=20&page=${page}`, { content: [] });
+  const vouchers = toAdminPage(payload, 20);
 
   return (
     <>
@@ -25,7 +32,17 @@ export default async function AdminVouchersPage() {
           </Link>
         }
       />
-      <AdminTableShell footer={`Tổng ${vouchers.totalElements} voucher`}>
+      <AdminTableShell
+        footer={
+          <AdminPagination
+            basePath="/admin/vouchers"
+            page={vouchers.page}
+            totalPages={vouchers.totalPages}
+            totalElements={vouchers.totalElements}
+            searchParams={sp}
+          />
+        }
+      >
         <Table>
           <TableHeader>
             <TableRow>

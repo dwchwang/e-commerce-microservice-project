@@ -7,36 +7,35 @@
 \end{center}
 \vspace{1cm}
 
-This thesis presents the complete analysis, design, and implementation of an e-commerce system
-based on a microservices architecture, built with Spring Boot 3.5, Spring Cloud 2025, and Java 21.
-The system is decomposed into 13 independent microservices following Domain-Driven Design (DDD)
-and Bounded Context principles, each owning its own database and deployment lifecycle.
+This thesis presents the analysis, design, and implementation of an e-commerce system based on
+a microservices architecture, built with Java~21, Spring Boot~3.5, and Spring Cloud~2025. The
+system is decomposed into 13 independent microservices following Domain-Driven Design and Bounded
+Context principles, each owning its own database and deployment lifecycle. Service communication
+combines synchronous REST/OpenFeign with asynchronous Apache Kafka in KRaft mode.
 
-Service communication combines synchronous REST + OpenFeign with asynchronous Apache Kafka
-(KRaft mode). Four core distributed patterns are fully applied: Saga Orchestration with
-order-service acting as orchestrator for distributed transaction management; Transactional Outbox
-guaranteeing at-least-once event publishing; Idempotent Consumer ensuring exactly-once processing
-effect; and CQRS-lite with Elasticsearch as the read model for full-text search.
+Four core distributed patterns are fully applied: Saga Orchestration with order-service as
+orchestrator for distributed transaction management; Transactional Outbox and Idempotent Consumer
+together achieving exactly-once processing effect over at-least-once delivery; and CQRS-lite with
+Elasticsearch as the read model for full-text search. Two notable technical highlights are a
+flash sale over-sell prevention mechanism using Redis Lua atomic scripts, a buyer set, and a
+reconciliation scheduler; and VNPAY payment gateway integration with HMAC-SHA512 verification,
+IPN callback handling, and timeout recovery. Security is centralized via Keycloak~26
+(OAuth~2.0/OIDC, JWT~RS256) with the API Gateway applying the Trusted Subsystem Pattern.
 
-Two notable technical highlights are: (1) a flash sale over-sell prevention mechanism using
-Redis Lua atomic scripts, buyer set, compensation, and reconciliation; (2) VNPAY payment gateway
-integration with HMAC-SHA512 verification, Return URL, IPN callback handling, and timeout
-scheduler. Security is centralized via Keycloak 26 (OAuth 2.0/OIDC) with JWT RS256, where
-the API Gateway acts as Resource Server applying the Trusted Subsystem Pattern --- internal
-services receive identity information via request headers without needing to call Keycloak on
-every request.
-
-In addition to the backend, the thesis implements a Next.js storefront and Admin Panel for
-customer and administrator workflows. The system is packaged with Docker Compose and deployed
-in a production-like single-host environment on AWS EC2, using Caddy for reverse proxy/HTTPS
-and GitHub Actions/GHCR for image build and publishing. The observability stack includes
-Prometheus, Grafana, and Zipkin, enabling metrics monitoring, distributed tracing, and
-end-to-end debugging. Experimental results include 9/9 backend readiness suites passing,
-k6 catalog/checkout/flash-sale tests, and resilience scenarios covering order-service, Kafka,
-Redis, and inventory compensation.
+The thesis also implements a Next.js storefront and Admin Panel, packaged with Docker Compose
+and deployed in a production-like environment on AWS EC2 with Caddy reverse proxy and
+GitHub Actions/GHCR for CI/CD. The observability stack comprises Prometheus, Grafana, and
+Zipkin. Experimental results show all 9 backend readiness suites passing; k6 load tests for
+catalog browsing, checkout, and flash-sale spike all meeting their latency and correctness
+targets; and resilience scenarios confirming Outbox replay after Kafka failure, graceful
+degradation under Redis outage, and Saga compensation on inventory shortage.
 
 \vspace{1cm}
 
-
+\begin{flushright}
+\begin{tabular}{@{}c@{}}
+\textbf{Nguyen Duc Bao Hoang}\\
+\end{tabular}
+\end{flushright}
 
 \end{document}

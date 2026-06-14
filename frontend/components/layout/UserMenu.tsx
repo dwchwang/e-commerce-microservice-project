@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { User, LogOut, Package, MapPin, ShoppingBag } from "lucide-react";
+import { User, LogOut, Package, MapPin, ShoppingBag, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -27,16 +27,23 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
-        <Button variant="ghost" size="icon" type="button">
-          <User className="h-5 w-5" />
-        </Button>
+      <DropdownMenuTrigger className="inline-flex size-9 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted">
+        <User className="h-5 w-5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <div className="px-2 py-1.5 text-sm font-medium truncate">
           {session.user.email}
         </div>
         <DropdownMenuSeparator />
+        {session.user.roles?.includes("ROLE_ADMIN") && (
+          <>
+            <DropdownMenuItem onClick={() => router.push("/admin/dashboard")} className="cursor-pointer text-primary">
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              Trang quản trị
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuItem onClick={() => router.push("/orders")} className="cursor-pointer">
           <Package className="mr-2 h-4 w-4" />
           Đơn hàng

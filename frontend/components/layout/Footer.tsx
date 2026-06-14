@@ -1,41 +1,81 @@
 import Link from "next/link";
 
+const columns = [
+  {
+    heading: "Mua sắm",
+    links: [
+      { href: "/products", label: "Tất cả sản phẩm" },
+      { href: "/flash-sales", label: "Flash Sale" },
+      { href: "/search", label: "Tìm kiếm" },
+    ],
+  },
+  {
+    heading: "Công ty",
+    links: [
+      { href: "/about", label: "Về chúng tôi" },
+      { href: "/contact", label: "Liên hệ" },
+    ],
+  },
+  {
+    heading: "Tài khoản",
+    links: [
+      { href: "/profile", label: "Hồ sơ của tôi" },
+      { href: "/orders", label: "Đơn hàng" },
+      { href: "/addresses", label: "Sổ địa chỉ" },
+      { href: "/cart", label: "Giỏ hàng" },
+    ],
+  },
+  {
+    heading: "Hỗ trợ",
+    links: [
+      { href: "/content/faq", label: "Câu hỏi thường gặp" },
+      { href: "/content/terms", label: "Điều khoản dịch vụ" },
+      { href: "/content/privacy", label: "Chính sách bảo mật" },
+      { href: "/content/shipping", label: "Vận chuyển & đổi trả" },
+    ],
+  },
+];
+
 export function Footer() {
   return (
-    <footer className="border-t mt-auto bg-muted/30">
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <footer className="mt-auto bg-secondary text-foreground">
+      <div className="container mx-auto px-4 py-14">
+        <div className="grid grid-cols-2 gap-x-8 gap-y-10 md:grid-cols-5">
           {/* Brand */}
-          <div>
-            <h3 className="font-bold text-lg mb-3">
+          <div className="col-span-2 md:col-span-1">
+            <h3 className="text-lg font-semibold tracking-tight mb-3">
               <span className="text-primary">Tech</span>Store
             </h3>
-            <p className="text-sm text-muted-foreground">
-              Cửa hàng bán lẻ thiết bị điện tử chính hãng — Laptop, điện thoại, phụ kiện.
+            <p className="text-[13px] leading-relaxed text-muted-foreground max-w-xs">
+              Cửa hàng bán lẻ thiết bị điện tử chính hãng — laptop, điện thoại,
+              phụ kiện. Giao hàng toàn quốc, bảo hành chính hãng.
             </p>
           </div>
 
-          {/* Links */}
-          <div>
-            <h4 className="font-semibold mb-3">Danh mục</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/products" className="hover:text-primary transition-colors">Tất cả sản phẩm</Link></li>
-              <li><Link href="/flash-sales" className="hover:text-primary transition-colors">Flash Sale</Link></li>
-              <li><Link href="/search" className="hover:text-primary transition-colors">Tìm kiếm</Link></li>
-            </ul>
-          </div>
-
-          {/* Support */}
-          <div>
-            <h4 className="font-semibold mb-3">Hỗ trợ</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/content/faq" className="hover:text-primary transition-colors">FAQ</Link></li>
-              <li><Link href="/content/terms" className="hover:text-primary transition-colors">Điều khoản</Link></li>
-            </ul>
-          </div>
+          {columns.map((col) => (
+            <div key={col.heading}>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-4">
+                {col.heading}
+              </h4>
+              <ul className="space-y-2.5">
+                {col.links.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-[13px] text-foreground/80 transition-colors hover:text-primary"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-        <div className="border-t mt-8 pt-4 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} TechStore. Đồ án tốt nghiệp — Microservice E-commerce.
+
+        <div className="mt-12 border-t border-border pt-6 text-[12px] text-muted-foreground">
+          © {new Date().getFullYear()} TechStore. Đồ án tốt nghiệp — Hệ thống
+          thương mại điện tử Microservices.
         </div>
       </div>
     </footer>

@@ -174,19 +174,22 @@ nguyên và định hướng nghiên cứu của đồ án tốt nghiệp:
 \label{section:1.4}
 
 Để có cơ sở thực tiễn cho các quyết định thiết kế, đề tài tiến hành khảo sát kiến trúc của
-một số hệ thống TMĐT tiêu biểu trên thị trường, cũng như các dự án mã nguồn mở có liên quan
-trong cộng đồng phát triển.
+một số nền tảng TMĐT lớn đang vận hành thành công trên thị trường. Mặc dù các nền tảng này
+vận hành theo mô hình sàn giao dịch (multi-vendor marketplace), các quyết định kỹ thuật của
+họ --- đặc biệt về kiến trúc microservices, chiến lược dữ liệu, message queue và cơ chế xử
+lý đồng thời cao --- là những bài học giá trị cho bất kỳ hệ thống TMĐT nào, bao gồm cả mô
+hình B2C mà đề tài hướng tới.
 
-\subsection*{Các sàn thương mại điện tử lớn}
+\subsection*{Kiến trúc các nền tảng thương mại điện tử lớn}
 
-Bảng~\ref{table:survey-platforms} tổng hợp kết quả khảo sát kiến trúc của ba sàn TMĐT hàng
-đầu tại Việt Nam và Đông Nam Á, tập trung vào các khía cạnh: mô hình kiến trúc, ngôn ngữ
-lập trình chính, hệ quản trị cơ sở dữ liệu, message queue, giải pháp tìm kiếm và chiến lược
-xử lý flash sale.
+Bảng~\ref{table:survey-platforms} tổng hợp kết quả khảo sát kiến trúc của ba nền tảng TMĐT
+hàng đầu tại Việt Nam và Đông Nam Á, tập trung vào các khía cạnh: mô hình kiến trúc, ngôn
+ngữ lập trình chính, hệ quản trị cơ sở dữ liệu, message queue, giải pháp tìm kiếm và chiến
+lược xử lý flash sale.
 
 \begin{table}[H]
 \centering
-\caption{Khảo sát kiến trúc các sàn thương mại điện tử lớn}
+\caption{Kiến trúc các nền tảng thương mại điện tử lớn}
 \label{table:survey-platforms}
 \begin{tabular}{|l|p{3.2cm}|p{3.2cm}|p{3.2cm}|}
 \hline
@@ -200,37 +203,50 @@ Flash Sale & Redis + Lua + DB constraint & Redis + Queue + DB lock & Alibaba Sen
 \end{tabular}
 \end{table}
 
-Từ kết quả khảo sát, có thể rút ra năm điểm chung trong kiến trúc của các sàn TMĐT lớn, qua
-đó củng cố cho các quyết định công nghệ của đề tài: (1)~kiến trúc microservices được sử dụng
-để phân rã nghiệp vụ phức tạp thành các dịch vụ độc lập; (2)~chiến lược polyglot persistence
---- kết hợp nhiều loại cơ sở dữ liệu cho các mục đích khác nhau --- là cách tiếp cận phổ
-biến; (3)~message queue đóng vai trò trung tâm trong xử lý bất đồng bộ và giao tiếp giữa
-các dịch vụ; (4)~Elasticsearch là lựa chọn thống nhất cho bài toán tìm kiếm toàn văn; và
-(5)~Redis là thành phần then chốt trong kiến trúc xử lý flash sale, thường được kết hợp với
-các cơ chế bảo vệ ở tầng cơ sở dữ liệu.
+Từ kết quả khảo sát, có thể rút ra năm điểm chung quan trọng trong kiến trúc kỹ thuật của
+các nền tảng TMĐT lớn, qua đó củng cố cho các quyết định công nghệ của đề tài: (1)~kiến
+trúc microservices được sử dụng để phân rã nghiệp vụ phức tạp thành các dịch vụ độc lập;
+(2)~chiến lược polyglot persistence --- kết hợp nhiều loại cơ sở dữ liệu cho các mục đích
+khác nhau --- là cách tiếp cận phổ biến; (3)~message queue đóng vai trò trung tâm trong
+xử lý bất đồng bộ và giao tiếp giữa các dịch vụ; (4)~Elasticsearch là lựa chọn thống nhất
+cho bài toán tìm kiếm toàn văn; và (5)~Redis là thành phần then chốt trong kiến trúc xử lý
+flash sale, thường được kết hợp với các cơ chế bảo vệ ở tầng cơ sở dữ liệu.
 
-\subsection*{Dự án tham khảo}
+\subsection*{Tài liệu và dự án tham khảo}
 
-Bên cạnh các hệ thống thương mại thực tế, đề tài cũng tham khảo một số dự án mã nguồn mở
-triển khai microservices với Spring Boot:
+Bên cạnh việc khảo sát xu hướng kiến trúc, đề tài tham khảo các tài liệu và dự án sau
+trong quá trình thiết kế và triển khai:
 
 \begin{itemize}
-    \item \textbf{Spring PetClinic Microservices:} Dự án chính thức của Spring Team minh họa
-    quá trình tách một ứng dụng monolith thành các microservices sử dụng Spring Cloud. Đây
-    là nguồn tham khảo chính về cấu trúc dự án Maven multi-module, cấu hình Spring Cloud
-    và tổ chức Docker Compose cho môi trường phát triển cục bộ.
+    \item \textbf{Microservices Patterns (Chris Richardson):} Đây là tài liệu tham khảo
+    nền tảng về các mẫu thiết kế trong kiến trúc microservices, bao gồm Saga, Transactional
+    Outbox, CQRS, API Gateway và Database per Service. Trang web microservices.io cung cấp
+    bộ pattern catalog đầy đủ kèm ví dụ minh họa, là nguồn tham khảo chính cho các quyết
+    định thiết kế phân tán trong đề tài.
 
-    \item \textbf{AxonBank (Axon Framework):} Dự án minh họa việc áp dụng CQRS và Event
-    Sourcing với Axon Framework trên nền Spring Boot, cung cấp tài liệu tham khảo giá trị
-    về thiết kế hướng sự kiện và cách tổ chức luồng xử lý command/query.
+    \item \textbf{Building Microservices (Sam Newman, O'Reilly):} Cuốn sách kinh điển về
+    thiết kế và triển khai microservices, cung cấp nền tảng lý thuyết vững chắc về
+    bounded context, database per service, giao tiếp đồng bộ/bất đồng bộ, resilience
+    pattern và chiến lược triển khai. Ấn bản thứ hai (2021) cập nhật các thực tiễn mới
+    về container hóa và observability.
 
-    \item \textbf{Các dự án E-Commerce Microservices trên GitHub:}\\
-    Nhiều dự án e-commerce
-    mã nguồn mở trên GitHub cung cấp ý tưởng tham khảo về cấu trúc thư mục dịch vụ, thiết
-    kế REST API và dockerization. Tuy nhiên, hầu hết các dự án này chưa triển khai đầy đủ
-    các mẫu thiết kế phân tán phức tạp như Saga, Transactional Outbox hay cơ chế atomic
-    counter cho flash sale --- những điểm mà đề tài này hướng tới giải quyết một cách trọn
-    vẹn.
+    \item \textbf{Domain-Driven Design (Eric Evans):} Cuốn sách đặt nền móng cho phương
+    pháp DDD, cung cấp các khái niệm cốt lõi như Bounded Context, Ubiquitous Language,
+    Aggregate và Context Map --- những công cụ được sử dụng trực tiếp để phân rã hệ thống
+    thành 13 microservice trong đề tài.
+
+    \item \textbf{Spring Boot \& Spring Cloud Official Documentation:} Tài liệu chính thức
+    của Spring cung cấp hướng dẫn chi tiết về cách cấu hình Spring Cloud Gateway, Eureka
+    Service Discovery, Config Server, OpenFeign, Spring Kafka và Spring Security OAuth2
+    Resource Server. Đây là nguồn tham khảo kỹ thuật chính trong quá trình cài đặt.
+
+    \item \textbf{Các dự án e-commerce mã nguồn mở trên GitHub:} Nhiều dự án e-commerce
+    mã nguồn mở như Saleor, Medusa và Spree cung cấp ý tưởng tham khảo về cấu trúc thư
+    mục, thiết kế REST API và tổ chức dữ liệu. Tuy nhiên, hầu hết các dự án này chưa
+    triển khai đầy đủ các mẫu thiết kế phân tán phức tạp như Saga Orchestration,
+    Transactional Outbox với Kafka, Idempotent Consumer hay cơ chế Redis Lua atomic
+    counter cho flash sale --- những điểm mà đề tài này hướng tới giải quyết một cách
+    trọn vẹn.
 \end{itemize}
 
 \section{Định hướng giải pháp}
@@ -310,43 +326,30 @@ Báo cáo được tổ chức thành năm chương chính, một chương kết
 các chương được sắp xếp theo logic từ tổng quan đến chi tiết, từ lý thuyết đến thực hành,
 từ thiết kế đến kiểm chứng:
 
-\textbf{Chương 1 --- Giới thiệu đề tài} trình bày bối cảnh và câu hỏi nghiên cứu, mục tiêu,
-phạm vi, kết quả khảo sát hệ thống tương tự, định hướng giải pháp và bố cục của báo cáo.
+\textbf{Chương 1 --- Giới thiệu đề tài} trình bày bối cảnh, câu hỏi nghiên cứu, mục tiêu,
+phạm vi, khảo sát hệ thống tương tự và định hướng giải pháp.
 
-\textbf{Chương 2 --- Cơ sở lý thuyết} trình bày có hệ thống các khái niệm và nguyên lý nền
-tảng: kiến trúc microservices, Domain-Driven Design và Bounded Context, các mô hình giao tiếp
-đồng bộ và bất đồng bộ, giao dịch phân tán và Saga Pattern, Transactional Outbox và
-Idempotent Consumer, CQRS, Circuit Breaker, Rate Limiting, bảo mật phân tán (OAuth 2.0,
-OpenID Connect, JWT, Trusted Subsystem Pattern), API Gateway, Service Discovery và
-Observability.
+\textbf{Chương 2 --- Cơ sở lý thuyết} trình bày nền tảng lý thuyết về kiến trúc
+microservices, các mẫu thiết kế phân tán (Saga, Outbox, Idempotent Consumer, CQRS),
+cơ chế đảm bảo độ tin cậy, bảo mật phân tán và khả năng quan sát.
 
-\textbf{Chương 3 --- Giải pháp công nghệ} phân tích và lý giải việc lựa chọn từng công nghệ
-trong hệ thống: Java 21, Maven multi-module, Spring Boot 3.5 và Spring Cloud 2025.0.0,
-Spring Cloud Gateway, Eureka, Config Server, OpenFeign, Apache Kafka KRaft, PostgreSQL,
-Redis, Elasticsearch, Keycloak và VNPAY. Chương này cũng trình bày Prometheus, Grafana,
-Zipkin, Mailpit, Docker Compose, Next.js, AWS EC2, Caddy và GitHub Actions/GHCR.
+\textbf{Chương 3 --- Giải pháp công nghệ} phân tích và lý giải việc lựa chọn từng công
+nghệ trong hệ thống, từ nền tảng phát triển (Java 21, Spring Boot, Spring Cloud), hạ
+tầng dữ liệu (PostgreSQL, Redis, Elasticsearch, Kafka), đến bảo mật (Keycloak), thanh
+toán (VNPAY), giao diện (Next.js), triển khai (Docker, AWS, CI/CD) và công cụ kiểm thử.
 
-\textbf{Chương 4 --- Phân tích và Thiết kế hệ thống} trình bày toàn bộ kết quả phân tích
-và thiết kế: yêu cầu chức năng và phi chức năng, biểu đồ use case, kiến trúc tổng thể,
-bản đồ ngữ cảnh 13 bounded context, thiết kế cơ sở dữ liệu, thiết kế API và giao tiếp,
-thiết kế luồng sự kiện Kafka, thiết kế bảo mật, máy trạng thái và biểu đồ tuần tự cho
-các luồng nghiệp vụ chính.
+\textbf{Chương 4 --- Phân tích và Thiết kế hệ thống} trình bày kết quả phân tích yêu cầu
+và thiết kế hệ thống, bao gồm kiến trúc tổng thể, thiết kế cơ sở dữ liệu, API, luồng sự
+kiện, bảo mật, máy trạng thái và các luồng nghiệp vụ chính.
 
-\textbf{Chương 5 --- Cài đặt, Triển khai, Kiểm thử và Đánh giá} trình bày chi tiết quá
-trình hiện thực hóa thiết kế: môi trường phát triển, cấu trúc dự án, cài đặt các dịch vụ
-cốt lõi, frontend/Admin Panel, cấu hình Docker Compose, triển khai production-like trên
-AWS EC2 và quy trình CI/CD. Phần cuối chương trình bày chiến lược và kết quả kiểm thử:
-backend readiness, kiểm thử chức năng, hiệu năng, khả năng chịu lỗi và đánh giá tổng thể.
+\textbf{Chương 5 --- Cài đặt, Triển khai, Kiểm thử và Đánh giá} mô tả quá trình hiện thực
+hóa thiết kế và triển khai production-like trên AWS EC2, đồng thời trình bày kết quả kiểm
+thử chức năng, hiệu năng và khả năng chịu lỗi của hệ thống.
 
-\textbf{Kết luận và Hướng phát triển} tổng kết những kết quả đã đạt được, phân tích khách
-quan những hạn chế còn tồn tại và đề xuất các hướng phát triển tiềm năng trong tương lai.
+\textbf{Kết luận và Hướng phát triển} tổng kết kết quả đạt được, phân tích hạn chế và đề
+xuất các hướng phát triển trong tương lai.
 
-\textbf{Phụ lục A --- Hướng dẫn cài đặt và vận hành} cung cấp hướng dẫn từng bước để thiết
-lập môi trường phát triển, biên dịch mã nguồn, khởi động hệ thống, kiểm tra trạng thái và
-truy cập các endpoint của hệ thống.
-
-\textbf{Phụ lục B --- Đặc tả Use Case} cung cấp đặc tả chi tiết cho các use case chính của
-hệ thống, bao gồm điều kiện tiên quyết, luồng sự kiện chính, luồng sự kiện thay thế và
-điều kiện hậu kiểm.
+\textbf{Phụ lục A} cung cấp hướng dẫn cài đặt và vận hành hệ thống. \textbf{Phụ lục B}
+trình bày đặc tả chi tiết các use case chính.
 
 \end{document}

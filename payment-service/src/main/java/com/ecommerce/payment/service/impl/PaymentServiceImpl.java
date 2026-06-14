@@ -24,6 +24,7 @@ import com.ecommerce.payment.service.VnPayService;
 import com.ecommerce.payment.util.VnPayUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -52,6 +53,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final VnPayConfig vnPayConfig;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
+    private final MeterRegistry meterRegistry;
 
     @Override
     @Transactional(noRollbackFor = BusinessException.class)
@@ -228,6 +230,7 @@ public class PaymentServiceImpl implements PaymentService {
             int inserted = insertCompletedCodPayment(payment);
             if (inserted > 0) {
                 saveSuccessOutbox(payment);
+                meterRegistry.counter("ecommerce.payments", "method", COD, "result", "success").increment();
                 log.info("Completed COD payment {} for order {}", payment.getId(), payment.getOrderId());
             } else {
                 log.info("COD payment already exists for order {}", payment.getOrderId());
@@ -291,6 +294,9 @@ public class PaymentServiceImpl implements PaymentService {
         } else {
             saveFailureOutbox(payment, reason);
         }
+        meterRegistry.counter("ecommerce.payments",
+                "method", payment.getPaymentMethod(),
+                "result", status == PaymentStatus.COMPLETED ? "success" : "failed").increment();
     }
 
     private void saveSuccessOutbox(Payment payment) {

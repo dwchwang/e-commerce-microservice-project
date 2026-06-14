@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "*.nip.io" },
       { protocol: "http", hostname: "localhost" },
+      // Demo product / banner imagery (seed data ships without images).
+      { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "picsum.photos" },
     ],
   },
   // BFF proxy is handled by app/api/proxy/[...path]/route.ts
