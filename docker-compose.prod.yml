@@ -94,6 +94,12 @@ services:
     build: !reset null
     mem_limit: 512m
     mem_reservation: 384m
+    environment:
+      # Gateway validate JWT `iss` như chuỗi literal -> PHẢI khớp `iss` Keycloak cấp.
+      # Với KC_HOSTNAME = URL https đầy đủ, issuer = https://auth.<ip>.nip.io/realms/ecommerce.
+      # Public key vẫn lấy nội bộ qua Docker network (không cần ra ngoài).
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-https://auth.13-213-118-96.nip.io/realms/ecommerce}
+      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://keycloak:8080/realms/ecommerce/protocol/openid-connect/certs}
 
   # ============================================================
   # BUSINESS SERVICES
