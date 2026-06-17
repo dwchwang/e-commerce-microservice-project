@@ -1,0 +1,72 @@
+# docker-compose.scale.yml — override THU 3, CHI dung khi demo scale ngang thu cong.
+# >>> PHUONG AN 1 (mac dinh): instance-id theo ${HOSTNAME} cua container. <<<
+#
+# Usage (tren EC2, trong /opt/ecommerce):
+#   docker compose --env-file .env.prod \
+#     -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.scale.yml \
+#     up -d --no-build --scale product-service=3 product-service
+#   # hoac tien hon: bash aws/scale-up.sh product-service 3
+#
+# Hai viec file nay lam cho cac service muon scale:
+#   1) Bo `container_name` co dinh (dung `!reset null`, giong cach prod file reset `build`),
+#      de Docker tu danh so <project>-<service>-1/-2/-3 thay vi bao trung ten.
+#   2) Lam instance-id tren Eureka DUY NHAT moi replica. Neu khong, 3 replica cung hostname+port se
+#      trung instance-id -> Eureka chi giu 1 -> scale gia, tai khong phan bo.
+#        - prefer-ip-address=true : Eureka quang ba IP container (moi replica mot IP trong docker net).
+#        - instance-id = <app>:${HOSTNAME} : Docker dat HOSTNAME = container id (DUY NHAT moi replica,
+#          ON DINH - khong doi giua cac lan doc). Spring resolve ${HOSTNAME} tu systemEnvironment.
+#          Luu y `$$`: de DOCKER COMPOSE khong nuot bien; container nhan chuoi `${HOSTNAME}`, chinh
+#          Spring moi resolve.
+#
+# Vi sao ${HOSTNAME} thay vi ${random.uuid}: ca hai deu can Spring resolve placeholder tu env, nhung
+# HOSTNAME la bien OS chuan luon co trong container va gia tri ON DINH (random.uuid co the bi sinh lai
+# moi lan doc property o vai cau hinh). Neu phuong an nay khong tao duoc instance-id duy nhat tren EC2,
+# chuyen sang PHUONG AN 2: docker-compose.scale-fallback.yml (${random.uuid}). Dung
+# aws/verify-scale-eureka.sh de test tu dong xem phuong an nao chay.
+#
+# Cac service stateful (postgres/redis/kafka/es/keycloak) va discovery/config-server KHONG scale.
+
+services:
+
+  product-service:
+    container_name: !reset null
+    environment:
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_INSTANCE_ID: "product-service:$${HOSTNAME}"
+
+  search-service:
+    container_name: !reset null
+    environment:
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_INSTANCE_ID: "search-service:$${HOSTNAME}"
+
+  # ----------------------------------------------------------------------------
+  # Mo comment cac service duoi neu muon scale them (chu y ngan sach RAM EC2 16 GB:
+  # con trong ~4 GB -> moi instance Spring them ~384-512 MB -> toi da ~6-8 instance).
+  # ----------------------------------------------------------------------------
+  # review-service:
+  #   container_name: !reset null
+  #   environment:
+  #     EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+  #     EUREKA_INSTANCE_INSTANCE_ID: "review-service:$${HOSTNAME}"
+  #
+  # content-service:
+  #   container_name: !reset null
+  #   environment:
+  #     EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+  #     EUREKA_INSTANCE_INSTANCE_ID: "content-service:$${HOSTNAME}"
+  #
+  # order-service:
+  #   container_name: !reset null
+  #   environment:
+  #     EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+  #     EUREKA_INSTANCE_INSTANCE_ID: "order-service:$${HOSTNAME}"
+  #     # Khi scale order-service: cac instance cung Kafka consumer group-id -> Kafka tu chia partition;
+  #     # OutboxPoller dung FOR UPDATE SKIP LOCKED nen nhieu instance an toan. Co the tang DB_MAX_POOL_SIZE
+  #     # neu thay timeout (mac dinh 3/instance).
+  #
+  # inventory-service:
+  #   container_name: !reset null
+  #   environment:
+  #     EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+  #     EUREKA_INSTANCE_INSTANCE_ID: "inventory-service:$${HOSTNAME}"

@@ -8,34 +8,32 @@
 \vspace{1cm}
 
 This thesis presents the analysis, design, and implementation of an e-commerce system based on
-a microservices architecture, built with Java~21, Spring Boot~3.5, and Spring Cloud~2025. The
+a microservices architecture, built with Java, Spring Boot, and Spring Cloud. The
 system is decomposed into 13 independent microservices following Domain-Driven Design and Bounded
 Context principles, each owning its own database and deployment lifecycle. Service communication
-combines synchronous REST/OpenFeign with asynchronous Apache Kafka in KRaft mode.
+combines synchronous REST/OpenFeign with asynchronous Apache Kafka.
 
 Four core distributed patterns are fully applied: Saga Orchestration with order-service as
 orchestrator for distributed transaction management; Transactional Outbox and Idempotent Consumer
 together achieving exactly-once processing effect over at-least-once delivery; and CQRS-lite with
 Elasticsearch as the read model for full-text search. Two notable technical highlights are a
-flash sale over-sell prevention mechanism using Redis Lua atomic scripts, a buyer set, and a
-reconciliation scheduler; and VNPAY payment gateway integration with HMAC-SHA512 verification,
-IPN callback handling, and timeout recovery. Security is centralized via Keycloak~26
-(OAuth~2.0/OIDC, JWT~RS256) with the API Gateway applying the Trusted Subsystem Pattern.
+flash sale over-sell; and VNPAY payment gateway integration. Security is centralized via Keycloak
+with the API Gateway applying the Trusted Subsystem Pattern.
 
 The thesis also implements a Next.js storefront and Admin Panel, packaged with Docker Compose
-and deployed in a production-like environment on AWS EC2 with Caddy reverse proxy and
+and deployed in a production-like environment on AWS EC2 and
 GitHub Actions/GHCR for CI/CD. The observability stack comprises Prometheus, Grafana, and
-Zipkin. Experimental results show all 9 backend readiness suites passing; k6 load tests for
+Zipkin. Experimental results show all backend readiness suites passing; k6 load tests for
 catalog browsing, checkout, and flash-sale spike all meeting their latency and correctness
 targets; and resilience scenarios confirming Outbox replay after Kafka failure, graceful
 degradation under Redis outage, and Saga compensation on inventory shortage.
 
 \vspace{1cm}
 
-\begin{flushright}
-\begin{tabular}{@{}c@{}}
-\textbf{Nguyen Duc Bao Hoang}\\
-\end{tabular}
-\end{flushright}
+% \begin{flushright}
+% \begin{tabular}{@{}c@{}}
+% \textbf{Nguyen Duc Bao Hoang}\\
+% \end{tabular}
+% \end{flushright}
 
 \end{document}

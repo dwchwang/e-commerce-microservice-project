@@ -1,0 +1,55 @@
+# docker-compose.scale-fallback.yml — PHUONG AN 2 (fallback) cho scale ngang.
+# >>> Chi dung neu PHUONG AN 1 (docker-compose.scale.yml, ${HOSTNAME}) KHONG tao duoc <<<
+# >>> instance-id duy nhat tren EC2 (Eureka chi thay 1 instance du da scale).               <<<
+#
+# Khac biet duy nhat so voi PHUONG AN 1: instance-id dung ${random.uuid} thay vi ${HOSTNAME}.
+# Spring sinh uuid ngau nhien (RandomValuePropertySource) cho moi JVM -> duy nhat moi replica.
+# Van bo container_name + bat prefer-ip-address giong PHUONG AN 1.
+#
+# Usage:
+#   SCALE_FILE=docker-compose.scale-fallback.yml bash aws/scale-up.sh product-service 3
+#   SCALE_FILE=docker-compose.scale-fallback.yml bash aws/scale-down.sh product-service
+# hoac de aws/verify-scale-eureka.sh tu thu ca hai phuong an.
+#
+# Neu CA HAI phuong an deu that bai (rat hiem) -> xem PHUONG AN 3 trong
+# .guide/19-kich-ban-scale-hieu-nang-resilience.md (bo han instance-id, chi de prefer-ip-address,
+# dua vao instance-id mac dinh cua Spring Cloud da gan hostname/IP container duy nhat).
+
+services:
+
+  product-service:
+    container_name: !reset null
+    environment:
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_INSTANCE_ID: "product-service:$${random.uuid}"
+
+  search-service:
+    container_name: !reset null
+    environment:
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_INSTANCE_ID: "search-service:$${random.uuid}"
+
+  # Mo comment dong bo voi docker-compose.scale.yml neu da bat them service o phuong an 1.
+  # review-service:
+  #   container_name: !reset null
+  #   environment:
+  #     EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+  #     EUREKA_INSTANCE_INSTANCE_ID: "review-service:$${random.uuid}"
+  #
+  # content-service:
+  #   container_name: !reset null
+  #   environment:
+  #     EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+  #     EUREKA_INSTANCE_INSTANCE_ID: "content-service:$${random.uuid}"
+  #
+  # order-service:
+  #   container_name: !reset null
+  #   environment:
+  #     EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+  #     EUREKA_INSTANCE_INSTANCE_ID: "order-service:$${random.uuid}"
+  #
+  # inventory-service:
+  #   container_name: !reset null
+  #   environment:
+  #     EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+  #     EUREKA_INSTANCE_INSTANCE_ID: "inventory-service:$${random.uuid}"

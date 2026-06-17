@@ -1,5 +1,17 @@
 name: Deploy to AWS EC2
 
+# DIEU KIEN TIEN QUYET (quan trong):
+#   Job nay SSH tu GitHub-hosted runner -> EC2:22. Neu Security Group chi mo port 22 cho IP nha
+#   (MY_HOME_IP), runner se bi chan -> job timeout, DU rang SSH tay tu may ban van chay binh thuong.
+#   De dung deploy qua Actions, phai mo inbound tcp/22 cho dai IP cua GitHub Actions (hoac 0.0.0.0/0,
+#   kem rui ro), hoac dung self-hosted runner. Neu khong, cu DEPLOY THU CONG (xem README/guide 18):
+#     ssh -i $SSH_KEY_PATH ubuntu@$ELASTIC_IP
+#     cd /opt/ecommerce && git fetch --all && git reset --hard origin/main   # keo compose+scripts moi
+#     export IMAGE_TAG=latest && bash aws/start-stack.sh
+#
+# Secrets can co trong environment `production`: EC2_HOST, EC2_SSH_KEY (full PEM),
+# GHCR_PULL_TOKEN, GHCR_USERNAME.
+
 on:
   workflow_dispatch:
     inputs:
@@ -23,20 +35,28 @@ jobs:
             set -euo pipefail
             cd /opt/ecommerce
 
-            # Pull latest compose files & scripts
-            git fetch --all
-            git reset --hard origin/main
+            # Pull latest compose files & scripts (gom ca docker-compose.scale*.yml, aws/*.sh moi).
+            if [ -d .git ]; then
+              git fetch --all --prune
+              git reset --hard origin/main
+            else
+              echo "WARNING: /opt/ecommerce khong phai git repo -> KHONG cap nhat compose/scripts tu repo."
+            fi
+
+            # Dam bao scripts thuc thi duoc (phong khi git khong giu mode +x)
+            chmod +x aws/*.sh 2>/dev/null || true
 
             # Login GHCR
             echo "${{ secrets.GHCR_PULL_TOKEN }}" | \
               docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
 
-            # Pull images
+            # Pull images theo tag duoc chon
             export IMAGE_TAG=${{ inputs.image_tag }}
             docker compose --env-file .env.prod \
               -f docker-compose.yml -f docker-compose.prod.yml pull
 
-            # Rolling restart
+            # Rolling restart. --remove-orphans dua stack ve baseline (1 instance/service): neu truoc do
+            # dang scale thu cong product-service=3 thi cac replica thua se bi go -> dung y nghia "deploy".
             docker compose --env-file .env.prod \
               -f docker-compose.yml -f docker-compose.prod.yml \
               up -d --no-build --remove-orphans
@@ -44,6 +64,7 @@ jobs:
             # Cleanup old images
             docker image prune -af --filter "until=72h"
 
-            # Wait & report
+            # Wait & report (dung dung bo compose file de ps chinh xac)
             sleep 30
-            docker compose ps
+            docker compose --env-file .env.prod \
+              -f docker-compose.yml -f docker-compose.prod.yml ps
