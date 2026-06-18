@@ -1,0 +1,49 @@
+@startuml
+title Hình 2.6 - Trusted Subsystem Pattern với Keycloak và API Gateway
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam ParticipantBorderColor #475569
+skinparam ParticipantBackgroundColor #F1F5F9
+skinparam NoteBorderColor #F97316
+skinparam NoteBackgroundColor #FFF7ED
+
+actor "User" as User
+participant "Storefront /\nAdmin Panel" as Client #E0F2FE
+participant "Keycloak\nAuthorization Server" as Keycloak #FEF3C7
+participant "API Gateway\nResource Server" as Gateway #DCFCE7
+box "Docker internal network\nBackend services không expose ra ngoài" #ECFDF5
+participant "order-service" as OrderService #BBF7D0
+participant "product-service" as ProductService #BBF7D0
+participant "user-service" as UserService #BBF7D0
+end box
+
+User -> Client : Đăng nhập
+Client -> Keycloak : Authorization Code Flow / token request
+Keycloak --> Client : Access Token JWT\nRS256 signed
+
+Client -> Gateway : API request\nAuthorization: Bearer JWT
+Gateway -> Keycloak : Lấy public key / JWKS\nhoặc dùng cache
+Gateway -> Gateway : Verify signature,\nissuer, audience, expiry, roles
+
+alt JWT hợp lệ
+  Gateway -> OrderService : Forward request\nX-User-Id\nX-User-Roles\nX-User-Email
+  OrderService -> OrderService : Tin tưởng header\nvì chỉ Gateway gọi được
+  OrderService --> Gateway : Business response
+  Gateway --> Client : Response
+else JWT sai hoặc hết hạn
+  Gateway --> Client : 401 / 403
+end
+
+note over OrderService,UserService
+  Backend services không tự xác minh JWT.
+  Điều kiện bắt buộc: chỉ API Gateway
+  được truy cập trực tiếp vào mạng nội bộ.
+end note
+
+@enduml

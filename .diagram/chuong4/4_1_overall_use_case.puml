@@ -1,0 +1,92 @@
+@startuml
+title Hình 4.1 - Biểu đồ Use Case tổng thể hệ thống
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ActorBorderColor #475569
+skinparam ActorBackgroundColor #E0F2FE
+skinparam UsecaseBorderColor #475569
+skinparam UsecaseBackgroundColor #F8FAFC
+skinparam RectangleBorderColor #334155
+skinparam RectangleBackgroundColor #FFFFFF
+
+left to right direction
+
+actor "Guest" as Guest
+actor "Customer" as Customer
+actor "Admin" as Admin
+actor "External System\nVNPAY / SMTP" as External
+actor "Scheduler" as Scheduler
+
+rectangle "E-commerce Microservices System" {
+  usecase "Duyệt sản phẩm" as UC_Browse
+  usecase "Tìm kiếm sản phẩm" as UC_Search
+  usecase "Quản lý giỏ hàng\ntạm thời" as UC_GuestCart
+
+  usecase "Đăng ký / Đăng nhập" as UC_Auth
+  usecase "Quản lý hồ sơ\nvà địa chỉ" as UC_Profile
+  usecase "Quản lý giỏ hàng" as UC_Cart
+  usecase "Đặt hàng COD" as UC_OrderCOD
+  usecase "Đặt hàng VNPAY" as UC_OrderVnpay
+  usecase "Thanh toán online" as UC_Pay
+  usecase "Sử dụng voucher" as UC_Voucher
+  usecase "Mua Flash Sale" as UC_FlashSale
+  usecase "Đánh giá sản phẩm" as UC_Review
+  usecase "Xem đơn hàng\nvà trạng thái" as UC_OrderView
+
+  usecase "Quản lý sản phẩm,\ndanh mục, thương hiệu" as UC_ProductAdmin
+  usecase "Quản lý tồn kho" as UC_InventoryAdmin
+  usecase "Quản lý voucher" as UC_VoucherAdmin
+  usecase "Quản lý Flash Sale" as UC_FlashAdmin
+  usecase "Quản lý nội dung\nbanner / blog" as UC_ContentAdmin
+  usecase "Quản lý đơn hàng\nvà người dùng" as UC_SystemAdmin
+
+  usecase "Xử lý IPN / Return URL" as UC_Ipn
+  usecase "Gửi email thông báo" as UC_Email
+  usecase "Hết hạn reservation" as UC_ReservationTimeout
+  usecase "Timeout payment" as UC_PaymentTimeout
+  usecase "Outbox polling" as UC_Outbox
+  usecase "Campaign scheduling\nvà reconciliation" as UC_CampaignJob
+}
+
+Guest --> UC_Browse
+Guest --> UC_Search
+Guest --> UC_GuestCart
+Guest --> UC_Auth
+
+Customer --> UC_Profile
+Customer --> UC_Cart
+Customer --> UC_OrderCOD
+Customer --> UC_OrderVnpay
+Customer --> UC_Pay
+Customer --> UC_Voucher
+Customer --> UC_FlashSale
+Customer --> UC_Review
+Customer --> UC_OrderView
+
+Admin --> UC_ProductAdmin
+Admin --> UC_InventoryAdmin
+Admin --> UC_VoucherAdmin
+Admin --> UC_FlashAdmin
+Admin --> UC_ContentAdmin
+Admin --> UC_SystemAdmin
+
+External --> UC_Ipn
+External --> UC_Email
+
+Scheduler --> UC_ReservationTimeout
+Scheduler --> UC_PaymentTimeout
+Scheduler --> UC_Outbox
+Scheduler --> UC_CampaignJob
+
+UC_OrderVnpay ..> UC_Pay : <<include>>
+UC_OrderCOD ..> UC_Voucher : <<extend>>
+UC_OrderVnpay ..> UC_Voucher : <<extend>>
+UC_FlashSale ..> UC_OrderCOD : <<include>>
+UC_Ipn ..> UC_Pay : <<extend>>
+
+@enduml

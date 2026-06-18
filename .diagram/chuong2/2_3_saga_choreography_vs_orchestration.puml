@@ -1,0 +1,56 @@
+@startuml
+title Hình 2.3 - So sánh Saga Choreography và Saga Orchestration
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam RectangleBorderColor #475569
+skinparam RectangleBackgroundColor #F8FAFC
+skinparam NoteBorderColor #F97316
+skinparam NoteBackgroundColor #FFF7ED
+
+left to right direction
+
+rectangle "Saga Choreography\nKhông có bộ điều phối trung tâm" as Choreo #EFF6FF {
+  rectangle "order-service\nOrderCreated" as COrder #DBEAFE
+  rectangle "inventory-service\nStockReserved" as CInventory #DBEAFE
+  rectangle "payment-service\nPaymentCompleted" as CPayment #DBEAFE
+  rectangle "notification-service\nEmailSent" as CNotify #DBEAFE
+
+  COrder --> CInventory : event
+  CInventory --> CPayment : event
+  CPayment --> CNotify : event
+  CPayment ..> CInventory : compensation event\nnếu thanh toán lỗi
+}
+
+rectangle "Saga Orchestration\norder-service điều phối luồng" as Orch #ECFDF5 {
+  rectangle "Saga Orchestrator\n(order-service)" as Orchestrator #BBF7D0
+  rectangle "inventory-service" as OInventory #DCFCE7
+  rectangle "payment-service" as OPayment #DCFCE7
+  rectangle "notification-service" as ONotify #DCFCE7
+
+  Orchestrator --> OInventory : command: reserve stock
+  OInventory --> Orchestrator : result
+  Orchestrator --> OPayment : command: create payment
+  OPayment --> Orchestrator : result
+  Orchestrator --> ONotify : command: send notification
+  Orchestrator ..> OInventory : compensating command\nnếu bước sau lỗi
+}
+
+note bottom of Choreo
+  Phù hợp luồng đơn giản,
+  kết dính lỏng nhưng khó quan sát
+  và khó bù trừ khi nhiều bước.
+end note
+
+note bottom of Orch
+  Phù hợp luồng đặt hàng phức tạp,
+  dễ theo dõi trạng thái và
+  xử lý compensation tập trung.
+end note
+
+@enduml

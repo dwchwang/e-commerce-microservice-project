@@ -1,0 +1,43 @@
+@startuml
+title Hình 5.11 - GitHub Actions build/push image lên GHCR
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam ActivityBorderColor #475569
+skinparam ActivityBackgroundColor #F8FAFC
+skinparam DiamondBorderColor #475569
+skinparam DiamondBackgroundColor #FEF3C7
+
+start
+:Developer push commit;
+:GitHub Actions workflow\nBuild & Push Images;
+
+fork
+  :Build Maven artifacts\n./mvnw package;
+fork again
+  :Build frontend\nNext.js image;
+end fork
+
+:Matrix build backend images\napi-gateway, discovery, config,\n13 business services;
+:Set up Docker Buildx;
+:Login to GHCR;
+:Extract metadata\ntag = branch/sha/latest;
+
+if (service image build success?) then (yes)
+  :docker buildx build\nusing Dockerfile + JAR artifact;
+  :Push image to\nGHCR ghcr.io/{owner}/{service}:{tag};
+else (no)
+  :Fail matrix job\nshow build logs;
+  stop
+endif
+
+:Production compose references\nGHCR image tags;
+:EC2 deploy can pull\nsame immutable images;
+stop
+
+@enduml

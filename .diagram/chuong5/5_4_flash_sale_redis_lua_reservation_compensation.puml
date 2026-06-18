@@ -1,0 +1,55 @@
+@startuml
+title Hình 5.4 - Redis Lua reservation và compensation cho Flash Sale
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam ParticipantBorderColor #475569
+skinparam ParticipantBackgroundColor #F1F5F9
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+skinparam QueueBorderColor #475569
+skinparam QueueBackgroundColor #FEF3C7
+
+actor "Customer" as Customer
+participant "flash-sale-service" as FlashSale #FEE2E2
+database "Redis\nstock + buyers" as Redis #FEF3C7
+database "flash_sale_db\ncampaign soldCount" as FlashDb
+queue "Kafka\nflash-sale-order-requested" as Kafka
+participant "order-service" as Order #FEF3C7
+participant "ReconciliationScheduler" as Reconcile
+
+Customer -> FlashSale : purchase campaign
+FlashSale -> FlashSale : validate ACTIVE\nand time window
+FlashSale -> Redis : reservation.lua\n1. SISMEMBER buyers userId\n2. GET stock\n3. DECR stock\n4. SADD buyers userId
+
+alt duplicate buyer or stock <= 0
+  Redis --> FlashSale : FAIL
+  FlashSale --> Customer : 409 sold out / duplicate
+else reserved
+  Redis --> FlashSale : OK
+  FlashSale -> FlashDb : increment soldCount
+  FlashSale -> Kafka : publish event
+  Kafka -> Order : create flash-sale order
+  alt order create success
+    Order --> Kafka : order-created / confirmed flow
+    FlashSale --> Customer : accepted
+  else order create failed
+    Order --> FlashSale : failure signal
+    FlashSale -> Redis : compensation.lua\nINCR stock\nSREM buyers userId
+    FlashSale -> FlashDb : decrement soldCount
+    FlashSale --> Customer : compensated failure
+  end
+end
+
+loop 300 giây/lần
+  Reconcile -> FlashDb : read soldCount
+  Reconcile -> Order : count confirmed campaign orders
+  Reconcile -> Redis : repair stock/buyers when needed
+end
+
+@enduml

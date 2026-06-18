@@ -1,0 +1,58 @@
+@startuml
+title Hình 2.2 - Bounded Context, Aggregate và Context Map
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam packageStyle rectangle
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam PackageBorderColor #334155
+skinparam PackageBackgroundColor #F8FAFC
+skinparam ComponentBorderColor #475569
+skinparam ComponentBackgroundColor #E0F2FE
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+skinparam NoteBorderColor #F97316
+skinparam NoteBackgroundColor #FFF7ED
+
+package "Ordering Context\nUbiquitous Language: Order = đơn mua hàng" as Ordering #EEF2FF {
+  component "Order\nAggregate Root" as OrderRoot #C7D2FE
+  component "OrderItem\nEntity" as OrderItem
+  component "ShippingAddress\nValue Object" as Address
+  database "orders_db" as OrdersDb
+  OrderRoot --> OrderItem : quản lý
+  OrderRoot --> Address : chứa
+  OrderRoot --> OrdersDb : transaction boundary
+}
+
+package "Inventory Context\nUbiquitous Language: Order = yêu cầu xuất kho" as Inventory #ECFDF5 {
+  component "StockReservation\nAggregate Root" as Reservation #BBF7D0
+  component "StockItem\nEntity" as StockItem
+  database "inventory_db" as InventoryDb
+  Reservation --> StockItem : giữ slot
+  Reservation --> InventoryDb : transaction boundary
+}
+
+package "Payment Context\nUbiquitous Language: Payment = giao dịch thanh toán" as Payment #FEF3C7 {
+  component "Payment\nAggregate Root" as PaymentRoot #FDE68A
+  component "Transaction\nEntity" as Transaction
+  database "payment_db" as PaymentDb
+  PaymentRoot --> Transaction : ghi nhận
+  PaymentRoot --> PaymentDb : transaction boundary
+}
+
+Ordering --> Inventory : Customer-Supplier\nReserveStock API/Event
+Ordering --> Payment : Open Host Service\nCreatePayment API
+Inventory ..> Ordering : Domain Event\nStockReserved / StockRejected
+Payment ..> Ordering : Domain Event\nPaymentSucceeded / Failed
+
+note bottom
+  Bounded Context xác định ranh giới ngôn ngữ và mô hình.
+  Aggregate là đơn vị nhất quán nội bộ.
+  Context Map thể hiện quan hệ tích hợp giữa các context.
+end note
+
+@enduml

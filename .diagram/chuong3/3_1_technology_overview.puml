@@ -1,0 +1,129 @@
+@startuml
+title Hình 3.1 - Sơ đồ tổng quan các nhóm công nghệ trong hệ thống
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam packageStyle rectangle
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam PackageBorderColor #334155
+skinparam PackageBackgroundColor #F8FAFC
+skinparam ComponentBorderColor #475569
+skinparam ComponentBackgroundColor #E0F2FE
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+skinparam QueueBorderColor #475569
+skinparam QueueBackgroundColor #FEF3C7
+skinparam CloudBorderColor #475569
+skinparam CloudBackgroundColor #EEF2FF
+skinparam NoteBorderColor #F97316
+skinparam NoteBackgroundColor #FFF7ED
+
+left to right direction
+
+package "Ngôn ngữ và nền tảng phát triển" as Dev #EFF6FF {
+  component "Java 21 LTS" as Java
+  component "Maven\nmulti-module" as Maven
+  component "Spring Boot 3.5" as SpringBoot
+  component "Lombok\nJackson\nFlyway\nSpringDoc" as Libraries
+}
+
+package "Tầng giao diện" as Frontend #F0FDFA {
+  component "Next.js\nStorefront" as Storefront
+  component "Next.js\nAdmin Panel" as Admin
+  component "BFF / Proxy\nhttpOnly cookie" as Bff
+}
+
+package "Spring Cloud orchestration" as SpringCloud #ECFDF5 {
+  component "Spring Cloud Gateway\nAPI Gateway" as Gateway
+  component "Netflix Eureka\nService Registry" as Eureka
+  component "Spring Cloud Config\nConfig Server" as ConfigServer
+  component "OpenFeign\nSync HTTP client" as Feign
+}
+
+package "Business microservices" as Business #F8FAFC {
+  component "13 business services\nidentity, user, product,\ninventory, cart, order,\npayment, voucher, notification,\nreview, search, content,\nflash-sale" as Services
+}
+
+package "Hạ tầng dữ liệu và messaging" as Data #F0FDF4 {
+  database "PostgreSQL 17\nRelational DB\nDatabase-per-service" as Postgres
+  database "Redis 8\nCache, cart,\nrate limit, Lua atomic" as Redis
+  database "Elasticsearch 8\nFull-text search\nCQRS-lite read model" as Elasticsearch
+  queue "Apache Kafka KRaft\nAsync events\nConsumer groups" as Kafka
+}
+
+package "Bảo mật và thanh toán" as SecurityPayment #FEFCE8 {
+  component "Keycloak 26\nOAuth2 / OIDC\nJWT RS256" as Keycloak
+  component "VNPAY Sandbox\nHMAC-SHA512\nReturn URL / IPN" as Vnpay
+}
+
+package "Observability stack" as Observability #F5F3FF {
+  component "Micrometer\nActuator" as Actuator
+  database "Prometheus\nMetrics" as Prometheus
+  component "Grafana\nDashboards" as Grafana
+  database "Zipkin\nDistributed tracing" as Zipkin
+  component "Mailpit\nEmail testing" as Mailpit
+}
+
+package "Đóng gói, triển khai và kiểm thử" as Ops #FFF7ED {
+  component "Docker Compose\nlocal + production profile" as Compose
+  cloud "AWS EC2\nsingle-host" as Ec2
+  component "Caddy\nReverse proxy / HTTPS" as Caddy
+  component "GitHub Actions\nGHCR images" as Actions
+  component "JUnit 5\nTestcontainers\nMockito" as UnitTest
+  component "k6\nPerformance test" as K6
+}
+
+Java --> SpringBoot : runtime
+Maven --> SpringBoot : build modules
+Libraries --> SpringBoot : hỗ trợ phát triển
+
+Storefront --> Bff
+Admin --> Bff
+Bff --> Gateway : REST API
+
+Gateway --> Eureka : service lookup
+Gateway --> Keycloak : verify JWT / JWKS
+Gateway --> Redis : token bucket
+Gateway --> Services : route request
+Services --> ConfigServer : fetch config
+Services --> Eureka : register / heartbeat
+Services --> Feign : sync calls
+
+Services --> Postgres : business data
+Services --> Redis : cache / cart / atomic ops
+Services --> Elasticsearch : search index
+Services --> Kafka : publish / consume events
+Kafka --> Services : async integration
+
+Services --> Vnpay : create payment URL\nverify callback
+Services --> Keycloak : user / role integration\nqua identity-service
+
+Services --> Actuator : expose metrics
+Actuator --> Prometheus : /actuator/prometheus
+Prometheus --> Grafana : PromQL dashboard
+Services --> Zipkin : traces
+Services --> Mailpit : test email
+
+Compose --> Services : run containers
+Compose --> Data : run infrastructure
+Compose --> Observability : run monitoring
+Actions --> Compose : production images\nGHCR
+Actions --> Ec2 : deploy
+Ec2 --> Caddy : host reverse proxy
+Caddy --> Frontend : HTTPS frontend
+Caddy --> Gateway : HTTPS API
+
+UnitTest ..> Services : unit / integration tests
+K6 ..> Gateway : load, stress,\nspike tests
+
+note bottom
+  Sơ đồ gom các công nghệ theo vai trò: nền tảng phát triển,
+  Spring Cloud orchestration, dữ liệu/messaging, bảo mật/thanh toán,
+  observability, frontend và triển khai production-like.
+end note
+
+@enduml

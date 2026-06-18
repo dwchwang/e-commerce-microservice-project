@@ -1,0 +1,51 @@
+@startuml
+title Hình 5.6 - Storefront: trang chủ, danh sách sản phẩm, giỏ hàng và checkout
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam RectangleBorderColor #475569
+skinparam RectangleBackgroundColor #F8FAFC
+skinparam ComponentBorderColor #475569
+skinparam ComponentBackgroundColor #E0F2FE
+
+left to right direction
+
+rectangle "Storefront\nNext.js App Router" as Storefront #E0F2FE {
+  rectangle "Home\nbanner, featured products,\nflash sale entry" as Home
+  rectangle "Product List\nfilter, category, brand,\npagination" as ProductList
+  rectangle "Product Detail\nprice, stock, reviews,\nadd to cart" as ProductDetail
+  rectangle "Search\nfull-text results" as Search
+  rectangle "Cart\nuser/guest cart,\nquantity update" as Cart
+  rectangle "Checkout\naddress, voucher,\nCOD/VNPAY" as Checkout
+  rectangle "Payment Result\nVNPAY return status" as PaymentResult
+  rectangle "Order History\nstatus timeline" as Orders
+  rectangle "Flash Sale\ncampaign list/purchase" as FlashSale
+}
+
+component "API Gateway" as Gateway #DCFCE7
+component "BFF / Server Actions\nhttpOnly token handling" as Bff #DBEAFE
+
+Home --> ProductList
+ProductList --> ProductDetail
+Home --> Search
+ProductDetail --> Cart : add item
+Cart --> Checkout
+Checkout --> PaymentResult : VNPAY
+Checkout --> Orders : COD success
+Home --> FlashSale
+FlashSale --> Checkout : purchase accepted
+
+Storefront --> Bff : server-side data fetching\nand mutations
+Bff --> Gateway : /api/products\n/api/search\n/api/cart\n/api/orders\n/api/payments\n/api/flash-sales
+
+note bottom
+  Đây là sơ đồ màn hình/luồng thao tác thay cho ảnh chụp.
+  Khi có screenshot thật, có thể dùng file này làm bản đối chiếu.
+end note
+
+@enduml

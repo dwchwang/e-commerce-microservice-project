@@ -1,0 +1,71 @@
+@startuml
+title Hình 5.10 - Deployment diagram AWS EC2 production-like stack
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam packageStyle rectangle
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.2
+skinparam CloudBorderColor #475569
+skinparam CloudBackgroundColor #EEF2FF
+skinparam NodeBorderColor #475569
+skinparam NodeBackgroundColor #F8FAFC
+skinparam ComponentBorderColor #475569
+skinparam ComponentBackgroundColor #E0F2FE
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+skinparam QueueBorderColor #475569
+skinparam QueueBackgroundColor #FEF3C7
+
+left to right direction
+
+cloud "Internet" as Internet
+cloud "GitHub Container Registry\nGHCR images" as Ghcr #F5F3FF
+
+node "AWS EC2 single-host\nap-southeast-1" as Ec2 {
+  component "Caddy\nReverse proxy + HTTPS\nnip.io subdomains" as Caddy #DCFCE7
+
+  node "Docker Compose production stack\nmem_limit + mem_reservation" as Compose {
+    component "frontend\nNext.js\nhost 3000" as Frontend
+    component "api-gateway\nhost 8080" as Gateway
+    component "keycloak" as Keycloak
+    component "grafana\nhost 3001" as Grafana
+    component "Spring Cloud\nEureka + Config" as SpringCloud
+    component "13 business services" as Services
+    database "PostgreSQL" as Postgres
+    database "Redis" as Redis
+    queue "Kafka KRaft" as Kafka
+    database "Elasticsearch" as Elasticsearch
+    component "Prometheus" as Prometheus
+    component "Zipkin" as Zipkin
+    component "Mailpit / SMTP" as Mailpit
+  }
+}
+
+Internet --> Caddy : HTTPS\napp.*, api.*, keycloak.*, grafana.*
+Caddy --> Frontend : app.*
+Caddy --> Gateway : api.*
+Caddy --> Keycloak : keycloak.*
+Caddy --> Grafana : grafana.*
+
+Ghcr --> Compose : docker compose pull\nservice images
+Gateway --> Services : internal routing
+Services --> SpringCloud : config/discovery
+Services --> Postgres
+Services --> Redis
+Services --> Kafka
+Services --> Elasticsearch
+Services --> Prometheus : metrics
+Services --> Zipkin : traces
+Services --> Mailpit : email
+Prometheus --> Grafana : dashboards
+
+note bottom
+  Production-like nhưng chưa high availability:
+  một EC2 chạy toàn bộ stack bằng Docker Compose override.
+end note
+
+@enduml

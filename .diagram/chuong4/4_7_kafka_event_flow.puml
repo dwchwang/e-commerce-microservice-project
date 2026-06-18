@@ -1,0 +1,63 @@
+@startuml
+title Hình 4.7 - Sơ đồ luồng sự kiện Kafka giữa các dịch vụ
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.2
+skinparam ComponentBorderColor #475569
+skinparam ComponentBackgroundColor #F8FAFC
+skinparam QueueBorderColor #475569
+skinparam QueueBackgroundColor #FEF3C7
+
+left to right direction
+
+component "identity-service" as Identity #DBEAFE
+component "user-service" as User
+component "product-service" as Product #DCFCE7
+component "search-service" as Search
+component "order-service\nSaga Orchestrator" as Order #FEF3C7
+component "inventory-service" as Inventory
+component "payment-service" as Payment
+component "voucher-service" as Voucher
+component "notification-service" as Notification
+component "flash-sale-service" as FlashSale #FEE2E2
+queue "Kafka KRaft\n13 topics" as Kafka
+
+Identity --> Kafka : user-registered
+Kafka --> User : create profile
+
+Product --> Kafka : product-created\nproduct-updated\nproduct-deleted
+Kafka --> Search : update Elasticsearch index
+
+Order --> Kafka : order-created
+Kafka --> Inventory : reserve stock
+Inventory --> Kafka : inventory-updated\ninventory-failed
+Kafka --> Order : update saga state
+
+Order --> Kafka : payment-requested
+Kafka --> Payment : process COD/payment
+Payment --> Kafka : payment-success\npayment-failed
+Kafka --> Order : confirm/cancel order
+
+Order --> Kafka : order-confirmed
+Kafka --> Inventory : confirm reservation
+Kafka --> Notification : send confirmation email
+
+Order --> Kafka : order-cancelled
+Kafka --> Inventory : release reservation
+Kafka --> Voucher : release voucher
+Kafka --> Notification : send cancellation email
+
+FlashSale --> Kafka : flash-sale-order-requested\n3 partitions
+Kafka --> Order : create flash sale order
+
+note bottom
+  Kafka tách các tác động phụ và luồng Saga khỏi request đồng bộ.
+  Các consumer xử lý idempotent để chống duplicate do at-least-once delivery.
+end note
+
+@enduml

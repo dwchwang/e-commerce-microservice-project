@@ -1,0 +1,51 @@
+@startmindmap
+title Hình 2.1 - Tám ngộ nhận trong tính toán phân tán và yêu cầu thiết kế
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam shadowing false
+skinparam ArrowColor #475569
+skinparam MindMapNodeBackgroundColor #F8FAFC
+skinparam MindMapNodeBorderColor #334155
+skinparam MindMapFontColor #0F172A
+
+* Hệ thống\nphân tán
+** Mạng luôn\nđáng tin cậy
+*** Timeout
+*** Retry có giới hạn
+*** Circuit Breaker
+** Độ trễ\nbằng không
+*** Giảm lời gọi đồng bộ
+*** Cache
+*** Async messaging
+** Băng thông\nvô hạn
+*** Payload gọn
+*** Pagination
+*** Compression khi cần
+** Mạng an toàn\ntuyệt đối
+*** TLS
+*** OAuth2 / OIDC
+*** Zero trust nội bộ
+** Topology mạng\nkhông thay đổi
+*** Service Discovery
+*** Health check
+*** Dynamic routing
+** Chỉ có một\nquản trị viên
+*** Config tập trung
+*** Audit
+*** Phân quyền vận hành
+** Chi phí truyền tải\nbằng không
+*** Batch request
+*** Event-driven
+*** Hạn chế chatty API
+** Mạng\nđồng nhất
+*** Chuẩn hóa protocol
+*** Versioning
+*** Observability
+
+caption
+  Khi chuyển từ Monolith sang Microservices, các ngộ nhận này trở thành rủi ro thiết kế
+  và cần được xử lý bằng timeout, retry, discovery, bảo mật, cấu hình tập trung và quan sát.
+endcaption
+
+@endmindmap

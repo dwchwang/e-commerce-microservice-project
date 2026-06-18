@@ -1,0 +1,58 @@
+@startuml
+title Hình 5.8 - Deployment diagram Docker Compose local
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam packageStyle rectangle
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.2
+skinparam NodeBorderColor #475569
+skinparam NodeBackgroundColor #F8FAFC
+skinparam ComponentBorderColor #475569
+skinparam ComponentBackgroundColor #E0F2FE
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+skinparam QueueBorderColor #475569
+skinparam QueueBackgroundColor #FEF3C7
+
+node "Developer machine\nDocker Desktop" as DevMachine {
+  node "ecommerce-network\nDocker Compose local" as Compose {
+    component "api-gateway\nlocalhost:8080" as Gateway
+    component "discovery-server\nlocalhost:8761" as Eureka
+    component "config-server" as Config
+    component "13 business services\n8081-8093 internal/host mapped" as Services
+
+    database "PostgreSQL 17\nvolume: postgres_data" as Postgres
+    database "Redis 8\nvolume: redis_data" as Redis
+    queue "Kafka KRaft" as Kafka
+    database "Elasticsearch\nlocalhost:9200" as Elasticsearch
+    component "Keycloak\nlocalhost:8180" as Keycloak
+    component "Mailpit\nlocalhost:8025" as Mailpit
+    component "Prometheus\nlocalhost:9090" as Prometheus
+    component "Grafana\nlocalhost:3000" as Grafana
+    component "Zipkin\nlocalhost:9411" as Zipkin
+  }
+}
+
+Gateway --> Eureka : service discovery
+Services --> Eureka : register + heartbeat
+Services --> Config : fetch config
+Gateway --> Keycloak : auth/JWKS
+Services --> Postgres : DB per service
+Services --> Redis : cache/cart/rate/flash sale
+Services --> Kafka : events
+Services --> Elasticsearch : search read model
+Services --> Mailpit : email test
+Services --> Prometheus : /actuator/prometheus
+Services --> Zipkin : traces
+Prometheus --> Grafana : dashboards
+
+note bottom
+  Local stack dùng healthcheck và depends_on để khởi động ổn định,
+  đồng thời giữ dữ liệu qua Docker volumes giữa các lần restart.
+end note
+
+@enduml

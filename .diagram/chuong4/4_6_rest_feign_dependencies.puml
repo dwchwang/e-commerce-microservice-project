@@ -1,0 +1,48 @@
+@startuml
+title Hình 4.6 - Sơ đồ phụ thuộc REST/Feign giữa các dịch vụ
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam ComponentBorderColor #475569
+skinparam ComponentBackgroundColor #F8FAFC
+skinparam NoteBorderColor #F97316
+skinparam NoteBackgroundColor #FFF7ED
+
+left to right direction
+
+component "API Gateway" as Gateway #DCFCE7
+component "cart-service" as Cart
+component "order-service\nSaga Orchestrator" as Order #FEF3C7
+component "review-service" as Review
+component "flash-sale-service" as FlashSale #FEE2E2
+
+component "product-service" as Product #DBEAFE
+component "inventory-service" as Inventory #DBEAFE
+component "voucher-service" as Voucher #DBEAFE
+component "payment-service" as Payment #DBEAFE
+
+Gateway --> Cart : REST route\n/api/cart/**
+Gateway --> Order : REST route\n/api/orders/**
+Gateway --> Review : REST route\n/api/reviews/**
+Gateway --> FlashSale : REST route\n/api/flash-sales/**
+
+Cart --> Product : Feign\nverify product
+Order --> Product : Feign\nprice + active status
+Order --> Inventory : Feign\navailable stock
+Order --> Voucher : Feign\nvalidate + reserve voucher
+Order --> Payment : REST/Feign\ncreate VNPAY payment
+Review --> Order : Feign\nverify confirmed order
+FlashSale --> Order : REST/async fallback\ncreate flash-sale order
+
+note right
+  Feign timeout: 5 giây.
+  Retry: 1 lần.
+  Circuit Breaker bảo vệ cascading failure.
+end note
+
+@enduml

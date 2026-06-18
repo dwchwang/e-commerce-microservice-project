@@ -1,0 +1,74 @@
+@startuml
+title Hình 4.12 - Biểu đồ tuần tự luồng đặt hàng VNPAY với IPN callback
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam ParticipantBorderColor #475569
+skinparam ParticipantBackgroundColor #F1F5F9
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+skinparam QueueBorderColor #475569
+skinparam QueueBackgroundColor #FEF3C7
+
+actor "Customer" as Customer
+participant "API Gateway" as Gateway
+participant "order-service" as Order #FEF3C7
+participant "inventory-service" as Inventory
+participant "payment-service" as Payment #DBEAFE
+participant "VNPAY Sandbox" as Vnpay #FEF3C7
+database "order_db" as OrderDb
+database "payment_db" as PaymentDb
+queue "Kafka" as Kafka
+participant "notification-service" as Notification
+
+Customer -> Gateway : POST /api/orders\npaymentMethod = VNPAY
+Gateway -> Order : create order request
+Order -> Inventory : Feign check stock
+Inventory --> Order : available
+Order -> OrderDb : create PENDING\nreservation_expired_at = now + 30m\noutbox order-created
+Order -> Kafka : publish order-created\nvia OutboxPoller
+Kafka -> Inventory : reserve stock
+Inventory -> Kafka : inventory-updated
+Kafka -> Order : consume inventory-updated
+Order -> OrderDb : update STOCK_RESERVED
+Gateway --> Customer : order created\nSTOCK_RESERVED
+
+Customer -> Gateway : POST /api/payments/vnpay/create
+Gateway -> Payment : create payment URL
+Payment -> PaymentDb : create payment PENDING\nexpired_at = now + 30m
+Payment -> Payment : build params\nsign HMAC-SHA512
+Payment --> Gateway : paymentUrl
+Gateway --> Customer : redirect URL
+Customer -> Vnpay : pay on VNPAY page
+
+Vnpay -> Payment : IPN callback\nsigned result
+Payment -> Payment : verify secure hash
+
+alt payment success
+  Payment -> PaymentDb : update COMPLETED\nwrite payment-success outbox
+  Payment -> Kafka : publish payment-success
+  Kafka -> Order : consume payment-success
+  Order -> OrderDb : update CONFIRMED
+  Order -> Kafka : publish order-confirmed
+  Kafka -> Inventory : confirm reservation
+  Kafka -> Notification : send confirmation email
+else payment failed
+  Payment -> PaymentDb : update FAILED\nwrite payment-failed outbox
+  Payment -> Kafka : publish payment-failed
+  Kafka -> Order : consume payment-failed
+  Order -> OrderDb : update CANCELLED
+  Order -> Kafka : publish order-cancelled
+  Kafka -> Inventory : release reservation
+  Kafka -> Notification : send cancellation email
+else no callback after 30 minutes
+  Order -> OrderDb : ReservationExpiryScheduler\ncancel expired order
+  Payment -> PaymentDb : PaymentTimeoutScheduler\nmark TIMEOUT
+  Order -> Kafka : publish order-cancelled
+end
+
+@enduml

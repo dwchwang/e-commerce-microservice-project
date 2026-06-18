@@ -1,0 +1,64 @@
+@startuml
+title Hình 5.9 - Eureka dashboard sau khi các service đăng ký thành công
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.2
+skinparam RectangleBorderColor #475569
+skinparam RectangleBackgroundColor #F8FAFC
+skinparam ComponentBorderColor #475569
+skinparam ComponentBackgroundColor #E0F2FE
+
+top to bottom direction
+
+rectangle "Eureka Server Dashboard\nhttp://localhost:8761" as Dashboard #FEF3C7 {
+  rectangle "Application registry\nStatus: UP" as Registry
+
+  rectangle "Spring Cloud Services" as Cloud {
+    component "API-GATEWAY" as Gateway
+    component "CONFIG-SERVER" as Config
+  }
+
+  rectangle "Business Services" as Business {
+    component "IDENTITY-SERVICE" as Identity
+    component "USER-SERVICE" as User
+    component "PRODUCT-SERVICE" as Product
+    component "INVENTORY-SERVICE" as Inventory
+    component "CART-SERVICE" as Cart
+    component "ORDER-SERVICE" as Order
+    component "PAYMENT-SERVICE" as Payment
+    component "VOUCHER-SERVICE" as Voucher
+    component "NOTIFICATION-SERVICE" as Notification
+    component "REVIEW-SERVICE" as Review
+    component "SEARCH-SERVICE" as Search
+    component "CONTENT-SERVICE" as Content
+    component "FLASH-SALE-SERVICE" as FlashSale
+  }
+}
+
+Gateway --> Registry : heartbeat
+Config --> Registry : heartbeat
+Identity --> Registry : heartbeat
+User --> Registry : heartbeat
+Product --> Registry : heartbeat
+Inventory --> Registry : heartbeat
+Cart --> Registry : heartbeat
+Order --> Registry : heartbeat
+Payment --> Registry : heartbeat
+Voucher --> Registry : heartbeat
+Notification --> Registry : heartbeat
+Review --> Registry : heartbeat
+Search --> Registry : heartbeat
+Content --> Registry : heartbeat
+FlashSale --> Registry : heartbeat
+
+note bottom
+  Sơ đồ này mô phỏng trạng thái kỳ vọng trên Eureka dashboard:
+  các service đăng ký thành công và Gateway có thể route qua lb://service-name.
+end note
+
+@enduml

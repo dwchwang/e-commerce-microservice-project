@@ -1,0 +1,53 @@
+@startuml
+title Hình 2.5 - Sơ đồ trạng thái của Circuit Breaker Pattern
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam StateBorderColor #475569
+skinparam StateBackgroundColor #F8FAFC
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam NoteBorderColor #F97316
+skinparam NoteBackgroundColor #FFF7ED
+
+[*] --> CLOSED : khởi tạo
+
+state CLOSED #DCFCE7 {
+  CLOSED : Chuyển tiếp request bình thường
+  CLOSED : Ghi nhận số lần thành công/thất bại
+}
+
+state OPEN #FEE2E2 {
+  OPEN : Từ chối nhanh request
+  OPEN : Trả fallback hoặc lỗi có kiểm soát
+}
+
+state HALF_OPEN #FEF3C7 {
+  HALF_OPEN : Cho phép số ít request thử nghiệm
+  HALF_OPEN : Đánh giá dịch vụ phụ thuộc đã phục hồi chưa
+}
+
+CLOSED --> OPEN : failure rate vượt ngưỡng
+OPEN --> HALF_OPEN : hết wait duration
+HALF_OPEN --> CLOSED : request thử nghiệm thành công
+HALF_OPEN --> OPEN : request thử nghiệm thất bại
+
+note right of CLOSED
+  Trạng thái mặc định.
+  Nếu dependency ổn định,
+  mạch luôn đóng.
+end note
+
+note right of OPEN
+  Bảo vệ thread pool,
+  connection pool và
+  ngăn cascading failure.
+end note
+
+note bottom of HALF_OPEN
+  Giai đoạn kiểm tra phục hồi
+  trước khi cho traffic quay lại đầy đủ.
+end note
+
+@enduml

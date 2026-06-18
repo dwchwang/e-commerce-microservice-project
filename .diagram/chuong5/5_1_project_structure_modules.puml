@@ -1,0 +1,72 @@
+@startuml
+title Hình 5.1 - Cấu trúc thư mục dự án và các module chính
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment left
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam RectangleBorderColor #475569
+skinparam RectangleBackgroundColor #F8FAFC
+skinparam FolderBorderColor #475569
+skinparam FolderBackgroundColor #E0F2FE
+skinparam NoteBorderColor #F97316
+skinparam NoteBackgroundColor #FFF7ED
+
+left to right direction
+
+folder "e-commerce microservice project" as Root {
+  folder "common" as Common {
+    rectangle "ApiResponse\nException classes\nEvent DTO contracts" as CommonFiles
+  }
+
+  folder "Spring Cloud infrastructure" as InfraModules {
+    rectangle "api-gateway" as Gateway
+    rectangle "discovery-server" as Discovery
+    rectangle "config-server" as Config
+  }
+
+  folder "13 business services" as BusinessModules {
+    rectangle "identity-service\nuser-service" as IdentityUser
+    rectangle "product-service\ninventory-service\ncart-service" as CatalogCore
+    rectangle "order-service\npayment-service\nvoucher-service" as OrderPayment
+    rectangle "notification-service\nreview-service\nsearch-service" as Support
+    rectangle "content-service\nflash-sale-service" as ContentFlash
+  }
+
+  folder "frontend" as Frontend {
+    rectangle "Next.js App Router\nStorefront + Admin Panel\nServer Actions" as FrontendFiles
+  }
+
+  folder "deployment / operations" as Ops {
+    rectangle "docker-compose.yml\ndocker-compose.prod.yml" as Compose
+    rectangle ".github/workflows\nBuild / Push images" as Workflows
+    rectangle "aws/Caddyfile\nprometheus / grafana" as AwsObs
+  }
+
+  folder "test artifacts" as Tests {
+    rectangle ".test/scripts\n.test/load\n.test/results" as TestFiles
+  }
+
+  folder "report" as Report {
+    rectangle "DATN_Nguyen_Duc_Bao_Hoang_20227116\nLaTeX report" as Latex
+    rectangle ".diagram\nPlantUML sources" as Diagrams
+  }
+}
+
+BusinessModules ..> Common : depends on common module
+Gateway ..> Config : reads config
+BusinessModules ..> Config : reads config
+BusinessModules ..> Compose : built and run as containers
+Frontend ..> Compose : frontend container
+Workflows ..> Compose : production images
+Tests ..> Gateway : smoke / k6 / resilience tests
+Diagrams ..> Latex : exported images for report
+
+note bottom
+  Monorepo giúp quản lý dependency, build Maven multi-module,
+  frontend, deployment scripts, test artifacts và báo cáo trong cùng repository.
+end note
+
+@enduml

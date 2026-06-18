@@ -1,0 +1,60 @@
+@startuml
+title Hình 4.10 - Máy trạng thái thanh toán và chiến dịch Flash Sale
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam StateBorderColor #475569
+skinparam StateBackgroundColor #F8FAFC
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam NoteBorderColor #F97316
+skinparam NoteBackgroundColor #FFF7ED
+
+left to right direction
+
+state "Payment State Machine" as PaymentMachine {
+  [*] --> PAY_PENDING : create VNPAY URL
+
+  state "PENDING" as PAY_PENDING #FEF3C7
+  state "COMPLETED" as PAY_COMPLETED #DCFCE7
+  state "FAILED" as PAY_FAILED #FEE2E2
+  state "TIMEOUT" as PAY_TIMEOUT #E2E8F0
+
+  PAY_PENDING --> PAY_COMPLETED : VNPAY IPN / Return URL\nsuccess + valid signature
+  PAY_PENDING --> PAY_FAILED : VNPAY failed / user cancelled
+  PAY_PENDING --> PAY_TIMEOUT : PaymentTimeoutScheduler\nexpired after 30 minutes
+
+  PAY_COMPLETED --> [*]
+  PAY_FAILED --> [*]
+  PAY_TIMEOUT --> [*]
+}
+
+state "Flash Sale Campaign State Machine" as CampaignMachine {
+  [*] --> SCHEDULED : admin creates campaign
+
+  state "SCHEDULED" as SCHEDULED #DBEAFE
+  state "ACTIVE" as ACTIVE #DCFCE7
+  state "ENDED" as ENDED #E2E8F0
+  state "CANCELLED" as CANCELLED #FEE2E2
+
+  SCHEDULED --> ACTIVE : CampaignScheduler\nstart time reached\nseed Redis stock
+  ACTIVE --> ENDED : CampaignScheduler\nend time reached
+  SCHEDULED --> CANCELLED : admin cancel
+  ACTIVE --> CANCELLED : admin cancel\nremove Redis keys
+
+  ENDED --> [*]
+  CANCELLED --> [*]
+}
+
+note bottom of PaymentMachine
+  Partial unique index:
+  mỗi order chỉ có tối đa một payment PENDING.
+end note
+
+note bottom of CampaignMachine
+  CampaignScheduler chạy 5 giây/lần
+  và dùng Redis distributed lock.
+end note
+
+@enduml

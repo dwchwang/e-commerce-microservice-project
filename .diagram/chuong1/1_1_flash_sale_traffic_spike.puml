@@ -1,0 +1,75 @@
+@startuml
+title Hình 1.1 - Lưu lượng truy cập tăng đột biến trong sự kiện Flash Sale
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam handwritten false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #334155
+skinparam ArrowThickness 1.4
+skinparam SequenceBoxBorderColor #CBD5E1
+skinparam SequenceBoxBackgroundColor #F8FAFC
+skinparam ParticipantBorderColor #475569
+skinparam ParticipantBackgroundColor #F1F5F9
+skinparam ActorBorderColor #475569
+skinparam ActorBackgroundColor #E0F2FE
+skinparam NoteBorderColor #F97316
+skinparam NoteBackgroundColor #FFF7ED
+
+actor "Người dùng\nngày thường" as NormalUser #DBEAFE
+actor "Người dùng\nFlash Sale" as SaleUser #FED7AA
+participant "Storefront /\nMobile Client" as Client #E0F2FE
+participant "API Gateway" as Gateway #DCFCE7
+box "Hệ thống Monolith truyền thống" #FEE2E2
+participant "Toàn bộ ứng dụng\nphải scale cùng lúc" as Monolith #FCA5A5
+end box
+box "Hệ thống Microservices mục tiêu" #ECFDF5
+participant "flash-sale-service" as FlashSale #BBF7D0
+participant "order-service" as Order #BBF7D0
+participant "inventory-service" as Inventory #BBF7D0
+participant "payment-service" as Payment #BBF7D0
+end box
+
+== Ngày thường ==
+NormalUser -> Client : Duyệt sản phẩm,\nthêm giỏ hàng, đặt hàng
+Client -> Gateway : Lưu lượng ổn định\nbaseline 1x
+Gateway -> Monolith : Xử lý trên cùng một khối triển khai
+Monolith --> Gateway : Phản hồi ổn định\nkhi tải còn thấp
+Gateway --> Client : Kết quả
+
+== Sự kiện Flash Sale / Black Friday ==
+SaleUser -> Client : Hàng chục nghìn request\ntrong vài phút
+Client -> Gateway : Traffic spike\n10x - 50x so với ngày thường
+
+alt Nếu vẫn dùng Monolith
+    Gateway -> Monolith : Phải mở rộng toàn bộ ứng dụng
+    note right of Monolith
+      Tài nguyên bị lãng phí,
+      release chậm, lỗi cục bộ
+      có thể lan ra toàn hệ thống.
+    end note
+    Monolith --> Gateway : Nguy cơ nghẽn tài nguyên\nvà cascading failure
+else Kiến trúc Microservices
+    Gateway -> FlashSale : Kiểm tra buyer set,\ntrừ slot bằng Redis Lua
+    FlashSale -> Order : Tạo đơn flash sale
+    Order -> Inventory : Giữ / trừ tồn kho
+    Order -> Payment : Khởi tạo thanh toán
+    note over FlashSale,Payment
+      Chỉ scale các miền chịu tải cao,
+      cô lập sự cố theo service,
+      giảm rủi ro over-sell.
+    end note
+    Payment --> Gateway : Kết quả xử lý
+end
+
+Gateway --> Client : Phản hồi cho người dùng
+
+legend right
+  Mục đích hình: minh họa sự khác biệt giữa tải ngày thường
+  và tải tăng đột biến trong flash sale, từ đó làm rõ nhu cầu
+  mở rộng chọn lọc và cô lập lỗi bằng microservices.
+endlegend
+
+@enduml

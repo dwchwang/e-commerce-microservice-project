@@ -1,0 +1,52 @@
+@startuml
+title Hình 4.14 - Biểu đồ tuần tự luồng tìm kiếm sản phẩm theo CQRS-lite
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam ParticipantBorderColor #475569
+skinparam ParticipantBackgroundColor #F1F5F9
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+skinparam QueueBorderColor #475569
+skinparam QueueBackgroundColor #FEF3C7
+
+actor "Admin" as Admin
+actor "Customer" as Customer
+participant "API Gateway" as Gateway
+participant "product-service\nCommand side" as Product #DCFCE7
+database "product_db\nPostgreSQL" as ProductDb
+queue "Kafka" as Kafka
+participant "search-service\nQuery side" as Search #DBEAFE
+database "Elasticsearch\nproducts index" as Es
+
+== Command path: cập nhật sản phẩm ==
+Admin -> Gateway : POST/PUT /api/products
+Gateway -> Product : authenticated admin request
+Product -> ProductDb : insert/update product
+Product -> Kafka : publish product-created\nor product-updated
+Product --> Gateway : product saved
+Gateway --> Admin : response
+
+Kafka -> Search : consume product event
+Search -> Es : upsert product document\nname, description, category,\nbrand, price
+
+== Query path: tìm kiếm sản phẩm ==
+Customer -> Gateway : GET /api/search?q=...
+Gateway -> Search : route to search-service
+Search -> Es : full-text query\nfilters/sort/pagination
+Es --> Search : ranked product documents
+Search --> Gateway : search results
+Gateway --> Customer : products
+
+note bottom
+  PostgreSQL là write model do product-service sở hữu.
+  Elasticsearch là read model tối ưu tìm kiếm.
+  Đồng bộ qua Kafka, chấp nhận eventual consistency ngắn.
+end note
+
+@enduml

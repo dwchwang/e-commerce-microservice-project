@@ -1,0 +1,57 @@
+@startuml
+title Hình 5.13 - Bằng chứng resilience: Kafka outbox replay và Redis recovery
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.2
+skinparam ParticipantBorderColor #475569
+skinparam ParticipantBackgroundColor #F1F5F9
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+skinparam QueueBorderColor #475569
+skinparam QueueBackgroundColor #FEF3C7
+
+participant "Test script\nchaos scenario" as Test
+participant "order-service" as Order #FEF3C7
+database "order_db.outbox" as Outbox
+queue "Kafka" as Kafka
+participant "inventory-service" as Inventory
+database "Redis" as Redis #FCE7F3
+participant "product-service" as Product
+participant "cart-service" as Cart
+database ".test/results\nchaos transcripts" as Results
+
+== Kill Kafka: Outbox replay ==
+Test -> Kafka : stop container
+Test -> Order : create order
+Order -> Outbox : write event pending\nprocessed=false
+Order --> Test : order accepted\nbusiness data persisted
+Test -> Kafka : restart container
+Order -> Outbox : OutboxPoller reads pending event
+Order -> Kafka : replay event
+Kafka -> Inventory : consume order-created
+Inventory --> Order : inventory-updated
+Order -> Outbox : mark processed
+Test -> Results : record final state\norder CONFIRMED
+
+== Kill Redis: degradation and recovery ==
+Test -> Redis : stop container
+Test -> Product : GET product list
+Product --> Test : 200 fallback/no-cache path
+Test -> Cart : cart operation
+Cart --> Test : 500 fail fast\nRedis required
+Test -> Redis : restart container
+Test -> Cart : retry cart operation
+Cart --> Test : recover 200
+Test -> Results : record transcript
+
+note bottom
+  Outbox replay chứng minh hệ thống không mất event khi Kafka down.
+  Redis scenario phân biệt luồng có fallback với luồng phải fail fast để tránh sai dữ liệu.
+end note
+
+@enduml

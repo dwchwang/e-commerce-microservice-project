@@ -1,0 +1,59 @@
+@startuml
+title Hình 5.7 - Admin Panel: dashboard, products, inventory, orders và flash-sales
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam RectangleBorderColor #475569
+skinparam RectangleBackgroundColor #F8FAFC
+skinparam ComponentBorderColor #475569
+skinparam ComponentBackgroundColor #E0F2FE
+
+left to right direction
+
+actor "ROLE_ADMIN" as Admin
+
+rectangle "Admin Panel\n/admin/*" as AdminPanel #E0F2FE {
+  rectangle "Dashboard\nanalytics + low stock" as Dashboard
+  rectangle "Products\nCRUD product/category/brand" as Products
+  rectangle "Inventory\nstock-in / stock-out" as Inventory
+  rectangle "Orders\nlist, detail, update status" as Orders
+  rectangle "Users\nadmin user list" as Users
+  rectangle "Vouchers\nCRUD promotion rules" as Vouchers
+  rectangle "Flash Sales\ncampaign + slot setup" as FlashSales
+  rectangle "Content / Reviews\nbanner, blog, moderation" as ContentReviews
+}
+
+component "Middleware\ncookie + ROLE_ADMIN guard" as Middleware #FEF3C7
+component "Server Actions\nadminFetch/adminMutate\nrevalidatePath" as Actions #DBEAFE
+component "API Gateway\nROLE_ADMIN routes" as Gateway #DCFCE7
+
+Admin --> Middleware : access /admin/*
+Middleware --> Dashboard : allow admin
+Dashboard --> Products
+Dashboard --> Inventory
+Dashboard --> Orders
+Dashboard --> Users
+Dashboard --> Vouchers
+Dashboard --> FlashSales
+Dashboard --> ContentReviews
+
+Products --> Actions
+Inventory --> Actions
+Orders --> Actions
+Users --> Actions
+Vouchers --> Actions
+FlashSales --> Actions
+ContentReviews --> Actions
+Actions --> Gateway : /api/*/admin/**\nPOST/PUT/DELETE mutations
+
+note bottom
+  Token được đọc phía server từ httpOnly cookie.
+  Mutation dùng Server Actions nên access token không xuất hiện trong browser JavaScript.
+end note
+
+@enduml

@@ -1,0 +1,64 @@
+@startuml
+title Hình 2.4 - Luồng hoạt động của Transactional Outbox Pattern
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam ParticipantBorderColor #475569
+skinparam ParticipantBackgroundColor #F1F5F9
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+skinparam QueueBorderColor #475569
+skinparam QueueBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F97316
+skinparam NoteBackgroundColor #FFF7ED
+
+actor "Client" as Client
+participant "order-service" as OrderService #DBEAFE
+database "orders\nbusiness table" as OrdersDb
+database "outbox_events" as OutboxDb
+participant "OutboxPoller" as Poller #E0F2FE
+queue "Kafka Broker" as Kafka
+participant "Consumer Service" as Consumer #ECFDF5
+database "processed_events" as ProcessedDb
+
+Client -> OrderService : Create order
+activate OrderService
+OrderService -> OrdersDb : INSERT/UPDATE order
+OrderService -> OutboxDb : INSERT domain event\ntrong cùng DB transaction
+note over OrdersDb,OutboxDb
+  Một giao dịch ACID:
+  dữ liệu nghiệp vụ và sự kiện
+  cùng commit hoặc cùng rollback.
+end note
+OrderService --> Client : Order accepted
+deactivate OrderService
+
+loop mỗi chu kỳ poll
+  Poller -> OutboxDb : SELECT unpublished\nFOR UPDATE SKIP LOCKED
+  OutboxDb --> Poller : event batch
+  Poller -> Kafka : publish event
+  Kafka --> Poller : ack
+  Poller -> OutboxDb : mark as published
+end
+
+Kafka -> Consumer : deliver event\nat-least-once
+Consumer -> ProcessedDb : check event_id
+alt event_id chưa tồn tại
+  Consumer -> Consumer : xử lý nghiệp vụ
+  Consumer -> ProcessedDb : insert event_id\ncùng transaction
+else event_id đã tồn tại
+  Consumer -> Consumer : bỏ qua duplicate
+end
+
+legend right
+  Outbox giải quyết dual-write.
+  Idempotent Consumer xử lý duplicate
+  do at-least-once delivery.
+endlegend
+
+@enduml

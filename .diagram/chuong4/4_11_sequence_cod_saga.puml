@@ -1,0 +1,71 @@
+@startuml
+title Hình 4.11 - Biểu đồ tuần tự luồng đặt hàng COD - Saga Orchestration
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam ParticipantBorderColor #475569
+skinparam ParticipantBackgroundColor #F1F5F9
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+skinparam QueueBorderColor #475569
+skinparam QueueBackgroundColor #FEF3C7
+
+actor "Customer" as Customer
+participant "API Gateway" as Gateway
+participant "order-service\nSaga Orchestrator" as Order #FEF3C7
+participant "product-service" as Product
+participant "inventory-service" as Inventory
+participant "voucher-service" as Voucher
+database "order_db\norders + outbox" as OrderDb
+queue "Kafka" as Kafka
+participant "notification-service" as Notification
+
+Customer -> Gateway : POST /api/orders\npaymentMethod = COD
+Gateway -> Order : Forward authenticated request
+
+Order -> Product : Feign: verify products\nprice + active status
+Product --> Order : product snapshots
+Order -> Inventory : Feign: check available stock
+Inventory --> Order : stock available
+Order -> Voucher : Feign: validate/reserve voucher
+Voucher --> Order : voucher reserved
+
+Order -> OrderDb : create order PENDING\ninsert order-created outbox\nsame transaction
+Order --> Gateway : order accepted
+Gateway --> Customer : response PENDING
+
+loop OutboxPoller mỗi 1 giây
+  Order -> OrderDb : read unpublished outbox
+  Order -> Kafka : publish order-created
+  Order -> OrderDb : mark processed
+end
+
+Kafka -> Inventory : consume order-created
+Inventory -> Inventory : increase reserved_quantity
+
+alt inventory đủ
+  Inventory -> Kafka : publish inventory-updated
+  Kafka -> Order : consume inventory-updated
+  Order -> OrderDb : update STOCK_RESERVED
+  Order -> Kafka : publish order-confirmed\nCOD auto-confirm
+  Kafka -> Inventory : consume order-confirmed
+  Inventory -> Inventory : confirm reservation\nquantity -= qty\nreserved -= qty
+  Kafka -> Notification : consume order-confirmed
+  Notification -> Notification : send confirmation email
+  Order -> OrderDb : update CONFIRMED
+else inventory không đủ
+  Inventory -> Kafka : publish inventory-failed
+  Kafka -> Order : consume inventory-failed
+  Order -> OrderDb : update CANCELLED
+  Order -> Kafka : publish order-cancelled
+  Kafka -> Inventory : release reservation if any
+  Kafka -> Voucher : release voucher
+  Kafka -> Notification : send cancellation email
+end
+
+@enduml

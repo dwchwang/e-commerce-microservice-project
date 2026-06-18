@@ -1,0 +1,75 @@
+@startuml
+title Hình 2.7 - Ba trụ cột Observability trong hệ thống microservices
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam packageStyle rectangle
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam RectangleBorderColor #475569
+skinparam RectangleBackgroundColor #F8FAFC
+skinparam CloudBorderColor #475569
+skinparam CloudBackgroundColor #E0F2FE
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+skinparam NoteBorderColor #F97316
+skinparam NoteBackgroundColor #FFF7ED
+
+left to right direction
+
+cloud "Microservices\nAPI Gateway, Order, Payment,\nInventory, Search, Flash Sale" as Services #E0F2FE
+
+rectangle "Metrics" as Metrics #DBEAFE {
+  rectangle "Request rate" as M1
+  rectangle "Latency percentile" as M2
+  rectangle "Error rate" as M3
+  rectangle "CPU / Memory / DB pool" as M4
+  database "Prometheus" as Prometheus
+  rectangle "Grafana Dashboard" as Grafana
+  M1 --> Prometheus
+  M2 --> Prometheus
+  M3 --> Prometheus
+  M4 --> Prometheus
+  Prometheus --> Grafana
+}
+
+rectangle "Distributed Tracing" as Tracing #ECFDF5 {
+  rectangle "Trace ID" as T1
+  rectangle "Span ID" as T2
+  rectangle "Service timeline" as T3
+  database "Zipkin" as Zipkin
+  T1 --> Zipkin
+  T2 --> Zipkin
+  T3 --> Zipkin
+}
+
+rectangle "Structured Logging" as Logging #FEF3C7 {
+  rectangle "timestamp" as L1
+  rectangle "service name" as L2
+  rectangle "level / message" as L3
+  rectangle "traceId / spanId" as L4
+  database "Log stream" as LogStream
+  L1 --> LogStream
+  L2 --> LogStream
+  L3 --> LogStream
+  L4 --> LogStream
+}
+
+Services --> Metrics : /actuator/prometheus
+Services --> Tracing : W3C Trace Context
+Services --> Logging : Logback pattern
+
+Grafana ..> Zipkin : điều tra latency\nqua traceId
+Zipkin ..> LogStream : truy log theo\ntraceId/spanId
+Grafana ..> LogStream : đối chiếu lỗi\nvà sự kiện
+
+note bottom
+  Metrics trả lời "hệ thống có vấn đề không".
+  Tracing trả lời "request chậm/lỗi ở đâu".
+  Logging trả lời "đã xảy ra điều gì trong từng bước".
+end note
+
+@enduml

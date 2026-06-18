@@ -1,0 +1,133 @@
+@startuml
+title Hình 4.4 - ERD các database chính: order_db, payment_db, product_db, inventory_db
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment left
+skinparam linetype ortho
+skinparam ArrowColor #475569
+skinparam EntityBorderColor #475569
+skinparam EntityBackgroundColor #F8FAFC
+
+left to right direction
+
+package "order_db" {
+  entity "orders" as orders {
+    * id : UUID
+    --
+    order_code : string
+    user_id : UUID
+    payment_method : enum
+    status : enum
+    total_amount : decimal
+    voucher_id : UUID?
+    reservation_expired_at : timestamp?
+    created_at : timestamp
+  }
+
+  entity "order_items" as order_items {
+    * id : UUID
+    --
+    order_id : UUID
+    product_id : UUID
+    sku : string
+    quantity : int
+    unit_price : decimal
+  }
+
+  entity "outbox" as outbox {
+    * id : UUID
+    --
+    aggregate_type : string
+    aggregate_id : UUID
+    event_type : string
+    payload : json
+    processed : boolean
+    processed_at : timestamp?
+  }
+
+  entity "processed_events" as processed_events {
+    * event_id : UUID
+    --
+    source : string
+    processed_at : timestamp
+  }
+}
+
+package "payment_db" {
+  entity "payments" as payments {
+    * id : UUID
+    --
+    order_id : UUID
+    method : enum
+    amount : decimal
+    status : enum
+    expired_at : timestamp
+    transaction_ref : string?
+  }
+
+  entity "payment_outbox" as payment_outbox {
+    * id : UUID
+    --
+    payment_id : UUID
+    event_type : string
+    payload : json
+    status : enum
+    retry_count : int
+    last_error : string?
+    published_at : timestamp?
+  }
+}
+
+package "product_db" {
+  entity "products" as products {
+    * id : UUID
+    --
+    name : string
+    description : text
+    price : decimal
+    sku : string
+    active : boolean
+    category_id : UUID
+    brand_id : UUID
+  }
+
+  entity "categories" as categories {
+    * id : UUID
+    --
+    parent_id : UUID?
+    name : string
+    slug : string
+  }
+
+  entity "brands" as brands {
+    * id : UUID
+    --
+    name : string
+    slug : string
+  }
+}
+
+package "inventory_db" {
+  entity "inventory" as inventory {
+    * id : UUID
+    --
+    product_id : UUID
+    sku : string
+    quantity : int
+    reserved_quantity : int
+    available = quantity - reserved_quantity
+  }
+}
+
+orders ||--o{ order_items : contains
+orders ||--o{ outbox : emits
+payments ||--o{ payment_outbox : emits
+products }o--|| categories : belongs_to
+products }o--|| brands : belongs_to
+products ||..|| inventory : product_id / sku
+orders ||..o{ payments : order_id
+outbox ..> processed_events : idempotency on consumer side
+
+@enduml

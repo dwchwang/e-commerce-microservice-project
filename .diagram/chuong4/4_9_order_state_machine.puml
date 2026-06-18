@@ -1,0 +1,54 @@
+@startuml
+title Hình 4.9 - Sơ đồ máy trạng thái đơn hàng
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam StateBorderColor #475569
+skinparam StateBackgroundColor #F8FAFC
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam NoteBorderColor #F97316
+skinparam NoteBackgroundColor #FFF7ED
+
+[*] --> PENDING : create order\nwrite order-created to outbox
+
+state PENDING #FEF3C7 {
+  PENDING : Đơn đã tạo
+  PENDING : Chờ inventory reservation
+}
+
+state STOCK_RESERVED #DBEAFE {
+  STOCK_RESERVED : Tồn kho đã đặt chỗ
+  STOCK_RESERVED : COD xác nhận ngay
+  STOCK_RESERVED : VNPAY chờ thanh toán 30 phút
+}
+
+state CONFIRMED #DCFCE7 {
+  CONFIRMED : Kết thúc thành công
+  CONFIRMED : Gửi order-confirmed
+}
+
+state CANCELLED #FEE2E2 {
+  CANCELLED : Kết thúc thất bại
+  CANCELLED : Gửi order-cancelled
+}
+
+PENDING --> STOCK_RESERVED : inventory-updated
+PENDING --> CANCELLED : inventory-failed\nstock not enough
+STOCK_RESERVED --> CONFIRMED : COD auto confirm
+STOCK_RESERVED --> CONFIRMED : VNPAY payment-success
+STOCK_RESERVED --> CANCELLED : payment-failed
+STOCK_RESERVED --> CANCELLED : reservation timeout\n30 phút
+
+CONFIRMED --> [*]
+CANCELLED --> [*]
+
+note right of CANCELLED
+  Compensation:
+  release inventory reservation,
+  release voucher,
+  send cancellation email.
+end note
+
+@enduml

@@ -1,0 +1,76 @@
+@startuml
+title Hình 4.13 - Biểu đồ tuần tự luồng mua Flash Sale với ba lớp bảo vệ
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam ParticipantBorderColor #475569
+skinparam ParticipantBackgroundColor #F1F5F9
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+skinparam QueueBorderColor #475569
+skinparam QueueBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F97316
+skinparam NoteBackgroundColor #FFF7ED
+
+actor "Customer" as Customer
+participant "API Gateway" as Gateway
+database "Redis\nRate Limiter" as RateRedis #FCE7F3
+participant "flash-sale-service" as FlashSale #FEE2E2
+database "Redis\nstock + buyers" as Redis #FEF3C7
+database "flash_sale_db" as FlashDb
+queue "Kafka\nflash-sale-order-requested" as Kafka
+participant "order-service" as Order #FEF3C7
+participant "inventory-service" as Inventory
+participant "ReconciliationScheduler" as Reconcile
+
+Customer -> Gateway : POST /api/flash-sales/{id}/purchase
+Gateway -> RateRedis : token bucket\n3 req/s burst 5
+
+alt rate limited
+  Gateway --> Customer : 429 Too Many Requests
+else accepted
+  Gateway -> FlashSale : authenticated request
+  FlashSale -> FlashSale : Layer 1:\ncheck ACTIVE and time window
+  alt campaign invalid
+    FlashSale --> Gateway : 409 not active
+  else campaign active
+    FlashSale -> Redis : Layer 2:\nLua atomic script\ncheck buyers set\ncheck stock > 0\ndecrement stock\nadd user to buyers
+    alt sold out or duplicate buyer
+      Redis --> FlashSale : failed
+      FlashSale --> Gateway : 409 sold out / duplicate
+    else slot reserved
+      Redis --> FlashSale : success
+      FlashSale -> FlashDb : Layer 3:\nincrease soldCount
+      FlashSale -> Kafka : publish flash-sale-order-requested
+      Kafka -> Order : create flash sale order\nwith campaign price
+      Order -> Inventory : reserve/confirm stock\nlike COD flow
+      alt order created successfully
+        Order --> Kafka : order-confirmed / order-created flow
+        FlashSale --> Gateway : purchase accepted
+      else order creation failed
+        Order --> FlashSale : failure event / callback
+        FlashSale -> Redis : compensation Lua\nincrement stock\nremove buyer
+        FlashSale -> FlashDb : decrease soldCount
+        FlashSale --> Gateway : 409 failed and compensated
+      end
+    end
+  end
+end
+
+loop định kỳ
+  Reconcile -> FlashDb : read soldCount
+  Reconcile -> Order : count actual flash-sale orders
+  Reconcile -> Redis : repair orphan slot / missing key
+end
+
+note bottom
+  Ba lớp bảo vệ: Gateway rate limit, Redis Lua atomic stock/buyer check,
+  database soldCount + reconciliation để chống over-sell và slot mồ côi.
+end note
+
+@enduml

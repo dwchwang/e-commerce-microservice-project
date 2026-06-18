@@ -1,0 +1,55 @@
+@startuml
+title Hình 5.3 - OutboxPoller đọc bảng outbox và phát Kafka
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam ParticipantBorderColor #475569
+skinparam ParticipantBackgroundColor #F1F5F9
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+skinparam QueueBorderColor #475569
+skinparam QueueBackgroundColor #FEF3C7
+skinparam NoteBorderColor #F97316
+skinparam NoteBackgroundColor #FFF7ED
+
+participant "order-service\nbusiness transaction" as Order
+database "order_db.orders" as Orders
+database "order_db.outbox" as Outbox
+participant "OutboxPoller\n@Scheduled 1s" as Poller #E0F2FE
+queue "Kafka" as Kafka
+participant "inventory/payment/\nnotification consumer" as Consumer
+database "processed_events" as Processed
+
+Order -> Orders : insert/update order
+Order -> Outbox : insert event row\nprocessed=false
+note over Orders,Outbox
+  Cùng một DB transaction:
+  tránh dual-write giữa dữ liệu nghiệp vụ và Kafka.
+end note
+
+loop mỗi 1 giây
+  Poller -> Outbox : SELECT batch WHERE processed=false\nFOR UPDATE SKIP LOCKED
+  Outbox --> Poller : unpublished events
+  Poller -> Kafka : publish event
+  alt publish success
+    Poller -> Outbox : processed=true\nprocessed_at=now
+  else Kafka unavailable
+    Poller -> Outbox : keep pending\nretry later
+  end
+end
+
+Kafka -> Consumer : deliver event\nat-least-once
+Consumer -> Processed : check eventId
+alt first time
+  Consumer -> Consumer : execute business logic
+  Consumer -> Processed : save eventId
+else duplicate
+  Consumer -> Consumer : skip safely
+end
+
+@enduml

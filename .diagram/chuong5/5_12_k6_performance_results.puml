@@ -1,0 +1,47 @@
+@startuml
+title Hình 5.12 - Kết quả k6 catalog, checkout và flash-sale spike
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.2
+skinparam RectangleBorderColor #475569
+skinparam RectangleBackgroundColor #F8FAFC
+skinparam ComponentBorderColor #475569
+skinparam ComponentBackgroundColor #E0F2FE
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+
+left to right direction
+
+actor "k6 load generator\nlocal machine" as K6
+component "AWS EC2\nproduction-like stack" as Stack #EEF2FF
+component "API Gateway" as Gateway #DCFCE7
+database ".test/results\nraw artifacts" as Results #DCFCE7
+
+rectangle "Catalog soak\n34m03s\n200 VU\n220,956 requests\np95 61.68 ms\nerror 0.00%" as Catalog #DBEAFE
+rectangle "Checkout stress\n7m00s\n50 VU\n13,734 requests\np95 160.92 ms\nerror 0.00%" as Checkout #ECFDF5
+rectangle "Flash-sale spike\n1m30s\n500 VU\n78,448 requests\n100/100 slots\n0 duplicate buyer\np95 overall 1.04 s" as Flash #FEF3C7
+
+K6 --> Catalog
+K6 --> Checkout
+K6 --> Flash
+
+Catalog --> Gateway : GET catalog/search
+Checkout --> Gateway : create order flow
+Flash --> Gateway : flash-sale purchase
+Gateway --> Stack : route to services
+
+Catalog --> Results : json/txt output
+Checkout --> Results : json/txt output
+Flash --> Results : json/txt output
+
+note bottom
+  Mục tiêu của hình là tổng hợp bằng chứng hiệu năng.
+  Khi có ảnh chụp terminal k6 thật, có thể thay hình này bằng screenshot.
+end note
+
+@enduml

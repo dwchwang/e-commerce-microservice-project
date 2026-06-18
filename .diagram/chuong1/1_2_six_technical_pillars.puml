@@ -1,0 +1,61 @@
+@startmindmap
+title Hình 1.2 - Sáu trụ cột kỹ thuật của hệ thống
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam shadowing false
+skinparam ArrowColor #475569
+skinparam NodeBorderColor #334155
+skinparam NodeBackgroundColor #F8FAFC
+skinparam MindMapFontColor #0F172A
+skinparam MindMapNodeBackgroundColor #F8FAFC
+skinparam MindMapNodeBorderColor #334155
+
+* Hệ thống TMĐT\nMicroservices
+** Kiến trúc và\nphân rã dịch vụ
+*** Domain-Driven Design
+*** 13 bounded context
+*** Database-per-service
+*** API Gateway
+*** Eureka Service Discovery
+*** Config Server
+** Giao tiếp và\ntính nhất quán phân tán
+*** REST / OpenFeign
+*** Apache Kafka KRaft
+*** Saga Orchestration
+*** Eventual consistency
+*** 13 Kafka topic
+** Truyền thông điệp\ntin cậy
+*** Transactional Outbox
+*** OutboxPoller 1 giây
+*** FOR UPDATE SKIP LOCKED
+*** Idempotent Consumer
+*** processed_events
+*** Scheduled recovery jobs
+** Flash Sale\nchống over-sell
+*** Redis Lua atomic script
+*** Buyer set chống mua trùng
+*** Stock key có TTL
+*** Compensation khi tạo đơn lỗi
+*** ReconciliationScheduler
+*** Redis distributed lock
+** Bảo mật\ntập trung
+*** Keycloak 26
+*** OAuth 2.0 / OIDC
+*** JWT RS256
+*** Trusted Subsystem Pattern
+*** X-User-Id / Roles / Email
+*** RBAC và rate limiter
+** Khả năng\nquan sát
+*** Prometheus metrics
+*** Grafana dashboards
+*** Zipkin distributed tracing
+*** W3C Trace Context
+*** Structured logging
+*** traceId / spanId
+
+caption
+  Sơ đồ tổng quan các định hướng kỹ thuật chi phối thiết kế và triển khai hệ thống.
+endcaption
+
+@endmindmap

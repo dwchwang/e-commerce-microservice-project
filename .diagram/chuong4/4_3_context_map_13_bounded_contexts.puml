@@ -1,0 +1,54 @@
+@startuml
+title Hình 4.3 - Context Map 13 Bounded Context
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultTextAlignment center
+skinparam roundcorner 8
+skinparam packageStyle rectangle
+skinparam ArrowColor #475569
+skinparam ArrowThickness 1.3
+skinparam ComponentBorderColor #475569
+skinparam ComponentBackgroundColor #F8FAFC
+skinparam DatabaseBorderColor #475569
+skinparam DatabaseBackgroundColor #DCFCE7
+
+left to right direction
+
+component "Identity\nidentity-service\nKeycloak users" as Identity #DBEAFE
+component "User Profile\nuser-service\nuser_db" as User #DBEAFE
+component "Product Catalog\nproduct-service\nproduct_db + Redis" as Product #DCFCE7
+component "Inventory\ninventory-service\ninventory_db" as Inventory #DCFCE7
+component "Cart\ncart-service\nRedis cart keys" as Cart #DCFCE7
+component "Order\norder-service\norder_db + Outbox\nSaga orchestrator" as Order #FEF3C7
+component "Payment\npayment-service\npayment_db + Outbox\nVNPAY" as Payment #FEF3C7
+component "Voucher\nvoucher-service\nvoucher_db" as Voucher #FEF3C7
+component "Notification\nnotification-service\nnotification_db" as Notification #FCE7F3
+component "Review\nreview-service\nreview_db" as Review #E0F2FE
+component "Search\nsearch-service\nElasticsearch" as Search #E0F2FE
+component "Content\ncontent-service\ncontent_db" as Content #F8FAFC
+component "Flash Sale\nflash-sale-service\nflash_sale_db + Redis" as FlashSale #FEE2E2
+
+Identity --> User : user-registered event
+Product --> Search : product-created / updated / deleted
+Cart --> Product : verify product\nREST/Feign
+Order --> Product : price / status\nREST/Feign
+Order --> Inventory : check stock\nREST/Feign + events
+Order --> Voucher : validate / reserve voucher\nREST/Feign
+Review --> Order : verify purchased product\nREST/Feign
+Order --> Payment : payment-requested event\nor create VNPAY payment
+Payment --> Order : payment-success / failed
+Order --> Notification : order-confirmed / cancelled
+Order --> Inventory : order-confirmed / cancelled
+Order --> Voucher : order-cancelled\nrelease voucher
+FlashSale --> Order : flash-sale-order-requested
+FlashSale --> Redis : stock / buyers keys
+Product --> Redis : product cache
+
+note bottom
+  Mỗi bounded context sở hữu dữ liệu và logic riêng.
+  Quan hệ giữa context đi qua API công khai hoặc domain event Kafka.
+end note
+
+@enduml
