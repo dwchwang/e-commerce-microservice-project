@@ -27,7 +27,8 @@ Hoi dong se hoi 2 cau:
    + client-side load balancing cho phep them instance ma khong sua code, va tai duoc phan bo lai.
 
 Ket qua mong muon dua vao bao cao:
-- Mot bang ramp moi (vd `Catalog ramp 0->2000 VU`) thay/them vao Bang `table:perf-results`.
+- Bang 5.9 cap nhat 3 dong: Catalog **baseline 300 VU** (so sach), Checkout **150 VU**, Flash-sale
+  **1500 VU**. Rieng `Catalog ramp 0->1500 VU` (bao hoa) la bang/anh trong Muc 5.10.
 - Mot tieu muc moi **"Kiem chung scale thu cong"** trong Muc 5.10 (hoac cuoi 5.9), kem so lieu
   truoc/sau khi scale (p95 giam, error rate giam, request/s tang) + anh Grafana.
 - **Mot file HTML ket qua k6** trinh bay dep, tu sinh tu raw summary (Muc 3B). Dung lam: (a) nguon
@@ -99,66 +100,184 @@ scale ngang co gioi han boi single-host 16 GB.
 
 ---
 
-## 2. Thiet Ke Bai k6 Ramp 0 -> 2000 VU
+## 2. Bo So Lieu Chot + Runbook Chi Tiet 3 Kich Ban
 
-### 2.1 Nguyen tac
+### 2.0 Co so chon so (tu chinh ket qua da do)
 
-- Tro thang vao `http://13.213.118.96:8080` (giong 3 bai cu) de **khong dinh chi phi TLS cua Caddy**,
-  so lieu p95 phan anh he thong chu khong phai handshake HTTPS.
-- Danh vao **read path public** (product list/detail/search/reviews) — la luong **khong bi rate limiter**
-  (rate limiter chi gioi han `/api/orders` 10 r/s va flash-sale 3 r/s). Nho vay VU cao moi tao tai that
-  thay vi dung loat 429.
-- Ramp **bac thang** de nhin ro diem bao hoa thay vi nhay thang. Goi y stages (tong ~16 phut):
+Bai catalog ramp 0->2000 da chay cho thay: **throughput cham tran ~277 req/s**, p95 9.15s, p99 25s,
+loi 5% o dinh -> **diem nghen (knee) ~300 VU** cho read path, nut that la `product-service` (list/detail).
+Tat ca so duoi day chon quanh moc nay. Nguyen tac chung:
+- Tro thang `http://13.213.118.96:8080` (bo qua TLS Caddy de p95 phan anh he thong).
+- Rate limiter la **theo user** (`X-User-Id`): `/api/orders` 10 r/s, flash-sale 3 r/s **moi user**. Vi moi
+  VU dung 1 user rieng nen tai phan tan **khong** dinh 429 o checkout -> co the day VU that su.
 
-```
-0   -> 200   trong 2m   (warm-up)
-200 -> 200   trong 2m   (on dinh, ghi baseline)
-200 -> 600   trong 2m
-600 -> 600   trong 2m
-600 -> 1200  trong 2m
-1200-> 1200  trong 2m
-1200-> 2000  trong 2m
-2000-> 2000  trong 2m   (diem cuc dai - chup Grafana o day)
-2000-> 0     trong 2m   (ramp down)
-```
+| # | Kich ban | Script | VU chot | Thoi luong | Vai tro trong bao cao |
+|---|---|---|---|---|---|
+| 1 | Catalog baseline | `catalog-browse.js` | **300** ben | ~7 phut | So sach cho Bang 5.9 (vung khoe) |
+| 2 | Catalog ramp + SCALE | `catalog-ramp.js` / `catalog-browse.js` | **0->1500** ramp, **~800** ben khi scale | ~18 phut / ~12 phut | Muc 5.10: bao hoa + scale ngang |
+| 3 | Checkout stress | `checkout-stress.js` | **150** ben | ~8 phut | Bang 5.9 (duong ghi/Saga) |
+| 4 | Flash-sale spike | `flash-sale-spike.js` | **1500** / 100 slot | ~90 giay | Bang 5.9 (tinh dung dan duoi spike) |
 
-- Threshold de **khong fail som** o muc cao (de con thay duong cong xau di): noi long hon bai soak cu,
-  vd `http_req_duration p(95)<3000`, `http_req_failed rate<0.05`. Muc tieu la **do diem gay**, khong
-  phai pass/fail.
+> Tat ca default trong script DA set dung cac so tren, nen chay chi can `BASE_URL`. Cac lenh duoi co the
+> copy-chay truc tiep. Dat truoc: `BASE="http://13.213.118.96:8080"`.
 
-### 2.2 File can tao: `.test/load/catalog-ramp.js`
+---
 
-Dua tren `catalog-browse.js` co san, chi doi phan `stages` (tham so hoa qua `__ENV` de chay nhanh
-khi smoke). Giu nguyen 4 request/iteration (list, detail, search, reviews) va `SharedArray` doc
-`../seed/products.json`. Them tag de tach p95 theo loai request (`list`/`detail`/`search`/`reviews`),
-phuc vu phan tich service nao nong.
+### 2.1 Kich ban 1 — Catalog baseline 300 VU (so sach)
 
-Lenh chay (mau, se ghi chi tiet vao `.test/load/README.md`):
+**Muc dich:** chung minh read path phuc vu tot o tai thuc te (duoi knee). Day la dong "Catalog" trong Bang 5.9.
 
 ```bash
-BASE_URL="http://13.213.118.96:8080" \
-k6 run --out json=.test/results/catalog-ramp-$(date +%Y%m%d-%H%M).json \
+BASE="http://13.213.118.96:8080"
+# Smoke 1 phut truoc (tuy chon)
+BASE_URL=$BASE CATALOG_TARGET_VUS=20 CATALOG_HOLD=30s CATALOG_RAMP_UP=10s CATALOG_RAMP_DOWN=10s \
+  k6 run .test/load/catalog-browse.js
+
+# Chay that: 300 VU ben 5 phut (default da la 300/5m)
+BASE_URL=$BASE \
+  k6 run --out json=.test/results/catalog-baseline-$(date +%Y%m%d-%H%M).json \
+  .test/load/catalog-browse.js | tee .test/results/catalog-baseline-$(date +%Y%m%d-%H%M).txt
+```
+
+- **Nguong (trong script):** `http_req_duration p95<800ms, p99<2000ms`, `http_req_failed rate<0.01`.
+- **Ky vong:** p95 ~vai tram ms, loi ~0% -> verdict PASS. (300 VU tren think-time 5s = ~230 req/s < tran 277.)
+- **Grafana:** Spring Boot Overview — throughput on dinh, p95 thap, error rate 0; JVM heap khong tang vot.
+- **Scale:** **KHONG can** — day la vung khoe, muc dich la so dep.
+- Neu p95 lai cao bat thuong (>1s): kiem tra Redis cache product (cache miss?) hoac mang laptop.
+
+---
+
+### 2.2 Kich ban 2 — Catalog ramp 0->1500 + DEMO SCALE (Muc 5.10)
+
+Gom 2 phan: (A) ramp tim diem gay, (B) giu tai bao hoa du lau de scale thu cong.
+
+**Phan A — Ramp 0->1500 (bang chung bao hoa):** bac thang 150/450/900/1500 VU, threshold noi long.
+
+```bash
+BASE_URL=$BASE \
+  k6 run --out json=.test/results/catalog-ramp-$(date +%Y%m%d-%H%M).json \
   .test/load/catalog-ramp.js | tee .test/results/catalog-ramp-$(date +%Y%m%d-%H%M).txt
+
+# (Tuy chon) bieu do time-series cho duong cong bao hoa:
+K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_EXPORT=.test/results/catalog-ramp-dashboard.html \
+  BASE_URL=$BASE k6 run .test/load/catalog-ramp.js
 ```
 
-Smoke (truoc khi chay that, ~2 phut):
+- **Ky vong:** p95 leo dan, tu ~bac 900-1500 VU bat dau gay (p95 vai giay), `product-service` nong nhat
+  -> chinh la dong luc scale.
+
+**Phan B — Giu tai bao hoa ~800 VU de SCALE (phan demo chinh):** ramp chi giu dinh 2 phut, qua ngan de
+thao tac. Nen dung `catalog-browse.js` giu **800 VU lien tuc ~12 phut** (800 VU x think 5s = ~615 req/s,
+gap doi tran 277 -> bao hoa on dinh, du thoi gian scale + chup truoc/sau).
 
 ```bash
-BASE_URL="http://13.213.118.96:8080" \
-RAMP_PROFILE=smoke \
-k6 run .test/load/catalog-ramp.js
+# 1) Mo san terminal nay (giu chay suot demo):
+BASE_URL=$BASE CATALOG_TARGET_VUS=800 CATALOG_RAMP_VUS=400 \
+  CATALOG_RAMP_UP=1m CATALOG_HOLD=12m CATALOG_RAMP_DOWN=1m \
+  k6 run .test/load/catalog-browse.js | tee .test/results/catalog-scale-demo-$(date +%Y%m%d-%H%M).txt
 ```
 
-> Luu y ve may sinh tai: 2000 VU tu **mot** k6 tren laptop qua internet co the bi nghen o duong
-> truyen/laptop chu khong phai EC2. Neu thay CPU laptop hoac bang thong la nut that, ha xuong ~1200-1500
-> VU va ghi ro trong bao cao "gioi han boi load generator don le", hoac chay k6 ngay tren EC2/may thu 2.
+Trinh tu thao tac trong khi terminal tren dang chay:
 
-### 2.3 (Tuy chon) bai checkout o muc vua
+| Phut | Lam gi | Quan sat |
+|---|---|---|
+| 0-3 | Cho tai len dinh 800 VU | Grafana: p95 product-service tang manh, throughput phang ~277 req/s |
+| ~3 | **Chup "truoc scale"**: Grafana p95 + Eureka (1 instance PRODUCT-SERVICE) | p95 cao (vai giay), 1 instance |
+| ~4 | TREN EC2: `bash aws/scale-up.sh product-service 3` | ~5-10s product-service recreate |
+| 4-6 | Cho 3 instance UP tren Eureka | Eureka thay 3 dong PRODUCT-SERVICE |
+| ~7 | **Chup "sau scale"**: Grafana p95 (theo instance) | p95 giam ro, throughput tang, tai chia 3 |
+| ~11 | `bash aws/scale-down.sh product-service` | Ve 1 container |
+| 12 | k6 ket thuc | Luu .txt |
 
-Giu checkout o muc vua phai (vd 100-150 VU) vi rate limiter `/api/orders` = 10 r/s se sinh 429 khi VU
-qua cao — dieu nay **dung thiet ke** nhung khong phai bai do bao hoa. Neu muon demo Saga duoi tai, chay
-rieng `checkout-stress.js` voi `CHECKOUT_TARGET_VUS=100` va ghi nhan ty le 429 nhu bang chung rate limiter
-hoat dong.
+- **MUC SCALE (khi nao bam scale-up):** khi thay **MOT** trong cac dau hieu o tai dinh:
+  (1) p95 cua `product-service` > ~2-3s, (2) CPU container product-service > ~80%, (3) throughput phang
+  khong tang du VU van tang (da cham tran). O 800 VU ca 3 dau hieu deu xuat hien.
+- **So lieu ghi lai cho bao cao:** p95 + req/s + heap/CPU cua product-service **truoc (1 instance)** va
+  **sau (3 instance)** o cung muc 800 VU -> bang so sanh trong Muc 5.10.
+- Neu sau scale p95 **khong** giam: nut that da chuyen (gateway/Postgres) — day cung la phat hien gia tri,
+  ghi trung thuc; co the thu scale them search-service hoac dung lai o ket luan "gioi han single-host".
+
+---
+
+### 2.3 Kich ban 3 — Checkout stress 150 VU (duong ghi/Saga)
+
+**Muc dich:** stress luong dat hang (cart -> order -> inventory -> Kafka -> payment -> notification).
+
+> **BAT BUOC truoc khi chay — nap ton kho.** 150 VU x ~8 phut sinh hang chuc nghin don that, neu het hang
+> giua chung thi don fail (loi nghiep vu, khong phai loi hieu nang) lam hong so lieu. Nap stock cao:
+> ```bash
+> # Vi du nap qua admin API hoac seed; bao dam moi SKU co >= 200 ton.
+> ADMIN_TOKEN="<admin-jwt>" BASE_URL=$BASE .test/seed/seed-products.sh 100   # neu seed co set stock lon
+> # hoac stock-in tung SKU qua /api/inventory/stock-in (xem guide 18 muc Admin Inventory).
+> ```
+
+```bash
+BASE_URL=$BASE \
+  k6 run --out json=.test/results/checkout-stress-$(date +%Y%m%d-%H%M).json \
+  .test/load/checkout-stress.js | tee .test/results/checkout-stress-$(date +%Y%m%d-%H%M).txt
+```
+
+- **Nguong (trong script):** `http_req_failed rate<0.05`, `checks{type:order_created} rate>0.95`.
+- **Ky vong:** p95 ~0.5-2s (nang hon catalog), order success ~100% **neu du stock**. 150 VU ~ sat knee cua
+  duong ghi (~140 VU) nen day la stress that su, khong phai vung khoe.
+- **Grafana:** Saga Overview — throughput/latency `order-service`, `inventory-service`, `payment-service`;
+  do tre Kafka consumer; khong co spike error.
+- **Scale (tuy chon):** neu `order-service` la nut that (p95 cao, CPU cao), co the demo scale no:
+  mo comment `order-service` trong `docker-compose.scale.yml` roi `bash aws/scale-up.sh order-service 2`.
+  Luu y: cac instance cung Kafka group-id -> tu chia partition; OutboxPoller SKIP LOCKED an toan; co the
+  can tang `DB_MAX_POOL_SIZE`. Khong bat buoc cho demo — uu tien scale product-service o KB2 cho ro rang.
+
+---
+
+### 2.4 Kich ban 4 — Flash-sale spike 1500 VU / 100 slot (tinh dung dan)
+
+**Muc dich:** chung minh duoi spike "1500 nguoi tranh 100 suat", Redis Lua atomic khong over-sell.
+
+Chuan bi:
+
+```bash
+# 1) Seed campaign 100 slot, lay id
+ADMIN_TOKEN="<admin-jwt>" BASE_URL=$BASE .test/seed/seed-flash-sale.sh 100
+export FLASH_SALE_ID=$(cat .test/seed/flash_sale_id.txt)
+# 2) Doi campaign toi gio start (script seed in ra thoi diem start; thuong cho ~60-70s)
+```
+
+```bash
+BASE_URL=$BASE EXPECTED_SUCCESS=100 \
+  k6 run --out json=.test/results/flash-sale-spike-$(date +%Y%m%d-%H%M).json \
+  -e FLASH_SALE_ID=$FLASH_SALE_ID \
+  .test/load/flash-sale-spike.js | tee .test/results/flash-sale-spike-$(date +%Y%m%d-%H%M).txt
+```
+
+- **Nguong (trong script):** `flash_sale_purchase_successes count==100`, `sold_out count>0`.
+- **Ky vong:** **dung 100** mua thanh cong, phan con lai sold-out / `already purchased` / 429 (deu hop le,
+  script da phan loai). p95 tong the co the cao (~1s+) do thundering herd — khong sao, **metric chinh la
+  tinh dung dan**, khong phai latency.
+- **Verify sau khi chay** (tren EC2, doi chieu khong over-sell):
+  ```bash
+  docker exec ecommerce-postgres psql -U postgres -d flash_sale_db -c \
+    "SELECT COUNT(*) FROM flash_sale_orders WHERE flash_sale_id='${FLASH_SALE_ID}' AND status='SUCCESS';"   # = 100
+  docker exec ecommerce-postgres psql -U postgres -d flash_sale_db -c \
+    "SELECT user_id,COUNT(*) FROM flash_sale_orders WHERE flash_sale_id='${FLASH_SALE_ID}' GROUP BY user_id HAVING COUNT(*)>1;"  # 0 dong
+  docker exec ecommerce-redis redis-cli GET "flash-sale:${FLASH_SALE_ID}:stock"   # = 0
+  ```
+- **Scale:** **KHONG** — day la test dung dan, khong phai throughput. Tang VU chi lam herd lon hon, ket qua
+  dung van la 100.
+
+---
+
+### 2.5 Sinh HTML tong hop + cap nhat bao cao
+
+Sau khi chay xong 3 kich ban bang 5.9 (catalog baseline, checkout, flash-sale) — moi cai da de lai
+`*-summary-latest.json` qua `handleSummary`:
+
+```bash
+node .test/load/report/build-k6-report.mjs > .test/results/k6-report.html
+# Mo browser -> chup full-page -> DATN_.../Hinhve/chuong5/k6-results.png
+```
+
+So can dua vao Bang `table:perf-results`: Catalog 300 VU (p95 sach), Checkout 150 VU, Flash-sale 1500 VU.
+Catalog ramp + scale (KB2) la bang/anh rieng trong Muc 5.10.
 
 ---
 
@@ -322,7 +441,7 @@ Da gan `handleSummary` vao ca 4 script. Vi du trong `catalog-ramp.js`:
 ```js
 import { report } from './lib/summary.js';
 export function handleSummary(data) {
-  return report(data, { name: 'catalog-ramp', label: 'Catalog ramp 0->2000 VU', kind: 'ramp', maxVU: 2000 });
+  return report(data, { name: 'catalog-ramp', label: 'Catalog ramp 0->1500 VU', kind: 'ramp', maxVU: 1500 });
 }
 ```
 
@@ -470,8 +589,8 @@ Theo thu tu thuc hien. Nhom A = hieu nang + scale, Nhom B = HTML report, Nhom C 
 > **Con lai la chay/verify tren EC2 + chup anh + cap nhat `.tex`** (cac muc co dau [ ] ben duoi).
 
 **A. Hieu nang & scale thu cong**
-1. [x] **Viet `.test/load/catalog-ramp.js`** — DA XONG: ramp bac thang 0->2000, `RAMP_PROFILE` smoke/full,
-       threshold noi long, tag request theo list/detail/search/reviews.
+1. [x] **Viet `.test/load/catalog-ramp.js`** — DA XONG: ramp bac thang 0->1500 (default PEAK_VUS=1500),
+       `RAMP_PROFILE` smoke/full, threshold noi long, tag request theo list/detail/search/reviews.
 2. [ ] **Verify instance-id duy nhat tren EC2** — file scale (PA1+PA2) + `verify-scale-eureka.sh` DA tao.
        Con: deploy len EC2 va chay **`bash aws/verify-scale-eureka.sh product-service 2`** -> script tu
        thu ca 2 phuong an va ket luan dung file nao. Neu ca 2 fail -> Phuong an 3 (xem Muc 3.4.3).
@@ -480,8 +599,8 @@ Theo thu tu thuc hien. Nhom A = hieu nang + scale, Nhom B = HTML report, Nhom C 
 4. [ ] **Verify Grafana tach theo instance** — chinh panel `by (instance)` neu can.
 5. [~] **`aws/scale-up.sh` va `aws/scale-down.sh`** — DA viet (executable). scale-down dung `rm -sf` roi
        tao lai tu base de ve dung container_name goc, khong orphan. Con: test chuoi up/down tren EC2.
-6. [ ] **Chay that bai ramp** — luu `.json` + `.txt` vao `.test/results/`, chup Grafana o moc 2000 VU
-       (truoc scale) va sau scale, luu vao `.test/results/`.
+6. [ ] **Chay that bai ramp (1500) + scale demo (giu 800 VU)** — luu `.json` + `.txt` vao `.test/results/`,
+       chup Grafana truoc/sau scale, luu vao `.test/results/`. (Chi tiet: Muc 2.2.)
 7. [ ] **Do so lieu truoc/sau scale** — bang: p95, req/s, error rate, heap cua service nong @ VU cao,
        1 instance vs 3 instance.
 
@@ -501,8 +620,9 @@ Theo thu tu thuc hien. Nhom A = hieu nang + scale, Nhom B = HTML report, Nhom C 
 
 **D. Cap nhat tai lieu**
 15. [ ] **Cap nhat bao cao** `5_Giai_phap_dong_gop.tex`:
-       - Muc 5.9: them dong `Catalog ramp 0->2000 VU` vao Bang `table:perf-results` + 1 doan phan tich
-         diem bao hoa; thay figure `fig:perf-results` bang `k6-results.png` that.
+       - Muc 5.9: cap nhat Bang `table:perf-results` (Catalog baseline 300, Checkout 150, Flash-sale 1500);
+         thay figure `fig:perf-results` bang `k6-results.png` that.
+       - Muc 5.10: them bang/anh `Catalog ramp 0->1500 VU` (bao hoa) + 1 doan phan tich diem gay.
        - Them tieu muc moi (cuoi 5.9 hoac dau 5.10) **"Kiem chung scale ngang thu cong"**: mo ta co che
          Eureka + client LB, bang so sanh truoc/sau scale, anh Grafana, va ghi ro **gioi han single-host
          16 GB** (chi scale duoc vai instance).
