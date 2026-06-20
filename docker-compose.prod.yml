@@ -69,7 +69,9 @@ services:
     # Keep 9090 exposed only to home IP (Security Group enforces)
 
   grafana:
-    mem_limit: 256m
+    # 256m cham tran (98%) khi render dashboard luc tai cao -> request timeout 40-75s.
+    # Nang len 512m de Grafana khong bi nghen RAM.
+    mem_limit: 512m
     # Frontend port 3000 conflict resolution: remap Grafana to 3001 in prod
     ports: !override
       - "3001:3000"
@@ -100,6 +102,11 @@ services:
       # Public key vẫn lấy nội bộ qua Docker network (không cần ra ngoài).
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-https://auth.13-213-118-96.nip.io/realms/ecommerce}
       KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://keycloak:8080/realms/ecommerce/protocol/openid-connect/certs}
+      # File baked `application-docker.yml` của gateway hardcode issuer-uri=http://keycloak:8080 và
+      # THẮNG cả config-server (placeholder ${KEYCLOAK_ISSUER_URI}). Đặt thẳng property qua OS env
+      # (relaxed binding) -> OS env ưu tiên cao hơn application-docker.yml -> override được literal.
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-https://auth.13-213-118-96.nip.io/realms/ecommerce}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://keycloak:8080/realms/ecommerce/protocol/openid-connect/certs}
 
   # ============================================================
   # BUSINESS SERVICES

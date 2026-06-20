@@ -181,21 +181,41 @@ Trinh tu thao tac trong khi terminal tren dang chay:
 
 | Phut | Lam gi | Quan sat |
 |---|---|---|
-| 0-3 | Cho tai len dinh 800 VU | Grafana: p95 product-service tang manh, throughput phang ~277 req/s |
-| ~3 | **Chup "truoc scale"**: Grafana p95 + Eureka (1 instance PRODUCT-SERVICE) | p95 cao (vai giay), 1 instance |
-| ~4 | TREN EC2: `bash aws/scale-up.sh product-service 3` | ~5-10s product-service recreate |
-| 4-6 | Cho 3 instance UP tren Eureka | Eureka thay 3 dong PRODUCT-SERVICE |
+| 0-3 | Cho tai len dinh 800 VU | Xac dinh service NONG THAT bang `docker stats` + Grafana (xem o duoi); throughput phang ~277 req/s |
+| ~3 | **Chup "truoc scale"**: Grafana p95 + Eureka (1 instance cua service X) | p95 cao (vai giay), 1 instance |
+| ~4 | TREN EC2: `bash aws/scale-up.sh <X> 3` (X = service nong that) | ~5-10s recreate |
+| 4-6 | Cho 3 instance UP tren Eureka | Eureka thay 3 dong cua X |
 | ~7 | **Chup "sau scale"**: Grafana p95 (theo instance) | p95 giam ro, throughput tang, tai chia 3 |
-| ~11 | `bash aws/scale-down.sh product-service` | Ve 1 container |
+| ~11 | `bash aws/scale-down.sh <X>` | Ve 1 container |
 | 12 | k6 ket thuc | Luu .txt |
 
-- **MUC SCALE (khi nao bam scale-up):** khi thay **MOT** trong cac dau hieu o tai dinh:
-  (1) p95 cua `product-service` > ~2-3s, (2) CPU container product-service > ~80%, (3) throughput phang
-  khong tang du VU van tang (da cham tran). O 800 VU ca 3 dau hieu deu xuat hien.
-- **So lieu ghi lai cho bao cao:** p95 + req/s + heap/CPU cua product-service **truoc (1 instance)** va
-  **sau (3 instance)** o cung muc 800 VU -> bang so sanh trong Muc 5.10.
-- Neu sau scale p95 **khong** giam: nut that da chuyen (gateway/Postgres) — day cung la phat hien gia tri,
-  ghi trung thuc; co the thu scale them search-service hoac dung lai o ket luan "gioi han single-host".
+- **CACH CHON DUNG SERVICE DE SCALE (doc ky — rat de bi danh lua bang p95 Grafana):**
+  Tuyet doi **khong chon theo p95 cao nhat mot cach may moc**. Co 2 bay:
+  1. **api-gateway hau nhu luon co p95 cao nhat — KHONG phai tin hieu scale gateway.** Gateway la cua vao;
+     p95 cua no = overhead proxy + vong di-ve xuong backend cham nhat. No chi bao "co gi do phia duoi cham",
+     khong chi ra cai nao. **Bo gateway ra khi chon service backend de scale.**
+  2. **Service co p95 cao nhung req/s ~0 la NHIEU/du am, khong phai nut that.** Bai catalog (browse thuan)
+     CHI goi `product-service` / `search-service` / `review-service`. Da kiem chung trong code: product-service
+     **khong goi dong bo** sang service nao. Vi vay neu thay `order-service`/`payment-service`/`inventory-service`
+     p95 cao trong bai nay -> do la **du am tu lan chay checkout truoc** con ket trong cua so `rate[5m]` cua
+     Grafana, hoac vai request le. **Bo qua moi service co req/s thap.**
+  -> **Tin hieu quyet dinh la CPU, khong phai p95.** Tren EC2 chay `docker stats` trong luc giu 800 VU:
+     container nao CPU% pegged cao nhat (thuong ~80-100%) **chinh la nut that** -> scale dung cai do.
+     Doi chieu them panel Grafana **"req/s theo service"** (chi cac service req/s cao moi dang ke) +
+     **"Latency p95 & p99 theo service"**. Ung vien thuc te chi nam trong product/search/review.
+  Meo: cho tai chay >= 2 phut roi hay doc Grafana (de cua so `rate[5m]` xa het du am cu); hoac thu hep ve `[1m]`.
+
+- **MUC SCALE (khi nao bam scale-up):** o tai dinh 800 VU, sau khi xac dinh service nong that **X** (qua
+  `docker stats` CPU + req/s), bam khi thay **MOT** trong: (1) CPU container X > ~80%, (2) p95 cua X > ~2-3s,
+  (3) throughput phang khong tang du VU van tang (da cham tran). Chay `bash aws/scale-up.sh <X> 3`.
+- **So lieu ghi lai cho bao cao:** p95 + req/s + CPU/heap cua service X **truoc (1 instance)** va
+  **sau (3 instance)** o cung 800 VU -> bang so sanh trong Muc 5.10.
+- **Truong hop gateway moi la nut that thuc su** (CPU api-gateway pegged, backend con ranh): scale mot backend
+  se KHONG cai thien p95 — day la **phat hien gia tri**, ghi trung thuc ("o read path 800 VU, nut that la
+  api-gateway single-instance, khong phai backend"). Khi do co the (a) ket luan gioi han single-host 16 GB,
+  hoac (b) demo scale gateway rieng (luu y host port 8080 chi map 1 -> can xu ly rieng, x-Muc 1.2).
+- Neu sau scale X p95 **khong** giam: nut that da chuyen sang tang khac (gateway/Postgres/Redis) — cung ghi
+  trung thuc; co the thu scale them service khac hoac dung lai o ket luan "gioi han single-host".
 
 ---
 

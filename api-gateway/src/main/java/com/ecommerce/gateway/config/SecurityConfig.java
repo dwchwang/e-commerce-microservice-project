@@ -42,7 +42,10 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.POST, "/api/products/**").hasAuthority("ROLE_ADMIN")
                         .pathMatchers(HttpMethod.PUT, "/api/products/**").hasAuthority("ROLE_ADMIN")
                         .pathMatchers(HttpMethod.DELETE, "/api/products/**").hasAuthority("ROLE_ADMIN")
-                        // Flash-sale mutations: admin-only
+                        // Flash-sale PURCHASE la cua buyer da dang nhap -> PHAI dat TRUOC rule admin
+                        // ben duoi (POST /api/flash-sales/** -> ROLE_ADMIN), neu khong buyer bi 403.
+                        .pathMatchers(HttpMethod.POST, "/api/flash-sales/*/purchase").authenticated()
+                        // Flash-sale mutations (tao/sua campaign): admin-only
                         .pathMatchers(HttpMethod.POST, "/api/flash-sales/**").hasAuthority("ROLE_ADMIN")
                         .pathMatchers(HttpMethod.PUT, "/api/flash-sales/**").hasAuthority("ROLE_ADMIN")
                         .pathMatchers(HttpMethod.DELETE, "/api/flash-sales/**").hasAuthority("ROLE_ADMIN")

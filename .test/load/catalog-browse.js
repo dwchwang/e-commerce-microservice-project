@@ -21,7 +21,15 @@ export const options = {
   thresholds: {
     http_req_duration: ['p(95)<800', 'p(99)<2000'],
     http_req_failed: ['rate<0.01'],
+    // Tagged sub-metric cho tung endpoint -> build-k6-report.mjs moi tach duoc
+    // p95 theo list/detail/search/reviews (giong catalog-ramp.js). Nguong noi long,
+    // muc dich chinh la BUOC k6 phat sinh sub-metric, khong de FAIL gia.
+    'http_req_duration{name:list}': ['p(95)<3000'],
+    'http_req_duration{name:detail}': ['p(95)<3000'],
+    'http_req_duration{name:search}': ['p(95)<3000'],
+    'http_req_duration{name:reviews}': ['p(95)<3000'],
   },
+  summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
 };
 
 export default function () {

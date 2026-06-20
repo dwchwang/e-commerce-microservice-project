@@ -101,10 +101,14 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     healthcheck:
+      # kafka-topics la JVM CLI, khoi dong nguoi tren EC2 co the >5s -> timeout cu (5s) khien
+      # healthcheck luon fail -> Kafka ket o "unhealthy" -> service depends_on bi huy
+      # ("dependency kafka failed to start"). Noi rong timeout + them start_period cho cold boot.
       test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 15s
+      timeout: 20s
+      retries: 10
+      start_period: 90s
     networks:
       - ecommerce-network
 
