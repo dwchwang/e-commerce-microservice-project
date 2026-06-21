@@ -6,7 +6,7 @@ import { DonutLegend, LineBars } from "@/components/admin/AdminCharts";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { adminFetchSafe, formatCurrency } from "@/lib/admin/api";
+import { adminFetchSafe, formatCurrency, toAdminPage, type PagePayload } from "@/lib/admin/api";
 import type { InventoryAdmin, OrderAdmin } from "@/lib/admin/types";
 
 type Summary = {
@@ -21,7 +21,7 @@ type TopProduct = { productName: string; quantity: number; revenue?: number };
 type StatusCount = { status: string; count: number };
 
 export default async function AdminDashboardPage() {
-  const [summary, revenue, statusCounts, topProducts, recentOrders, lowStock] = await Promise.all([
+  const [summary, revenue, statusCounts, topProducts, recentOrdersPage, lowStock] = await Promise.all([
     adminFetchSafe<Summary>("/orders/admin/analytics/summary?period=7d", {
       revenue: 0,
       orders: 0,
@@ -31,9 +31,12 @@ export default async function AdminDashboardPage() {
     adminFetchSafe<RevenuePoint[]>("/orders/admin/analytics/revenue?days=30", []),
     adminFetchSafe<StatusCount[]>("/orders/admin/analytics/status-counts", []),
     adminFetchSafe<TopProduct[]>("/orders/admin/analytics/top-products?limit=10", []),
-    adminFetchSafe<OrderAdmin[]>("/orders/admin?size=10", []),
+    // /orders/admin returns a paginated Page payload, not a bare array.
+    adminFetchSafe<PagePayload<OrderAdmin>>("/orders/admin?size=10", { content: [] }),
     adminFetchSafe<InventoryAdmin[]>("/inventory/low-stock?threshold=10", []),
   ]);
+
+  const recentOrders = toAdminPage(recentOrdersPage, 10).items;
 
   const revenueChart = revenue.map((item) => ({
     label: new Date(item.date).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }),
