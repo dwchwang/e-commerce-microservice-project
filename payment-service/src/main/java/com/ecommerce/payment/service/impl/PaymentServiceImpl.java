@@ -176,11 +176,22 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public String buildReturnRedirect(Map<String, String> rawParams) {
         Map<String, String> params = VnPayUtil.filterVnPayParams(rawParams);
         boolean validSignature = vnPayService.verifySignature(params);
         UUID paymentId = parseUuid(params.get("vnp_TxnRef"));
+
+        // Fallback finalization: VNPAY sandbox IPN is unreliable, so we also
+        // settle the payment on the browser return when the signature is valid.
+        // Reuses the same idempotent IPN logic — a no-op if the IPN already ran.
+        if (validSignature && paymentId != null) {
+            try {
+                confirmVnPayOnReturn(paymentId, params);
+            } catch (RuntimeException ex) {
+                log.warn("VNPay return-side settlement skipped for payment {}: {}", paymentId, ex.getMessage());
+            }
+        }
+
         Payment payment = paymentId == null ? null : paymentRepository.findById(paymentId).orElse(null);
         String orderId = payment == null ? "unknown" : payment.getOrderId().toString();
         String status = validSignature && "00".equals(params.get("vnp_ResponseCode")) ? "success" : "failed";
@@ -190,6 +201,26 @@ public class PaymentServiceImpl implements PaymentService {
                 .queryParam("status", status)
                 .build()
                 .toUriString();
+    }
+
+    /**
+     * Settles a still-PENDING VNPay payment from the browser return params.
+     * Mirrors {@link #handleVnPayIpn}: same validation + transactional finalize,
+     * guarded by the PENDING check so IPN and return can't double-process.
+     */
+    private void confirmVnPayOnReturn(UUID paymentId, Map<String, String> params) {
+        Payment payment = paymentRepository.findById(paymentId).orElse(null);
+        if (payment == null || payment.getStatus() != PaymentStatus.PENDING) {
+            return;
+        }
+        OrderPaymentContextResponse ctx;
+        try {
+            ctx = requireOrderContext(payment.getOrderId());
+        } catch (RuntimeException ex) {
+            log.warn("Order context unavailable during VNPay return settlement for {}: {}", paymentId, ex.getMessage());
+            return;
+        }
+        transactionTemplate.execute(status -> processVnPayIpnInTransaction(paymentId, params, ctx));
     }
 
     @Override

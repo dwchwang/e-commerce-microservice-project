@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,7 +20,6 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
   const [error, setError] = useState("");
@@ -59,8 +58,11 @@ function LoginForm() {
           // fall back to storefront
         }
       }
-      router.push(destination);
-      router.refresh();
+      // Hard navigation (not SPA push) so the browser reloads with the new
+      // auth cookie — guarantees the header/session reflect the logged-in user
+      // regardless of any stale client cache.
+      window.location.assign(destination);
+      return;
     } catch {
       setError("Lỗi kết nối, vui lòng thử lại");
     } finally {

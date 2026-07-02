@@ -19,6 +19,21 @@ import { toast } from "sonner";
 
 type VnPayCreateResponse = { paymentId: string; orderId: string; paymentUrl: string };
 
+// VNPAY payment can only be created once the order saga has reserved stock
+// (order status STOCK_RESERVED). The order is created as PENDING and moves to
+// STOCK_RESERVED asynchronously, so we poll briefly before requesting the URL.
+async function waitForStockReserved(orderId: string, attempts = 20, delayMs = 700): Promise<void> {
+  for (let i = 0; i < attempts; i++) {
+    const o = await apiFetch<Order>(`/orders/${orderId}`);
+    if (o.status === "STOCK_RESERVED") return;
+    if (o.status === "CANCELLED") {
+      throw new ApiError(409, { message: o.cancelReason || "Đơn hàng đã bị hủy (hết hàng hoặc lỗi kho)." });
+    }
+    await new Promise((r) => setTimeout(r, delayMs));
+  }
+  throw new ApiError(408, { message: "Hệ thống đang xử lý đơn hàng, vui lòng thử lại sau giây lát." });
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { data: cart } = useCart();
@@ -70,7 +85,9 @@ export default function CheckoutPage() {
       });
 
       if (paymentMethod === "VNPAY") {
-        // Order is created in PENDING; request a VNPAY payment URL and redirect.
+        // Order starts PENDING; wait until stock is reserved before requesting
+        // a VNPAY URL, otherwise the backend rejects with "order not ready".
+        await waitForStockReserved(order.id);
         const payment = await apiFetch<VnPayCreateResponse>(
           `/payments/vnpay/create?orderId=${order.id}`,
           { method: "POST" }

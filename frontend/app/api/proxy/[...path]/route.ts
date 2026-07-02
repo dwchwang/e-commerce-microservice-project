@@ -38,7 +38,12 @@ async function proxy(
   });
 
   const responseHeaders = new Headers(res.headers);
+  // Node's fetch already decompressed the body, so the upstream content-encoding
+  // and content-length no longer match what we forward — dropping them prevents
+  // the browser from trying (and failing) to gunzip an already-plain body.
   responseHeaders.delete("transfer-encoding");
+  responseHeaders.delete("content-encoding");
+  responseHeaders.delete("content-length");
 
   return new NextResponse(res.body, {
     status: res.status,

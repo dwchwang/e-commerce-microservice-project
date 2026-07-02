@@ -64,7 +64,7 @@ export default async function ProductDetailPage({
           )}
           <h1 className="mb-4 text-2xl font-semibold tracking-tight md:text-4xl">{product.name}</h1>
 
-          {rating && rating.reviewCount && rating.reviewCount > 0 && (
+          {!!rating?.reviewCount && rating.reviewCount > 0 && (
             <div className="flex items-center gap-1 mb-4">
               <span className="text-yellow-500 text-lg">★</span>
               <span className="font-medium">{(rating.averageRating ?? 0).toFixed(1)}</span>

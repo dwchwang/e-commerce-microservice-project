@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { adminFetchSafe, formatCurrency, toAdminPage, type PagePayload } from "@/lib/admin/api";
 import type { InventoryAdmin, OrderAdmin } from "@/lib/admin/types";
+import { cn } from "@/lib/utils";
 
 type Summary = {
   revenue: number;
@@ -52,10 +53,10 @@ export default async function AdminDashboardPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard icon={<TrendingUp className="size-5" />} label="Doanh thu 7 ngày" value={formatCurrency(summary.revenue)} />
-        <MetricCard icon={<ShoppingCart className="size-5" />} label="Đơn hàng" value={summary.orders.toString()} />
-        <MetricCard icon={<Users className="size-5" />} label="Khách hàng mới" value={summary.customers.toString()} />
-        <MetricCard icon={<Package className="size-5" />} label="Conversion" value={`${summary.conversionRate.toFixed(1)}%`} />
+        <MetricCard accent="emerald" icon={<TrendingUp className="size-5" />} label="Doanh thu 7 ngày" value={formatCurrency(summary.revenue)} />
+        <MetricCard accent="blue" icon={<ShoppingCart className="size-5" />} label="Đơn hàng" value={summary.orders.toString()} />
+        <MetricCard accent="violet" icon={<Users className="size-5" />} label="Khách hàng mới" value={summary.customers.toString()} />
+        <MetricCard accent="amber" icon={<Package className="size-5" />} label="Conversion" value={`${summary.conversionRate.toFixed(1)}%`} />
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
@@ -173,15 +174,32 @@ export default async function AdminDashboardPage() {
   );
 }
 
-function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+const ACCENTS = {
+  emerald: "bg-emerald-50 text-emerald-600 ring-emerald-100",
+  blue: "bg-blue-50 text-blue-600 ring-blue-100",
+  violet: "bg-violet-50 text-violet-600 ring-violet-100",
+  amber: "bg-amber-50 text-amber-600 ring-amber-100",
+} as const;
+
+function MetricCard({
+  icon,
+  label,
+  value,
+  accent = "blue",
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  accent?: keyof typeof ACCENTS;
+}) {
   return (
-    <Card className="rounded-lg">
+    <Card className="rounded-xl transition-shadow hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.12)]">
       <CardContent className="flex items-center justify-between p-4">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-2 text-2xl font-semibold">{value}</p>
+          <p className="mt-2 truncate text-2xl font-semibold tracking-tight">{value}</p>
         </div>
-        <div className="rounded-md bg-zinc-900 p-2 text-white">{icon}</div>
+        <div className={cn("shrink-0 rounded-xl p-2.5 ring-1 ring-inset", ACCENTS[accent])}>{icon}</div>
       </CardContent>
     </Card>
   );
