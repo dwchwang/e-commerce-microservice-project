@@ -29,7 +29,7 @@ jobs:
           cache: maven
 
       - name: Build all services
-        run: ./mvnw -B -T 1C clean package -DskipTests
+        run: mvn -B -T 1C clean package -DskipTests
 
       - name: Compute short SHA
         id: meta
